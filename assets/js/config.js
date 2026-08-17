@@ -11,7 +11,7 @@
 const API_BASE = (() => {
   const host = window.location.hostname;
   if (host === 'localhost' || host === '127.0.0.1') {
-    return 'http://localhost:4000/api';
+    return 'https://control-programas.onrender.com/api';
   }
   return '/api';
 })();
