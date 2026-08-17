@@ -7,7 +7,7 @@
 # una vez que lo despliegues (Render te la asigna, ej. https://programas-bienestar-api.onrender.com).
 [[redirects]]
   from = "/api/*"
-  to = "https://TU-SERVICIO.onrender.com/api/:splat"
+  to = "https://control-programas.onrender.com/api/:splat"
   status = 200
   force = true
 
