@@ -114,6 +114,45 @@ router.post('/', async (req, res) => {
 });
 
 /* ---------------------------------------------------------------------- */
+/* Editar y eliminar programa                                              */
+/* ---------------------------------------------------------------------- */
+
+router.patch('/:id', async (req, res) => {
+  const { nombre, monto_beneficiario, meta_beneficiarios } = req.body || {};
+  if (!nombre || !monto_beneficiario || !meta_beneficiarios) {
+    return res.status(400).json({ error: 'Nombre, monto por beneficiario y meta son obligatorios.' });
+  }
+  try {
+    const programa = await getPrograma(req.params.id);
+    if (!programa) return res.status(404).json({ error: 'Programa no encontrado.' });
+
+    await db.query(
+      `UPDATE programas SET nombre = $1, monto_beneficiario = $2, meta_beneficiarios = $3 WHERE id = $4`,
+      [nombre, monto_beneficiario, meta_beneficiarios, req.params.id]
+    );
+    res.json(await getProgramaCompleto(req.params.id));
+  } catch (err) {
+    console.error('[programs/update]', err);
+    res.status(500).json({ error: 'Error al actualizar el programa.' });
+  }
+});
+
+router.delete('/:id', async (req, res) => {
+  try {
+    const programa = await getPrograma(req.params.id);
+    if (!programa) return res.status(404).json({ error: 'Programa no encontrado.' });
+
+    // Las tablas hijas (modificaciones, dictamenes, solicitudes, solicitudes_hacienda,
+    // pagos) tienen ON DELETE CASCADE, así que se eliminan solas junto con el programa.
+    await db.query('DELETE FROM programas WHERE id = $1', [req.params.id]);
+    res.status(204).send();
+  } catch (err) {
+    console.error('[programs/delete]', err);
+    res.status(500).json({ error: 'Error al eliminar el programa.' });
+  }
+});
+
+/* ---------------------------------------------------------------------- */
 /* Monto autorizado y modificaciones                                       */
 /* ---------------------------------------------------------------------- */
 

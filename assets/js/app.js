@@ -254,7 +254,13 @@ async function renderDetalle(id){
           <h2 style="margin:8px 0 4px;font-size:19px;color:var(--maroon-800);">${p.nombre}</h2>
           <div class="kpi-sub">UP ${p.unidad_codigo} · ${p.unidad_nombre} · Creado el ${fmtDate(p.created_at)}</div>
         </div>
-        <span class="status-badge" style="background:${st.color}22;color:${st.color};font-size:12px;padding:7px 16px;">${st.label}</span>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px;">
+          <span class="status-badge" style="background:${st.color}22;color:${st.color};font-size:12px;padding:7px 16px;">${st.label}</span>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-ghost btn-sm" id="btnEditarPrograma">✎ Editar</button>
+            <button class="btn btn-danger btn-sm" id="btnEliminarPrograma">🗑 Eliminar</button>
+          </div>
+        </div>
       </div>
       <hr class="divider">
       <div class="info-grid">
@@ -356,6 +362,8 @@ async function renderDetalle(id){
 
   document.getElementById('backToList').addEventListener('click', ()=>navigate({name:'programas'}));
   document.getElementById('toggleTableProg').addEventListener('click', ()=>document.getElementById('tableProg').classList.toggle('show'));
+  document.getElementById('btnEditarPrograma').addEventListener('click', ()=>openModalEditarPrograma(p));
+  document.getElementById('btnEliminarPrograma').addEventListener('click', ()=>openModalEliminarPrograma(p));
   const btnCargar = document.getElementById('btnCargarMonto');
   if(btnCargar) btnCargar.addEventListener('click', ()=>openModalCargarMonto(p.id));
   const btnMod = document.getElementById('btnAddModificacion');
@@ -545,6 +553,80 @@ async function submitNuevoPrograma(){
     err.textContent = e.message || 'No se pudo crear el programa.';
     err.style.display = 'block';
   }
+}
+
+/* ---- Editar Programa ---- */
+function openModalEditarPrograma(p){
+  openModal(`
+    <div class="modal-header"><h3>Editar Programa</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="form-grid single">
+        <div class="field"><label>Nombre del Proyecto</label><input type="text" id="e-nombre" value="${p.nombre.replace(/"/g,'&quot;')}"></div>
+      </div>
+      <div class="form-grid" style="margin-top:16px;">
+        <div class="field"><label>Cantidad por Beneficiario</label><input type="number" id="e-montoBenef" min="0" step="0.01" value="${p.monto_beneficiario}"></div>
+        <div class="field"><label>Meta de Beneficiarios</label><input type="number" id="e-meta" min="0" step="1" value="${p.meta_beneficiarios}"></div>
+      </div>
+      <div class="field-hint" style="margin-top:12px;">La Unidad Presupuestal y la clave (${p.clave}) no se pueden cambiar una vez creado el programa.</div>
+      <div id="e-error" style="color:var(--red);font-size:12.5px;font-weight:700;margin-top:12px;display:none;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" id="submitEditarPrograma">Guardar Cambios</button>
+    </div>
+  `);
+  document.getElementById('submitEditarPrograma').addEventListener('click', async ()=>{
+    const nombre = document.getElementById('e-nombre').value.trim();
+    const montoBenef = Number(document.getElementById('e-montoBenef').value);
+    const meta = Number(document.getElementById('e-meta').value);
+    const err = document.getElementById('e-error');
+
+    if(!nombre || !montoBenef || !meta){
+      err.textContent = 'Completa todos los campos para continuar.';
+      err.style.display = 'block';
+      return;
+    }
+    try{
+      await Api.patch(`/programs/${p.id}`, { nombre, monto_beneficiario:montoBenef, meta_beneficiarios:meta });
+      closeModal();
+      toast('Programa actualizado correctamente.');
+      await refreshOneProgram(p.id);
+      renderDetalle(p.id);
+    }catch(e){
+      err.textContent = e.message || 'No se pudo actualizar el programa.';
+      err.style.display = 'block';
+    }
+  });
+}
+
+/* ---- Eliminar Programa ---- */
+function openModalEliminarPrograma(p){
+  openModal(`
+    <div class="modal-header"><h3>Eliminar Programa</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <p style="font-size:13.5px;line-height:1.6;margin:0 0 10px;">
+        Estás a punto de eliminar permanentemente el programa <b>${p.nombre}</b> (${p.clave}).
+      </p>
+      <p style="font-size:13.5px;line-height:1.6;color:var(--red);font-weight:700;margin:0;">
+        Esto borra también todos sus movimientos: monto autorizado, modificaciones, dictámenes, solicitudes, trámites a Hacienda y pagos. Esta acción no se puede deshacer.
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-danger" id="submitEliminarPrograma">Sí, Eliminar Definitivamente</button>
+    </div>
+  `);
+  document.getElementById('submitEliminarPrograma').addEventListener('click', async ()=>{
+    try{
+      await Api.del(`/programs/${p.id}`);
+      closeModal();
+      toast('Programa eliminado.');
+      state.programs = state.programs.filter(x=>x.id!==p.id);
+      navigate({name:'programas'});
+    }catch(e){
+      toast(e.message || 'No se pudo eliminar el programa.', true);
+    }
+  });
 }
 
 /* ---- Cargar Monto Autorizado ---- */
