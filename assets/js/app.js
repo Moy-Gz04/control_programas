@@ -148,18 +148,24 @@ function renderInicio(){
     </div>
 
     <div class="section-title"><h2>Comparativo por Programa</h2><span class="hint">Autorizado · Comprometido · Pagado</span></div>
-    <div class="chart-card">
-      <div class="chart-head">
-        <h3>Recurso Autorizado vs. Comprometido vs. Pagado</h3>
-        <button class="table-toggle" id="toggleTableDash">Ver tabla de datos</button>
+    <div class="chart-flex">
+      <div class="chart-card">
+        <div class="chart-head">
+          <h3>Recurso Autorizado vs. Comprometido vs. Pagado</h3>
+          <button class="table-toggle" id="toggleTableDash">Ver tabla de datos</button>
+        </div>
+        <div style="height:320px;"><canvas id="chartDashboard"></canvas></div>
+        <table class="data-table" id="tableDash">
+          <thead><tr><th>Programa</th><th>Autorizado</th><th>Comprometido</th><th>Pagado</th></tr></thead>
+          <tbody>
+            ${state.programs.map(p=>`<tr><td>${p.nombre}</td><td>${fmtMoney(totalAutorizadoNeto(p))}</td><td>${fmtMoney(totalComprometido(p))}</td><td>${fmtMoney(totalPagado(p))}</td></tr>`).join('')}
+          </tbody>
+        </table>
       </div>
-      <div style="height:320px;"><canvas id="chartDashboard"></canvas></div>
-      <table class="data-table" id="tableDash">
-        <thead><tr><th>Programa</th><th>Autorizado</th><th>Comprometido</th><th>Pagado</th></tr></thead>
-        <tbody>
-          ${state.programs.map(p=>`<tr><td>${p.nombre}</td><td>${fmtMoney(totalAutorizadoNeto(p))}</td><td>${fmtMoney(totalComprometido(p))}</td><td>${fmtMoney(totalPagado(p))}</td></tr>`).join('')}
-        </tbody>
-      </table>
+      <div class="insight-card">
+        <div class="insight-head">Situación Actual</div>
+        ${generateInsightGeneral(state.programs)}
+      </div>
     </div>
 
     <div class="section-title"><h2>Programas</h2><span class="hint">${state.programs.length} registrados</span></div>
@@ -231,8 +237,21 @@ function renderProgramas(){
    ========================================================================= */
 async function renderDetalle(id){
   const el = document.getElementById('view-detalle');
-  const p = state.programs.find(x=>x.id===id);
+
+  // La lista general (GET /programs) no trae dictámenes, modificaciones, etc.
+  // Siempre se pide el detalle completo antes de dibujar, para que los datos
+  // (personas dictaminadas, montos, movimientos) nunca se vean incompletos.
+  let p;
+  try{
+    p = await refreshOneProgram(id);
+  }catch(err){
+    el.innerHTML = `<div class="empty-state">${err.message || 'No se pudo cargar el programa.'}</div>`;
+    return;
+  }
   if(!p){ el.innerHTML = `<div class="empty-state">Programa no encontrado.</div>`; return; }
+  // Puede haber cambiado de vista mientras cargaba (por ejemplo, el usuario
+  // navegó a otra pantalla); si ya no estamos en el detalle de este id, no dibujar.
+  if(state.view.name!=='detalle' || state.view.id!==id) return;
 
   const st = estadoPrograma(p);
   const autorizadoBase = montoAutorizadoBase(p);
@@ -257,8 +276,8 @@ async function renderDetalle(id){
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px;">
           <span class="status-badge" style="background:${st.color}22;color:${st.color};font-size:12px;padding:7px 16px;">${st.label}</span>
           <div style="display:flex;gap:8px;">
-            <button class="btn btn-ghost btn-sm" id="btnEditarPrograma">✎ Editar</button>
-            <button class="btn btn-danger btn-sm" id="btnEliminarPrograma">🗑 Eliminar</button>
+            <button class="btn btn-ghost btn-sm" id="btnEditarPrograma">Editar</button>
+            <button class="btn btn-danger btn-sm" id="btnEliminarPrograma">Eliminar</button>
           </div>
         </div>
       </div>
@@ -279,20 +298,26 @@ async function renderDetalle(id){
       ${kpiTile('Recurso Pagado', fmtMoney(pagado), (p.pagos||[]).length+' pago(s)', COLOR_PAGADO)}
     </div>
 
-    <div class="chart-card">
-      <div class="chart-head">
-        <h3>Comparativo del Programa</h3>
-        <button class="table-toggle" id="toggleTableProg">Ver tabla de datos</button>
+    <div class="chart-flex">
+      <div class="chart-card">
+        <div class="chart-head">
+          <h3>Comparativo del Programa</h3>
+          <button class="table-toggle" id="toggleTableProg">Ver tabla de datos</button>
+        </div>
+        <div style="height:260px;"><canvas id="chartPrograma"></canvas></div>
+        <table class="data-table" id="tableProg">
+          <thead><tr><th>Concepto</th><th>Monto</th></tr></thead>
+          <tbody>
+            <tr><td>Recurso Autorizado</td><td>${fmtMoney(autorizadoNeto)}</td></tr>
+            <tr><td>Recurso Comprometido</td><td>${fmtMoney(comprometido)}</td></tr>
+            <tr><td>Recurso Pagado</td><td>${fmtMoney(pagado)}</td></tr>
+          </tbody>
+        </table>
       </div>
-      <div style="height:260px;"><canvas id="chartPrograma"></canvas></div>
-      <table class="data-table" id="tableProg">
-        <thead><tr><th>Concepto</th><th>Monto</th></tr></thead>
-        <tbody>
-          <tr><td>Recurso Autorizado</td><td>${fmtMoney(autorizadoNeto)}</td></tr>
-          <tr><td>Recurso Comprometido</td><td>${fmtMoney(comprometido)}</td></tr>
-          <tr><td>Recurso Pagado</td><td>${fmtMoney(pagado)}</td></tr>
-        </tbody>
-      </table>
+      <div class="insight-card">
+        <div class="insight-head">Situación Actual</div>
+        ${generateInsightPrograma(p)}
+      </div>
     </div>
 
     <div class="section-title"><h2>Monto Autorizado y Modificaciones</h2></div>
@@ -319,7 +344,7 @@ async function renderDetalle(id){
         </div>
       ` : `
         <div class="empty-state" style="padding:10px 10px 16px;">Este programa aún no tiene Monto Autorizado cargado.</div>
-        <div style="text-align:center;"><button class="btn btn-gold" id="btnCargarMonto">💰 Cargar Monto Autorizado</button></div>
+        <div style="text-align:center;"><button class="btn btn-gold" id="btnCargarMonto">Cargar Monto Autorizado</button></div>
       `}
     </div>
 
@@ -374,6 +399,7 @@ async function renderDetalle(id){
 
   el.querySelectorAll('[data-add-solicitud]').forEach(b=>b.addEventListener('click', ()=>addSolicitud(p.id,b.dataset.addSolicitud)));
   el.querySelectorAll('[data-del-solicitud]').forEach(b=>b.addEventListener('click', ()=>delSolicitud(p.id,b.dataset.dic,b.dataset.delSolicitud)));
+  el.querySelectorAll('[data-del-dictamen]').forEach(b=>b.addEventListener('click', ()=>delDictamen(p.id,b.dataset.delDictamen)));
   el.querySelectorAll('[data-dic-monto]').forEach(inp=>inp.addEventListener('change', (e)=>updateDictamenMonto(p.id, inp.dataset.dicMonto, e.target.value)));
   el.querySelectorAll('[data-sol-personas]').forEach(inp=>inp.addEventListener('change', (e)=>{
     const [dicId, solId] = inp.dataset.solPersonas.split('|');
@@ -390,7 +416,10 @@ function dictamenBlockHTML(p,d){
   <div class="dictamen-block">
     <div class="dictamen-head">
       <h4>Dictamen ${d.numero}</h4>
-      <div class="chip">${fmtMoney(d.monto_autorizado)} autorizados</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="chip">${fmtMoney(d.monto_autorizado)} autorizados</div>
+        <button class="btn btn-danger btn-sm" data-del-dictamen="${d.id}">Eliminar Dictamen</button>
+      </div>
     </div>
     <div class="field" style="max-width:260px;margin-bottom:12px;">
       <label>Monto Autorizado del Dictamen</label>
@@ -434,6 +463,85 @@ async function delSolicitud(pid, dicId, solId){
   await safeCall(()=>Api.del(`/programs/${pid}/dictamenes/${dicId}/solicitudes/${solId}`), 'Solicitud eliminada.');
   await refreshOneProgram(pid); renderDetalle(pid);
 }
+async function delDictamen(pid, dicId){
+  if(!confirm('¿Eliminar este dictamen y todas sus solicitudes? Esta acción no se puede deshacer.')) return;
+  await safeCall(()=>Api.del(`/programs/${pid}/dictamenes/${dicId}`), 'Dictamen eliminado.');
+  await refreshOneProgram(pid); renderDetalle(pid);
+}
+
+/* =========================================================================
+   ANÁLISIS DINÁMICO — texto que describe la situación actual de la gráfica.
+   Se recalcula cada vez que se renderiza, a partir de los datos vigentes.
+   ========================================================================= */
+function generateInsightGeneral(programs){
+  if(!programs.length){
+    return `<p>Aún no hay programas registrados. En cuanto captures el primero, aquí aparecerá un resumen automático de su situación presupuestal.</p>`;
+  }
+
+  const totA = programs.reduce((s,p)=>s+totalAutorizadoNeto(p),0);
+  const totComp = programs.reduce((s,p)=>s+totalComprometido(p),0);
+  const totPag = programs.reduce((s,p)=>s+totalPagado(p),0);
+  const pctComprometido = totA>0 ? (totComp/totA*100) : 0;
+  const pctPagado = totComp>0 ? (totPag/totComp*100) : 0;
+  const pendiente = totComp - totPag;
+
+  const sobregirados = programs.filter(p=> p.monto_autorizado!==null && totalDisponible(p) < 0);
+  const sinAutorizar = programs.filter(p=> p.monto_autorizado===null);
+  const mayor = programs.slice().sort((a,b)=> totalComprometido(b)-totalComprometido(a))[0];
+
+  let html = `<p>De los <b>${programs.length}</b> programa${programs.length===1?'':'s'} registrados, el recurso autorizado total es de <b>${fmtMoney(totA)}</b>. Se ha comprometido <b>${fmtMoney(totComp)}</b> mediante dictaminación, equivalente al <b>${pctComprometido.toFixed(1)}%</b> del autorizado.</p>`;
+
+  html += `<p>Del monto comprometido se ha pagado <b>${fmtMoney(totPag)}</b> (<b>${pctPagado.toFixed(1)}%</b>), quedando <b>${fmtMoney(pendiente)}</b> pendientes por ministrar.</p>`;
+
+  if(totComp>0 && mayor){
+    html += `<p>El programa con mayor recurso comprometido es <b>${mayor.nombre}</b>, con <b>${fmtMoney(totalComprometido(mayor))}</b>.</p>`;
+  }
+
+  if(sobregirados.length){
+    const peor = sobregirados.slice().sort((a,b)=> totalDisponible(a)-totalDisponible(b))[0];
+    html += `<p style="color:#FF9FB0;font-weight:700;">${sobregirados.length} programa${sobregirados.length===1?'':'s'} exceden su recurso autorizado. El más crítico es <b>${peor.nombre}</b>, con un sobregiro de <b>${fmtMoney(Math.abs(totalDisponible(peor)))}</b>.</p>`;
+  } else if(programs.some(p=>p.monto_autorizado!==null)){
+    html += `<p style="color:#7FE3B4;font-weight:700;">Ningún programa excede actualmente su recurso autorizado.</p>`;
+  }
+
+  if(sinAutorizar.length){
+    html += `<p class="kpi-sub">${sinAutorizar.length} programa${sinAutorizar.length===1?'':'s'} aún sin Monto Autorizado cargado.</p>`;
+  }
+
+  return html;
+}
+
+function generateInsightPrograma(p){
+  if(p.monto_autorizado===null || p.monto_autorizado===undefined){
+    return `<p>Este programa todavía no tiene Monto Autorizado cargado, por lo que aún no hay cifras que comparar en la gráfica. Carga el monto autorizado para comenzar el seguimiento presupuestal.</p>`;
+  }
+
+  const autorizado = totalAutorizadoNeto(p);
+  const comprometido = totalComprometido(p);
+  const pagado = totalPagado(p);
+  const disponible = totalDisponible(p);
+  const personas = totalPersonasDictaminadas(p);
+  const numDictamenes = (p.dictamenes||[]).length;
+  const pctComprometido = autorizado>0 ? (comprometido/autorizado*100) : 0;
+  const pctPagado = comprometido>0 ? (pagado/comprometido*100) : 0;
+
+  let html = '';
+
+  if(numDictamenes===0){
+    html += `<p>Con un recurso autorizado de <b>${fmtMoney(autorizado)}</b>, este programa aún no tiene dictámenes registrados, por lo que no se ha comprometido recurso todavía.</p>`;
+  } else {
+    html += `<p>Con un recurso autorizado de <b>${fmtMoney(autorizado)}</b>, este programa ha comprometido <b>${fmtMoney(comprometido)}</b> a través de <b>${numDictamenes}</b> dictamen${numDictamenes===1?'':'es'} y <b>${fmtNum(personas)}</b> persona${personas===1?'':'s'} (<b>${pctComprometido.toFixed(1)}%</b> del autorizado).</p>`;
+    html += `<p>De lo comprometido se ha pagado <b>${fmtMoney(pagado)}</b> (<b>${pctPagado.toFixed(1)}%</b>), quedando <b>${fmtMoney(comprometido-pagado)}</b> pendientes por ministrar.</p>`;
+  }
+
+  if(disponible<0){
+    html += `<p style="color:#FF9FB0;font-weight:700;">El programa excede su recurso autorizado por <b>${fmtMoney(Math.abs(disponible))}</b>. Se recomienda registrar una ampliación o revisar los dictámenes.</p>`;
+  } else {
+    html += `<p style="color:#7FE3B4;font-weight:700;">Recurso disponible sin comprometer: ${fmtMoney(disponible)}.</p>`;
+  }
+
+  return html;
+}
 
 /* =========================================================================
    CHARTS
@@ -450,11 +558,11 @@ const valueLabelPlugin = {
         if(value===null || value===undefined) return;
         ctx.save();
         ctx.fillStyle = '#2B2320';
-        ctx.font = '700 10.5px Montserrat, sans-serif';
+        ctx.font = '700 9.5px Montserrat, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
         const pos = element.tooltipPosition ? element.tooltipPosition() : element.getCenterPoint();
-        ctx.fillText(fmtMoneyCompact(value), pos.x, pos.y - 5);
+        ctx.fillText(fmtMoney(value), pos.x, pos.y - 5);
         ctx.restore();
       });
     });
@@ -480,14 +588,24 @@ function buildComparativeChart(canvasId, programs){
       {label:'Pagado', data:dataPag, backgroundColor:COLOR_PAGADO, borderRadius:4, maxBarThickness:44},
     ]},
     options:{
-      responsive:true, maintainAspectRatio:false, layout:{padding:{top:20}},
+      responsive:true, maintainAspectRatio:false, layout:{padding:{top:24}},
       plugins:{
         legend:{position:'top', labels:{usePointStyle:true, boxWidth:8, font:{size:11.5, weight:'600'}, color:'#2B2320'}},
-        tooltip:{ backgroundColor:'#3E0E20', padding:10, cornerRadius:8, titleFont:{weight:'700'}, callbacks:{ label:(c)=> c.dataset.label+': '+fmtMoney(c.raw) } }
+        tooltip:{
+          backgroundColor:'#3E0E20', padding:11, cornerRadius:8, titleFont:{weight:'700'},
+          callbacks:{
+            label:(c)=> c.dataset.label+': '+fmtMoney(c.raw),
+            footer:(items)=>{
+              const total = items.reduce((s,it)=>s+it.raw,0);
+              return 'Total en esta barra: '+fmtMoney(total);
+            }
+          },
+          footerFont:{weight:'700'}, footerColor:'#D9B84A'
+        }
       },
       scales:{
         x:{ grid:{display:false}, ticks:{color:'#736A5E', font:{size:11}} },
-        y:{ beginAtZero:true, grid:{color:'#F0E6CE'}, ticks:{color:'#736A5E', font:{size:11}, callback:(v)=>fmtMoneyCompact(v)} }
+        y:{ beginAtZero:true, grid:{color:'#F0E6CE'}, ticks:{color:'#736A5E', font:{size:10.5}, callback:(v)=>fmtMoney(v)} }
       }
     }
   });

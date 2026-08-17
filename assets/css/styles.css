@@ -119,6 +119,18 @@ input,select,textarea{font-family:inherit;}
 .chart-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
 .chart-head h3{margin:0;font-size:15px;font-weight:800;color:var(--maroon-800);}
 .legend-note{font-size:11.5px;color:var(--text-muted);}
+
+/* ===== CHART + INSIGHT CARD (lado a lado) ===== */
+.chart-flex{display:grid;grid-template-columns:minmax(0,2fr) minmax(260px,1fr);gap:16px;align-items:stretch;}
+@media (max-width:980px){.chart-flex{grid-template-columns:1fr;}}
+.insight-card{
+  background:linear-gradient(165deg,var(--maroon-800),var(--maroon-900));
+  border-radius:18px;padding:22px 24px;color:#F1E4D2;
+  box-shadow:var(--shadow-card);display:flex;flex-direction:column;gap:10px;
+}
+.insight-head{font-size:11px;font-weight:800;letter-spacing:0.6px;text-transform:uppercase;color:var(--gold-500);border-bottom:1px solid rgba(255,255,255,0.15);padding-bottom:10px;margin-bottom:2px;}
+.insight-card p{margin:0;font-size:12.5px;line-height:1.6;color:#F1E4D2;}
+.insight-card p b{color:#fff;}
 .table-toggle{
   border:1px solid var(--card-border);background:var(--cream-50);color:var(--maroon-800);
   font-size:11.5px;font-weight:700;padding:6px 12px;border-radius:999px;

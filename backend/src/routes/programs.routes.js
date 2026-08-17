@@ -239,6 +239,25 @@ router.patch('/:id/dictamenes/:dicId', async (req, res) => {
   }
 });
 
+router.delete('/:id/dictamenes/:dicId', async (req, res) => {
+  try {
+    const programa = await getPrograma(req.params.id);
+    if (!programa) return res.status(404).json({ error: 'Programa no encontrado.' });
+
+    // Las solicitudes del dictamen tienen ON DELETE CASCADE, se eliminan solas.
+    await db.query('DELETE FROM dictamenes WHERE id = $1 AND programa_id = $2', [req.params.dicId, req.params.id]);
+
+    // Renumerar los dictámenes restantes del programa para que sigan siendo consecutivos.
+    const { rows } = await db.query('SELECT id FROM dictamenes WHERE programa_id = $1 ORDER BY numero, id', [req.params.id]);
+    await Promise.all(rows.map((d, i) => db.query('UPDATE dictamenes SET numero = $1 WHERE id = $2', [i + 1, d.id])));
+
+    res.json(await getProgramaCompleto(req.params.id));
+  } catch (err) {
+    console.error('[programs/dictamenes/delete]', err);
+    res.status(500).json({ error: 'Error al eliminar el dictamen.' });
+  }
+});
+
 router.post('/:id/dictamenes/:dicId/solicitudes', async (req, res) => {
   try {
     const programa = await getPrograma(req.params.id);
