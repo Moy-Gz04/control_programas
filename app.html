@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Programas | Bienestar e Inclusión Social</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="assets/js/chart.min.js"></script>
+<link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="brand">
+    <img class="brand-logo" src="assets/img/logo.png" alt="Logo" onerror="this.style.display='none';document.getElementById('logoFallback').style.display='flex';">
+    <div id="logoFallback" class="brand-logo-fallback" style="display:none;">B</div>
+    <div class="brand-text">
+      <div class="t1">BIENESTAR</div>
+      <div class="t2">Sistema de Programas</div>
+    </div>
+  </div>
+  <div class="nav-links" id="navLinks">
+    <a href="#" class="nav-link active" data-nav="inicio">🏠 Inicio</a>
+    <a href="#" class="nav-link" data-nav="programas">📋 Programas</a>
+    <button class="nav-cta" id="btnNuevoPrograma">+ Nuevo Programa</button>
+    <div class="nav-user">
+      <div class="who">
+        <div class="n" id="navUserName">—</div>
+        <div class="r" id="navUserRole">—</div>
+      </div>
+      <div class="avatar" id="navUserAvatar">?</div>
+      <button class="nav-logout" id="btnLogout">Salir</button>
+    </div>
+  </div>
+</nav>
+
+<div class="header-band" id="headerBand">
+  <h1 id="headerTitle">SISTEMA DE PROGRAMAS SOCIALES</h1>
+  <div class="underline"></div>
+  <div class="sub" id="headerSub">Gestión Presupuestal, Dictaminación y Seguimiento</div>
+  <div class="sub2" id="headerSub2">Secretaría de Bienestar e Inclusión Social</div>
+</div>
+
+<div class="container">
+  <div class="view active" id="view-inicio"></div>
+  <div class="view" id="view-programas"></div>
+  <div class="view" id="view-detalle"></div>
+</div>
+
+<footer class="app-footer">Sistema de Programas Sociales · Secretaría de Bienestar e Inclusión Social</footer>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modalBox"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/api.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>

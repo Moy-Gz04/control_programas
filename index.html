@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Iniciar Sesión | Sistema de Programas — Bienestar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+
+<div class="login-wrap">
+  <div class="login-card">
+    <div class="login-head">
+      <img class="brand-logo" src="assets/img/logo.png" alt="Logo" onerror="this.style.display='none';document.getElementById('logoFallback').style.display='flex';">
+      <div id="logoFallback" class="brand-logo-fallback" style="display:none;">B</div>
+      <h1>Sistema de Programas</h1>
+      <p>Secretaría de Bienestar e Inclusión Social</p>
+    </div>
+    <div class="login-body">
+      <div class="login-error" id="loginError"></div>
+      <form id="loginForm">
+        <div class="field" style="margin-bottom:16px;">
+          <label>Correo institucional</label>
+          <input type="email" id="email" placeholder="usuario@bienestar.gob.mx" autocomplete="username" required>
+        </div>
+        <div class="field" style="margin-bottom:22px;">
+          <label>Contraseña</label>
+          <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" id="btnLogin">Iniciar Sesión</button>
+      </form>
+      <div class="login-footer-note">Acceso exclusivo para personal autorizado.<br>Si olvidaste tu contraseña, contacta al administrador del sistema.</div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/api.js"></script>
+<script src="assets/js/auth.js"></script>
+</body>
+</html>

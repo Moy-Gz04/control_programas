@@ -1,0 +1,8 @@
+Coloca aquí tu archivo de logo con el nombre exacto: logo.png
+
+Rutas que ya lo esperan:
+- frontend/index.html   (pantalla de login)
+- frontend/app.html     (sistema, barra de navegación)
+
+Si el archivo no existe, ambas pantallas muestran automáticamente un
+respaldo (círculo dorado con la letra "B") para que el diseño nunca se rompa.

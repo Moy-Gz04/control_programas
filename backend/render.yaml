@@ -1,0 +1,21 @@
+# Blueprint de Render — puedes usar "New + > Blueprint" en Render y apuntarlo
+# a este repositorio para crear el servicio automáticamente, o crear el
+# Web Service manualmente y copiar estos mismos valores.
+services:
+  - type: web
+    name: programas-bienestar-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        sync: false   # pega aquí la cadena de conexión de Neon
+      - key: JWT_SECRET
+        sync: false   # genera un valor aleatorio largo
+      - key: CORS_ORIGIN
+        sync: false   # ej. https://programas-bienestar.netlify.app
+      - key: NODE_VERSION
+        value: 20
