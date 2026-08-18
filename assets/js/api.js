@@ -5,8 +5,9 @@
 const Api = (() => {
   function token() { return localStorage.getItem('pb_token'); }
 
-  async function request(method, path, body) {
-    const headers = { 'Content-Type': 'application/json' };
+  async function request(method, path, body, isFormData) {
+    const headers = {};
+    if (!isFormData) headers['Content-Type'] = 'application/json';
     const t = token();
     if (t) headers['Authorization'] = 'Bearer ' + t;
 
@@ -15,7 +16,7 @@ const Api = (() => {
       res = await fetch(API_BASE + path, {
         method,
         headers,
-        body: body !== undefined ? JSON.stringify(body) : undefined
+        body: isFormData ? body : (body !== undefined ? JSON.stringify(body) : undefined)
       });
     } catch (networkErr) {
       throw new Error('No se pudo conectar con el servidor. Verifica tu conexión a internet.');
@@ -44,6 +45,7 @@ const Api = (() => {
   return {
     get: (path) => request('GET', path),
     post: (path, body) => request('POST', path, body),
+    postForm: (path, formData) => request('POST', path, formData, true),
     patch: (path, body) => request('PATCH', path, body),
     del: (path) => request('DELETE', path),
   };

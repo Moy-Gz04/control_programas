@@ -39,18 +39,38 @@ async function safeCall(fn, successMsg){
   catch(err){ toast(err.message || 'Ocurrió un error.', true); throw err; }
 }
 
-/* ---------- COMPUTED HELPERS (sobre datos numéricos del API) ---------- */
+/* ---------- COMPUTED HELPERS (sobre datos numéricos del API) ----------
+   Estas funciones aceptan dos formas del mismo programa:
+   1) El detalle completo (GET /programs/:id) con arreglos anidados
+      (modificaciones, dictamenes.solicitudes, solicitudesHacienda, pagos).
+   2) La fila resumida del listado (GET /programs), que YA trae los totales
+      pre-calculados en SQL (modificado_total, personas_total, etc.) para
+      que las tarjetas y el dashboard muestren cifras correctas de inmediato,
+      sin depender de que el programa se haya abierto antes.
+   Si el arreglo anidado existe se usa (dato más fresco/editable); si no,
+   se cae al total agregado que manda el listado. ---------- */
 function montoAutorizadoBase(p){ return Number(p.monto_autorizado || 0); }
 function totalModificado(p){
-  return (p.modificaciones||[]).reduce((s,m)=> s + (m.tipo==='Ampliación'? Number(m.monto) : -Number(m.monto)), 0);
+  if(p.modificaciones) return p.modificaciones.reduce((s,m)=> s + (m.tipo==='Ampliación'? Number(m.monto) : -Number(m.monto)), 0);
+  return Number(p.modificado_total || 0);
 }
 function totalAutorizadoNeto(p){ return montoAutorizadoBase(p) + totalModificado(p); }
 function totalPersonasDictaminadas(p){
-  return (p.dictamenes||[]).reduce((s,d)=> s + (d.solicitudes||[]).reduce((s2,so)=> s2+Number(so.personas||0),0), 0);
+  if(p.dictamenes) return p.dictamenes.reduce((s,d)=> s + (d.solicitudes||[]).reduce((s2,so)=> s2+Number(so.personas||0),0), 0);
+  return Number(p.personas_total || 0);
 }
-function totalComprometido(p){ return totalPersonasDictaminadas(p) * Number(p.monto_beneficiario); }
-function totalSolicitadoHacienda(p){ return (p.solicitudesHacienda||[]).reduce((s,h)=>s+Number(h.monto),0); }
-function totalPagado(p){ return (p.pagos||[]).reduce((s,g)=>s+Number(g.monto),0); }
+function totalComprometido(p){
+  if(p.dictamenes) return totalPersonasDictaminadas(p) * Number(p.monto_beneficiario);
+  return Number(p.comprometido_total || 0);
+}
+function totalSolicitadoHacienda(p){
+  if(p.solicitudesHacienda) return p.solicitudesHacienda.reduce((s,h)=>s+Number(h.monto),0);
+  return Number(p.hacienda_total || 0);
+}
+function totalPagado(p){
+  if(p.pagos) return p.pagos.reduce((s,g)=>s+Number(g.monto),0);
+  return Number(p.pagado_total || 0);
+}
 function totalDisponible(p){ return totalAutorizadoNeto(p) - totalComprometido(p); }
 
 function estadoPrograma(p){
@@ -327,7 +347,9 @@ async function renderDetalle(id){
           <div>
             <div class="kpi-label">Monto Autorizado inicial</div>
             <div class="kpi-value">${fmtMoney(autorizadoBase)}</div>
-            <div class="kpi-sub">Referencia ${p.monto_autorizado_referencia} · ${fmtDate(p.monto_autorizado_fecha)}</div>
+            <div class="kpi-sub">Referencia ${p.monto_autorizado_referencia} · ${fmtDate(p.monto_autorizado_fecha)}
+              ${p.monto_autorizado_documento_url ? ` · <a href="${p.monto_autorizado_documento_url}" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="padding:2px 10px;">Ver Documento</a>` : ''}
+            </div>
           </div>
           <button class="btn btn-outline btn-sm" id="btnAddModificacion">+ Registrar Modificación</button>
         </div>
@@ -337,7 +359,9 @@ async function renderDetalle(id){
             <div class="log-row">
               <div>
                 <div style="font-weight:700;">${m.tipo}</div>
-                <div class="lmeta">${m.motivo||''} · ${fmtDate(m.created_at)}</div>
+                <div class="lmeta">${m.motivo||''} · ${fmtDate(m.created_at)}
+                  ${m.documento_url ? ` · <a href="${m.documento_url}" target="_blank" rel="noopener">Ver Documento</a>` : ''}
+                </div>
               </div>
               <div class="lamount ${m.tipo==='Ampliación'?'pos':'neg'}">${m.tipo==='Ampliación'?'+':'−'} ${fmtMoney(m.monto)}</div>
             </div>`).join('') : `<div class="empty-state">Sin modificaciones registradas.</div>`}
@@ -755,6 +779,7 @@ function openModalCargarMonto(pid){
       <div class="form-grid single">
         <div class="field"><label>Monto Autorizado</label><input type="number" id="m-monto" min="0" step="0.01" placeholder="$0.00"></div>
         <div class="field"><label>Referencia / Oficio</label><input type="text" id="m-ref" placeholder="Ej. OF-DGPPE-0001-2026"></div>
+        <div class="field"><label>Oficio (documento)</label><input type="file" id="m-doc" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"></div>
         <div class="field-hint">Este monto será la base de referencia para las gráficas y cálculos del programa.</div>
       </div>
     </div>
@@ -766,8 +791,13 @@ function openModalCargarMonto(pid){
   document.getElementById('submitMonto').addEventListener('click', async ()=>{
     const monto = Number(document.getElementById('m-monto').value);
     const referencia = document.getElementById('m-ref').value.trim() || 'S/R';
+    const archivo = document.getElementById('m-doc').files[0];
     if(!monto) return;
-    await safeCall(()=>Api.post(`/programs/${pid}/monto-autorizado`, {monto, referencia}), 'Monto autorizado cargado.');
+    const fd = new FormData();
+    fd.append('monto', monto);
+    fd.append('referencia', referencia);
+    if(archivo) fd.append('documento', archivo);
+    await safeCall(()=>Api.postForm(`/programs/${pid}/monto-autorizado`, fd), 'Monto autorizado cargado.');
     closeModal();
     await refreshOneProgram(pid); renderDetalle(pid);
   });
@@ -784,6 +814,7 @@ function openModalModificacion(pid){
         </div>
         <div class="field"><label>Monto</label><input type="number" id="mo-monto" min="0" step="0.01" placeholder="$0.00"></div>
         <div class="field"><label>Motivo</label><textarea id="mo-motivo" rows="3" placeholder="Describe el motivo de la modificación…"></textarea></div>
+        <div class="field"><label>Oficio (documento)</label><input type="file" id="mo-doc" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"></div>
       </div>
     </div>
     <div class="modal-footer">
@@ -795,8 +826,14 @@ function openModalModificacion(pid){
     const tipo = document.getElementById('mo-tipo').value;
     const monto = Number(document.getElementById('mo-monto').value);
     const motivo = document.getElementById('mo-motivo').value.trim();
+    const archivo = document.getElementById('mo-doc').files[0];
     if(!monto) return;
-    await safeCall(()=>Api.post(`/programs/${pid}/modificaciones`, {tipo, monto, motivo}), 'Modificación registrada.');
+    const fd = new FormData();
+    fd.append('tipo', tipo);
+    fd.append('monto', monto);
+    fd.append('motivo', motivo);
+    if(archivo) fd.append('documento', archivo);
+    await safeCall(()=>Api.postForm(`/programs/${pid}/modificaciones`, fd), 'Modificación registrada.');
     closeModal();
     await refreshOneProgram(pid); renderDetalle(pid);
   });

@@ -17,5 +17,9 @@ services:
         sync: false   # genera un valor aleatorio largo
       - key: CORS_ORIGIN
         sync: false   # ej. https://programas-bienestar.netlify.app
+      - key: GOOGLE_SERVICE_ACCOUNT_JSON
+        sync: false   # pega el JSON completo de la cuenta de servicio de Google
+      - key: GOOGLE_DRIVE_FOLDER_ID
+        sync: false   # opcional; por defecto usa la carpeta 1YKQSocJcd_05eN87_vqD4yA6k3OzVfyV
       - key: NODE_VERSION
         value: 20

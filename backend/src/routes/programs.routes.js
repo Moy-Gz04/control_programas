@@ -1,9 +1,14 @@
 const express = require('express');
+const multer = require('multer');
 const db = require('../db');
 const { requireAuth } = require('../middleware/auth');
+const { uploadDocumento } = require('../utils/googleDrive');
 
 const router = express.Router();
 router.use(requireAuth);
+
+// Archivos en memoria (no se guardan en disco); tope de 15 MB por documento.
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
 
 /* ---------------------------------------------------------------------- */
 /* Helpers                                                                  */
@@ -61,9 +66,33 @@ async function getProgramaCompleto(id) {
 
 router.get('/', async (req, res) => {
   try {
+    // El listado trae los totales YA CALCULADOS en SQL (modificado, comprometido,
+    // solicitado a Hacienda, pagado) para que las tarjetas y el dashboard muestren
+    // cifras correctas de inmediato, sin tener que abrir cada programa primero.
     const { rows } = await db.query(
-      `SELECT p.*, un.nombre AS unidad_nombre
-       FROM programas p JOIN unidades un ON un.codigo = p.unidad_codigo
+      `SELECT p.*, un.nombre AS unidad_nombre,
+              COALESCE(mod_agg.modificado, 0) AS modificado_total,
+              COALESCE(pers_agg.personas, 0) AS personas_total,
+              (COALESCE(pers_agg.personas, 0) * p.monto_beneficiario) AS comprometido_total,
+              COALESCE(hac_agg.hacienda, 0) AS hacienda_total,
+              COALESCE(pag_agg.pagado, 0) AS pagado_total
+       FROM programas p
+       JOIN unidades un ON un.codigo = p.unidad_codigo
+       LEFT JOIN (
+         SELECT programa_id, SUM(CASE WHEN tipo='Ampliación' THEN monto ELSE -monto END) AS modificado
+         FROM modificaciones GROUP BY programa_id
+       ) mod_agg ON mod_agg.programa_id = p.id
+       LEFT JOIN (
+         SELECT d.programa_id, SUM(s.personas) AS personas
+         FROM dictamenes d JOIN solicitudes s ON s.dictamen_id = d.id
+         GROUP BY d.programa_id
+       ) pers_agg ON pers_agg.programa_id = p.id
+       LEFT JOIN (
+         SELECT programa_id, SUM(monto) AS hacienda FROM solicitudes_hacienda GROUP BY programa_id
+       ) hac_agg ON hac_agg.programa_id = p.id
+       LEFT JOIN (
+         SELECT programa_id, SUM(monto) AS pagado FROM pagos GROUP BY programa_id
+       ) pag_agg ON pag_agg.programa_id = p.id
        ORDER BY p.created_at DESC`
     );
     res.json(rows);
@@ -156,7 +185,7 @@ router.delete('/:id', async (req, res) => {
 /* Monto autorizado y modificaciones                                       */
 /* ---------------------------------------------------------------------- */
 
-router.post('/:id/monto-autorizado', async (req, res) => {
+router.post('/:id/monto-autorizado', upload.single('documento'), async (req, res) => {
   const { monto, referencia } = req.body || {};
   if (!monto || Number(monto) <= 0) return res.status(400).json({ error: 'El monto autorizado debe ser mayor a cero.' });
 
@@ -167,10 +196,25 @@ router.post('/:id/monto-autorizado', async (req, res) => {
       return res.status(409).json({ error: 'Este programa ya tiene un Monto Autorizado cargado.' });
     }
 
+    let documentoUrl = null;
+    let documentoNombre = null;
+    if (req.file) {
+      try {
+        const subido = await uploadDocumento(req.file.buffer, req.file.originalname, req.file.mimetype);
+        documentoUrl = subido.url;
+        documentoNombre = subido.nombre;
+      } catch (uploadErr) {
+        console.error('[programs/monto-autorizado] Google Drive', uploadErr);
+        return res.status(502).json({ error: uploadErr.message || 'No se pudo subir el documento a Google Drive.' });
+      }
+    }
+
     await db.query(
-      `UPDATE programas SET monto_autorizado = $1, monto_autorizado_referencia = $2, monto_autorizado_fecha = now()
+      `UPDATE programas SET monto_autorizado = $1, monto_autorizado_referencia = $2, monto_autorizado_fecha = now(),
+              monto_autorizado_documento_url = COALESCE($4, monto_autorizado_documento_url),
+              monto_autorizado_documento_nombre = COALESCE($5, monto_autorizado_documento_nombre)
        WHERE id = $3`,
-      [monto, referencia || 'S/R', req.params.id]
+      [monto, referencia || 'S/R', req.params.id, documentoUrl, documentoNombre]
     );
     res.json(await getProgramaCompleto(req.params.id));
   } catch (err) {
@@ -179,7 +223,7 @@ router.post('/:id/monto-autorizado', async (req, res) => {
   }
 });
 
-router.post('/:id/modificaciones', async (req, res) => {
+router.post('/:id/modificaciones', upload.single('documento'), async (req, res) => {
   const { tipo, monto, motivo } = req.body || {};
   if (!['Ampliación', 'Reducción'].includes(tipo) || !monto || Number(monto) <= 0) {
     return res.status(400).json({ error: 'Tipo de movimiento y monto son obligatorios.' });
@@ -188,9 +232,23 @@ router.post('/:id/modificaciones', async (req, res) => {
     const programa = await getPrograma(req.params.id);
     if (!programa) return res.status(404).json({ error: 'Programa no encontrado.' });
 
+    let documentoUrl = null;
+    let documentoNombre = null;
+    if (req.file) {
+      try {
+        const subido = await uploadDocumento(req.file.buffer, req.file.originalname, req.file.mimetype);
+        documentoUrl = subido.url;
+        documentoNombre = subido.nombre;
+      } catch (uploadErr) {
+        console.error('[programs/modificaciones] Google Drive', uploadErr);
+        return res.status(502).json({ error: uploadErr.message || 'No se pudo subir el documento a Google Drive.' });
+      }
+    }
+
     await db.query(
-      `INSERT INTO modificaciones (programa_id, tipo, monto, motivo, created_by) VALUES ($1,$2,$3,$4,$5)`,
-      [req.params.id, tipo, monto, motivo || null, req.user.id]
+      `INSERT INTO modificaciones (programa_id, tipo, monto, motivo, created_by, documento_url, documento_nombre)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      [req.params.id, tipo, monto, motivo || null, req.user.id, documentoUrl, documentoNombre]
     );
     res.status(201).json(await getProgramaCompleto(req.params.id));
   } catch (err) {
