@@ -24,7 +24,7 @@
  */
 
 const DEFAULT_APPS_SCRIPT_URL =
-  'https://script.google.com/macros/s/AKfycbwmTPNk3lmhyD-DqUec7-e2TyM2xYX0-jQVeIAjOVl8nvejTzIWed5JUlKRVuoK8Lsr/exec';
+  'https://script.google.com/macros/s/AKfycbzrW2tVQj9X9R-9ll7kLJIJYHyv-krLJhfbwX92WgSclRkiQADfD5kuVAHa_XMXqGE5/exec';
 
 const FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID || '1YKQSocJcd_05eN87_vqD4yA6k3OzVfyV';
 
