@@ -39,6 +39,49 @@ async function safeCall(fn, successMsg){
   catch(err){ toast(err.message || 'Ocurrió un error.', true); throw err; }
 }
 
+/* ---------- ESTADO DE CARGA EN BOTONES ----------
+   Deshabilita el botón, muestra un spinner + texto de carga mientras la
+   operación async está en curso, y lo regresa a su estado normal al
+   terminar (haya salido bien o mal). Úsese en cualquier botón que dispare
+   una llamada a la API, para que quede claro que algo está pasando y evitar
+   doble-click accidental. */
+async function withLoading(btn, fn, loadingText){
+  if(!btn) return fn();
+  const original = btn.innerHTML;
+  const wasDisabled = btn.disabled;
+  btn.disabled = true;
+  btn.innerHTML = `<span class="btn-spinner"></span>${loadingText || 'Procesando…'}`;
+  try{
+    return await fn();
+  } finally {
+    btn.disabled = wasDisabled;
+    btn.innerHTML = original;
+  }
+}
+
+/* ---------- CONFIRMACIÓN DE ACCIONES DESTRUCTIVAS ----------
+   Modal de confirmación reutilizable (más consistente que window.confirm,
+   que se ve feo y no combina con el diseño). Devuelve una Promise<boolean>. */
+function confirmAction({ title = '¿Estás seguro?', message = 'Esta acción no se puede deshacer.', confirmText = 'Sí, continuar', danger = true } = {}){
+  return new Promise((resolve)=>{
+    openModal(`
+      <div class="modal-header"><h3>${title}</h3><button class="modal-close" id="confirmClose">✕</button></div>
+      <div class="modal-body"><p style="margin:0;">${message}</p></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="confirmCancel">Cancelar</button>
+        <button class="btn ${danger?'btn-danger':'btn-primary'}" id="confirmOk">${confirmText}</button>
+      </div>
+    `);
+    const finish = (result)=>{
+      closeModal();
+      resolve(result);
+    };
+    document.getElementById('confirmClose').addEventListener('click', ()=>finish(false));
+    document.getElementById('confirmCancel').addEventListener('click', ()=>finish(false));
+    document.getElementById('confirmOk').addEventListener('click', ()=>finish(true));
+  });
+}
+
 /* ---------- COMPUTED HELPERS (sobre datos numéricos del API) ----------
    Estas funciones aceptan dos formas del mismo programa:
    1) El detalle completo (GET /programs/:id) con arreglos anidados
@@ -93,6 +136,8 @@ async function init(){
     localStorage.removeItem('pb_user');
     window.location.href = 'index.html';
   });
+
+  document.getElementById('view-inicio').innerHTML = `<div class="loading-block"><span class="loading-spinner"></span> Cargando información…</div>`;
 
   try{
     UNIDADES = await Api.get('/unidades');
@@ -257,6 +302,7 @@ function renderProgramas(){
    ========================================================================= */
 async function renderDetalle(id){
   const el = document.getElementById('view-detalle');
+  el.innerHTML = `<div class="loading-block"><span class="loading-spinner"></span> Cargando programa…</div>`;
 
   // La lista general (GET /programs) no trae dictámenes, modificaciones, etc.
   // Siempre se pide el detalle completo antes de dibujar, para que los datos
@@ -417,13 +463,13 @@ async function renderDetalle(id){
   if(btnCargar) btnCargar.addEventListener('click', ()=>openModalCargarMonto(p.id));
   const btnMod = document.getElementById('btnAddModificacion');
   if(btnMod) btnMod.addEventListener('click', ()=>openModalModificacion(p.id));
-  document.getElementById('btnAddDictamen').addEventListener('click', ()=>addDictamen(p.id));
+  document.getElementById('btnAddDictamen').addEventListener('click', (e)=>addDictamen(p.id, e.currentTarget));
   document.getElementById('btnAddHacienda').addEventListener('click', ()=>openModalHacienda(p.id));
   document.getElementById('btnAddPago').addEventListener('click', ()=>openModalPago(p.id));
 
-  el.querySelectorAll('[data-add-solicitud]').forEach(b=>b.addEventListener('click', ()=>addSolicitud(p.id,b.dataset.addSolicitud)));
-  el.querySelectorAll('[data-del-solicitud]').forEach(b=>b.addEventListener('click', ()=>delSolicitud(p.id,b.dataset.dic,b.dataset.delSolicitud)));
-  el.querySelectorAll('[data-del-dictamen]').forEach(b=>b.addEventListener('click', ()=>delDictamen(p.id,b.dataset.delDictamen)));
+  el.querySelectorAll('[data-add-solicitud]').forEach(b=>b.addEventListener('click', (e)=>addSolicitud(p.id,b.dataset.addSolicitud,e.currentTarget)));
+  el.querySelectorAll('[data-del-solicitud]').forEach(b=>b.addEventListener('click', (e)=>delSolicitud(p.id,b.dataset.dic,b.dataset.delSolicitud,e.currentTarget)));
+  el.querySelectorAll('[data-del-dictamen]').forEach(b=>b.addEventListener('click', (e)=>delDictamen(p.id,b.dataset.delDictamen,e.currentTarget)));
   el.querySelectorAll('[data-dic-monto]').forEach(inp=>inp.addEventListener('change', (e)=>updateDictamenMonto(p.id, inp.dataset.dicMonto, e.target.value)));
   el.querySelectorAll('[data-sol-personas]').forEach(inp=>inp.addEventListener('change', (e)=>{
     const [dicId, solId] = inp.dataset.solPersonas.split('|');
@@ -467,29 +513,40 @@ function dictamenBlockHTML(p,d){
 }
 
 /* ---------- Mutaciones vía API ---------- */
-async function addDictamen(pid){
-  await safeCall(()=>Api.post(`/programs/${pid}/dictamenes`, {monto_autorizado:0}), 'Dictamen agregado.');
+async function addDictamen(pid, btn){
+  await withLoading(btn, ()=>safeCall(()=>Api.post(`/programs/${pid}/dictamenes`, {monto_autorizado:0}), 'Dictamen agregado.'), 'Agregando…');
   await refreshOneProgram(pid); renderDetalle(pid);
 }
 async function updateDictamenMonto(pid, dicId, value){
   await safeCall(()=>Api.patch(`/programs/${pid}/dictamenes/${dicId}`, {monto_autorizado:Number(value||0)}));
   await refreshOneProgram(pid); renderDetalle(pid);
 }
-async function addSolicitud(pid, dicId){
-  await safeCall(()=>Api.post(`/programs/${pid}/dictamenes/${dicId}/solicitudes`, {personas:0}), 'Solicitud agregada.');
+async function addSolicitud(pid, dicId, btn){
+  await withLoading(btn, ()=>safeCall(()=>Api.post(`/programs/${pid}/dictamenes/${dicId}/solicitudes`, {personas:0}), 'Solicitud agregada.'), 'Agregando…');
   await refreshOneProgram(pid); renderDetalle(pid);
 }
 async function updateSolicitudPersonas(pid, dicId, solId, value){
   await safeCall(()=>Api.patch(`/programs/${pid}/dictamenes/${dicId}/solicitudes/${solId}`, {personas:Number(value||0)}));
   await refreshOneProgram(pid); renderDetalle(pid);
 }
-async function delSolicitud(pid, dicId, solId){
-  await safeCall(()=>Api.del(`/programs/${pid}/dictamenes/${dicId}/solicitudes/${solId}`), 'Solicitud eliminada.');
+async function delSolicitud(pid, dicId, solId, btn){
+  const ok = await confirmAction({
+    title: 'Eliminar Solicitud',
+    message: '¿Eliminar esta solicitud? Esta acción no se puede deshacer.',
+    confirmText: 'Sí, Eliminar',
+  });
+  if(!ok) return;
+  await withLoading(btn, ()=>safeCall(()=>Api.del(`/programs/${pid}/dictamenes/${dicId}/solicitudes/${solId}`), 'Solicitud eliminada.'), 'Eliminando…');
   await refreshOneProgram(pid); renderDetalle(pid);
 }
-async function delDictamen(pid, dicId){
-  if(!confirm('¿Eliminar este dictamen y todas sus solicitudes? Esta acción no se puede deshacer.')) return;
-  await safeCall(()=>Api.del(`/programs/${pid}/dictamenes/${dicId}`), 'Dictamen eliminado.');
+async function delDictamen(pid, dicId, btn){
+  const ok = await confirmAction({
+    title: 'Eliminar Dictamen',
+    message: '¿Eliminar este dictamen y todas sus solicitudes? Esta acción no se puede deshacer.',
+    confirmText: 'Sí, Eliminar',
+  });
+  if(!ok) return;
+  await withLoading(btn, ()=>safeCall(()=>Api.del(`/programs/${pid}/dictamenes/${dicId}`), 'Dictamen eliminado.'), 'Eliminando…');
   await refreshOneProgram(pid); renderDetalle(pid);
 }
 
@@ -671,9 +728,9 @@ function openModalNuevoPrograma(){
       <button class="btn btn-primary" id="submitNuevoPrograma">Crear Registro</button>
     </div>
   `);
-  document.getElementById('submitNuevoPrograma').addEventListener('click', submitNuevoPrograma);
+  document.getElementById('submitNuevoPrograma').addEventListener('click', (e)=>submitNuevoPrograma(e.currentTarget));
 }
-async function submitNuevoPrograma(){
+async function submitNuevoPrograma(btn){
   const codigo = document.getElementById('f-unidad').value;
   const nombre = document.getElementById('f-nombre').value.trim();
   const montoBenef = Number(document.getElementById('f-montoBenef').value);
@@ -686,7 +743,7 @@ async function submitNuevoPrograma(){
     return;
   }
   try{
-    const programa = await Api.post('/programs', { unidad_codigo:codigo, nombre, monto_beneficiario:montoBenef, meta_beneficiarios:meta });
+    const programa = await withLoading(btn, ()=>Api.post('/programs', { unidad_codigo:codigo, nombre, monto_beneficiario:montoBenef, meta_beneficiarios:meta }), 'Creando…');
     closeModal();
     toast('Programa creado correctamente.');
     await refreshPrograms();
@@ -717,7 +774,8 @@ function openModalEditarPrograma(p){
       <button class="btn btn-primary" id="submitEditarPrograma">Guardar Cambios</button>
     </div>
   `);
-  document.getElementById('submitEditarPrograma').addEventListener('click', async ()=>{
+  document.getElementById('submitEditarPrograma').addEventListener('click', async (e)=>{
+    const btn = e.currentTarget;
     const nombre = document.getElementById('e-nombre').value.trim();
     const montoBenef = Number(document.getElementById('e-montoBenef').value);
     const meta = Number(document.getElementById('e-meta').value);
@@ -729,7 +787,7 @@ function openModalEditarPrograma(p){
       return;
     }
     try{
-      await Api.patch(`/programs/${p.id}`, { nombre, monto_beneficiario:montoBenef, meta_beneficiarios:meta });
+      await withLoading(btn, ()=>Api.patch(`/programs/${p.id}`, { nombre, monto_beneficiario:montoBenef, meta_beneficiarios:meta }), 'Guardando…');
       closeModal();
       toast('Programa actualizado correctamente.');
       await refreshOneProgram(p.id);
@@ -758,9 +816,10 @@ function openModalEliminarPrograma(p){
       <button class="btn btn-danger" id="submitEliminarPrograma">Sí, Eliminar Definitivamente</button>
     </div>
   `);
-  document.getElementById('submitEliminarPrograma').addEventListener('click', async ()=>{
+  document.getElementById('submitEliminarPrograma').addEventListener('click', async (e)=>{
+    const btn = e.currentTarget;
     try{
-      await Api.del(`/programs/${p.id}`);
+      await withLoading(btn, ()=>Api.del(`/programs/${p.id}`), 'Eliminando…');
       closeModal();
       toast('Programa eliminado.');
       state.programs = state.programs.filter(x=>x.id!==p.id);
@@ -788,7 +847,8 @@ function openModalCargarMonto(pid){
       <button class="btn btn-gold" id="submitMonto">Guardar Monto</button>
     </div>
   `);
-  document.getElementById('submitMonto').addEventListener('click', async ()=>{
+  document.getElementById('submitMonto').addEventListener('click', async (e)=>{
+    const btn = e.currentTarget;
     const monto = Number(document.getElementById('m-monto').value);
     const referencia = document.getElementById('m-ref').value.trim() || 'S/R';
     const archivo = document.getElementById('m-doc').files[0];
@@ -797,9 +857,11 @@ function openModalCargarMonto(pid){
     fd.append('monto', monto);
     fd.append('referencia', referencia);
     if(archivo) fd.append('documento', archivo);
-    await safeCall(()=>Api.postForm(`/programs/${pid}/monto-autorizado`, fd), 'Monto autorizado cargado.');
-    closeModal();
-    await refreshOneProgram(pid); renderDetalle(pid);
+    try{
+      await withLoading(btn, ()=>safeCall(()=>Api.postForm(`/programs/${pid}/monto-autorizado`, fd), 'Monto autorizado cargado.'), archivo ? 'Subiendo documento…' : 'Guardando…');
+      closeModal();
+      await refreshOneProgram(pid); renderDetalle(pid);
+    }catch(e){ /* el error ya se mostró vía safeCall */ }
   });
 }
 
@@ -822,7 +884,8 @@ function openModalModificacion(pid){
       <button class="btn btn-primary" id="submitMod">Registrar</button>
     </div>
   `);
-  document.getElementById('submitMod').addEventListener('click', async ()=>{
+  document.getElementById('submitMod').addEventListener('click', async (e)=>{
+    const btn = e.currentTarget;
     const tipo = document.getElementById('mo-tipo').value;
     const monto = Number(document.getElementById('mo-monto').value);
     const motivo = document.getElementById('mo-motivo').value.trim();
@@ -833,9 +896,11 @@ function openModalModificacion(pid){
     fd.append('monto', monto);
     fd.append('motivo', motivo);
     if(archivo) fd.append('documento', archivo);
-    await safeCall(()=>Api.postForm(`/programs/${pid}/modificaciones`, fd), 'Modificación registrada.');
-    closeModal();
-    await refreshOneProgram(pid); renderDetalle(pid);
+    try{
+      await withLoading(btn, ()=>safeCall(()=>Api.postForm(`/programs/${pid}/modificaciones`, fd), 'Modificación registrada.'), archivo ? 'Subiendo documento…' : 'Guardando…');
+      closeModal();
+      await refreshOneProgram(pid); renderDetalle(pid);
+    }catch(e){ /* el error ya se mostró vía safeCall */ }
   });
 }
 
@@ -854,13 +919,16 @@ function openModalHacienda(pid){
       <button class="btn btn-primary" id="submitHac">Registrar</button>
     </div>
   `);
-  document.getElementById('submitHac').addEventListener('click', async ()=>{
+  document.getElementById('submitHac').addEventListener('click', async (e)=>{
+    const btn = e.currentTarget;
     const folio = document.getElementById('h-folio').value.trim();
     const monto = Number(document.getElementById('h-monto').value);
     if(!monto) return;
-    await safeCall(()=>Api.post(`/programs/${pid}/hacienda`, {folio, monto}), 'Solicitud a Hacienda registrada.');
-    closeModal();
-    await refreshOneProgram(pid); renderDetalle(pid);
+    try{
+      await withLoading(btn, ()=>safeCall(()=>Api.post(`/programs/${pid}/hacienda`, {folio, monto}), 'Solicitud a Hacienda registrada.'), 'Guardando…');
+      closeModal();
+      await refreshOneProgram(pid); renderDetalle(pid);
+    }catch(e){ /* el error ya se mostró vía safeCall */ }
   });
 }
 
@@ -879,13 +947,16 @@ function openModalPago(pid){
       <button class="btn btn-primary" id="submitPago">Registrar</button>
     </div>
   `);
-  document.getElementById('submitPago').addEventListener('click', async ()=>{
+  document.getElementById('submitPago').addEventListener('click', async (e)=>{
+    const btn = e.currentTarget;
     const folio = document.getElementById('g-folio').value.trim();
     const monto = Number(document.getElementById('g-monto').value);
     if(!monto) return;
-    await safeCall(()=>Api.post(`/programs/${pid}/pagos`, {folio, monto}), 'Pago registrado.');
-    closeModal();
-    await refreshOneProgram(pid); renderDetalle(pid);
+    try{
+      await withLoading(btn, ()=>safeCall(()=>Api.post(`/programs/${pid}/pagos`, {folio, monto}), 'Pago registrado.'), 'Guardando…');
+      closeModal();
+      await refreshOneProgram(pid); renderDetalle(pid);
+    }catch(e){ /* el error ya se mostró vía safeCall */ }
   });
 }
 

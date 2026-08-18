@@ -177,7 +177,14 @@ input,select,textarea{font-family:inherit;}
 .btn-danger:hover{filter:brightness(1.08);}
 .btn-sm{padding:7px 14px;font-size:12px;}
 .btn-block{width:100%;justify-content:center;}
-.btn:disabled{opacity:0.45;cursor:not-allowed;}
+.btn:disabled{opacity:0.72;cursor:not-allowed;}
+.btn-spinner{width:13px;height:13px;border-radius:50%;border:2px solid rgba(255,255,255,0.45);border-top-color:#fff;display:inline-block;animation:btnspin .7s linear infinite;flex-shrink:0;}
+.btn-outline .btn-spinner,.btn-ghost .btn-spinner{border-color:rgba(107,26,50,0.3);border-top-color:var(--maroon-800);}
+@keyframes btnspin{to{transform:rotate(360deg);}}
+
+/* Skeleton de carga para tarjetas/áreas que aún no tienen datos */
+.loading-block{display:flex;align-items:center;justify-content:center;gap:10px;padding:36px 10px;color:var(--text-muted);font-size:14px;}
+.loading-spinner{width:22px;height:22px;border-radius:50%;border:3px solid var(--card-border);border-top-color:var(--maroon-700);display:inline-block;animation:btnspin .8s linear infinite;}
 
 /* ===== FORMS ===== */
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
