@@ -11,9 +11,9 @@ if (!localStorage.getItem('pb_token') || !CURRENT_USER) {
 }
 
 /* ---------- COLORES (paleta validada) ---------- */
-const COLOR_AUTORIZADO   = '#9B3A5E';
+const COLOR_AUTORIZADO   = '#8C3358';
 const COLOR_COMPROMETIDO = '#C9862B';
-const COLOR_PAGADO       = '#1BAF7A';
+const COLOR_PAGADO       = '#159C6C';
 const COLOR_MODIFICADO   = '#6E5A8C';
 const COLOR_HACIENDA     = '#2A78D6';
 
@@ -638,8 +638,8 @@ const valueLabelPlugin = {
         const value = dataset.data[index];
         if(value===null || value===undefined) return;
         ctx.save();
-        ctx.fillStyle = '#2B2320';
-        ctx.font = '700 9.5px Montserrat, sans-serif';
+        ctx.fillStyle = '#221B18';
+        ctx.font = '700 9.5px Inter, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
         const pos = element.tooltipPosition ? element.tooltipPosition() : element.getCenterPoint();
@@ -664,16 +664,16 @@ function buildComparativeChart(canvasId, programs){
   chartRegistry[canvasId] = new Chart(ctx, {
     type:'bar',
     data:{ labels, datasets:[
-      {label:'Autorizado', data:dataAut, backgroundColor:COLOR_AUTORIZADO, borderRadius:4, maxBarThickness:44},
-      {label:'Comprometido', data:dataComp, backgroundColor:COLOR_COMPROMETIDO, borderRadius:4, maxBarThickness:44},
-      {label:'Pagado', data:dataPag, backgroundColor:COLOR_PAGADO, borderRadius:4, maxBarThickness:44},
+      {label:'Autorizado', data:dataAut, backgroundColor:COLOR_AUTORIZADO, borderRadius:6, maxBarThickness:40},
+      {label:'Comprometido', data:dataComp, backgroundColor:COLOR_COMPROMETIDO, borderRadius:6, maxBarThickness:40},
+      {label:'Pagado', data:dataPag, backgroundColor:COLOR_PAGADO, borderRadius:6, maxBarThickness:40},
     ]},
     options:{
       responsive:true, maintainAspectRatio:false, layout:{padding:{top:24}},
       plugins:{
-        legend:{position:'top', labels:{usePointStyle:true, boxWidth:8, font:{size:11.5, weight:'600'}, color:'#2B2320'}},
+        legend:{position:'top', labels:{usePointStyle:true, boxWidth:8, font:{size:11.5, weight:'600'}, color:'#221B18'}},
         tooltip:{
-          backgroundColor:'#3E0E20', padding:11, cornerRadius:8, titleFont:{weight:'700'},
+          backgroundColor:'#32091D', padding:11, cornerRadius:10, titleFont:{weight:'700'},
           callbacks:{
             label:(c)=> c.dataset.label+': '+fmtMoney(c.raw),
             footer:(items)=>{
@@ -681,12 +681,12 @@ function buildComparativeChart(canvasId, programs){
               return 'Total en esta barra: '+fmtMoney(total);
             }
           },
-          footerFont:{weight:'700'}, footerColor:'#D9B84A'
+          footerFont:{weight:'700'}, footerColor:'#C9A84E'
         }
       },
       scales:{
-        x:{ grid:{display:false}, ticks:{color:'#736A5E', font:{size:11}} },
-        y:{ beginAtZero:true, grid:{color:'#F0E6CE'}, ticks:{color:'#736A5E', font:{size:10.5}, callback:(v)=>fmtMoney(v)} }
+        x:{ grid:{display:false}, ticks:{color:'#6E665C', font:{size:11}} },
+        y:{ beginAtZero:true, grid:{color:'#ECE6D8'}, ticks:{color:'#6E665C', font:{size:10.5}, callback:(v)=>fmtMoney(v)} }
       }
     }
   });
