@@ -420,9 +420,9 @@ async function renderDetalle(id){
     </div>
 
     <div class="section-title"><h2>Dictaminación</h2><span class="hint">${(p.dictamenes||[]).length} dictamen(es) · ${fmtNum(personas)} personas</span></div>
-    <div class="card">
+    <div class="card" id="dictamenesCard">
       ${(p.dictamenes||[]).map(d=>dictamenBlockHTML(p,d)).join('') || `<div class="empty-state">Sin dictámenes registrados.</div>`}
-      <div style="text-align:center;margin-top:8px;">
+      <div style="text-align:center;margin-top:8px;" id="dictamenAddWrap">
         <button class="btn btn-primary btn-sm" id="btnAddDictamen">+ Agregar Otro Dictamen</button>
       </div>
     </div>
@@ -468,32 +468,39 @@ async function renderDetalle(id){
   if(btnCargar) btnCargar.addEventListener('click', ()=>openModalCargarMonto(p.id));
   const btnMod = document.getElementById('btnAddModificacion');
   if(btnMod) btnMod.addEventListener('click', ()=>openModalModificacion(p.id));
-  document.getElementById('btnAddDictamen').addEventListener('click', (e)=>addDictamen(p.id, e.currentTarget));
+  document.getElementById('btnAddDictamen').addEventListener('click', ()=> addDictamenLocal(p));
   document.getElementById('btnAddHacienda').addEventListener('click', ()=>openModalHacienda(p.id));
   document.getElementById('btnAddPago').addEventListener('click', ()=>openModalPago(p.id));
 
-  el.querySelectorAll('[data-add-solicitud]').forEach(b=>b.addEventListener('click', (e)=>addSolicitud(p.id,b.dataset.addSolicitud,e.currentTarget)));
-  el.querySelectorAll('[data-del-solicitud]').forEach(b=>b.addEventListener('click', (e)=>delSolicitud(p.id,b.dataset.dic,b.dataset.delSolicitud,e.currentTarget)));
-  el.querySelectorAll('[data-del-dictamen]').forEach(b=>b.addEventListener('click', (e)=>delDictamen(p.id,b.dataset.delDictamen,e.currentTarget)));
-  // El monto del dictamen y la cantidad de personas por solicitud YA NO se
-  // guardan en cada cambio de campo (evita refrescar/perder foco en cada
-  // tecleo). Se capturan del DOM y se envían todos juntos al presionar
-  // "Guardar Dictamen" (ver saveDictamen).
-  el.querySelectorAll('[data-save-dictamen]').forEach(b=>{
-    const block = b.closest('.dictamen-block');
-    b.addEventListener('click', (e)=> saveDictamen(p.id, b.dataset.saveDictamen, block, e.currentTarget));
-  });
+  // Nada de lo que pasa dentro de un dictamen (agregar el dictamen, llenar
+  // el monto, agregar solicitudes, llenar personas) toca el servidor ni
+  // vuelve a dibujar la pantalla. Todo se arma en el DOM y solo se envía a
+  // la API —en un solo paso— al presionar "Guardar Dictamen" (ver
+  // saveDictamen). Eliminar un dictamen/solicitud ya guardado sí llama a la
+  // API (con confirmación), pero uno agregado localmente y aún no guardado
+  // simplemente se quita del formulario.
+  el.querySelectorAll('.dictamen-block').forEach(block=> bindDictamenBlock(block, p));
 
   buildComparativeChart('chartPrograma', [p], true);
 }
 
+/* ---------- Dictaminación: alta/edición local + guardado en un solo paso ----------
+   Un dictamen o una solicitud recién agregados en el formulario (todavía no
+   guardados en el servidor) se identifican con un id temporal "tmp-...".
+   saveDictamen() decide, por cada uno, si debe crearlo (POST) o actualizarlo
+   (PATCH) según tenga o no un id real. ---------- */
+let __tmpSeq = 0;
+function tmpId(){ return 'tmp-' + (++__tmpSeq) + '-' + Date.now(); }
+function esTemporal(id){ return String(id).startsWith('tmp-'); }
+
 function dictamenBlockHTML(p,d){
   const personas = (d.solicitudes||[]).reduce((s,so)=>s+Number(so.personas||0),0);
   const comprometido = personas * Number(p.monto_beneficiario);
+  const titulo = d.numero!=null ? ('Dictamen '+d.numero) : 'Dictamen (nuevo, sin guardar)';
   return `
   <div class="dictamen-block" data-dictamen-block="${d.id}">
     <div class="dictamen-head">
-      <h4>Dictamen ${d.numero}</h4>
+      <h4>${titulo}</h4>
       <div style="display:flex;align-items:center;gap:10px;">
         <div class="chip">${fmtMoney(d.monto_autorizado)} autorizados</div>
         <button class="btn btn-danger btn-sm" data-del-dictamen="${d.id}">Eliminar Dictamen</button>
@@ -503,18 +510,14 @@ function dictamenBlockHTML(p,d){
       <label>Monto Autorizado del Dictamen</label>
       <input type="number" min="0" step="0.01" value="${d.monto_autorizado}" data-dic-monto="${d.id}">
     </div>
-    ${(d.solicitudes||[]).map(s=>`
-      <div class="solicitud-row">
-        <div class="sfield"><label>Solicitud No.</label><input value="${s.numero}" disabled></div>
-        <div class="sfield"><label>Cantidad de Personas</label><input type="number" min="0" value="${s.personas}" data-sol-personas="${d.id}|${s.id}"></div>
-        <button class="icon-btn" title="Eliminar solicitud" data-dic="${d.id}" data-del-solicitud="${s.id}">✕</button>
-      </div>
-    `).join('')}
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:8px;">
-      <div class="field-hint" style="margin:0;">Llena el monto y las personas de cada solicitud y presiona “Guardar Dictamen” para registrar los cambios.</div>
+    <div class="solicitudes-list">
+      ${(d.solicitudes||[]).map(s=>solicitudRowHTML(d.id,s)).join('')}
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:8px;" data-dictamen-actions>
+      <div class="field-hint" style="margin:0;">Agrega las solicitudes que necesites y llena los campos; nada se guarda hasta presionar “Guardar Dictamen”.</div>
       <div style="display:flex;gap:8px;">
-        <button class="btn btn-ghost btn-sm" data-add-solicitud="${d.id}">+ Agregar otra solicitud</button>
-        <button class="btn btn-gold btn-sm" data-save-dictamen="${d.id}">Guardar Dictamen</button>
+        <button class="btn btn-ghost btn-sm" data-add-solicitud>+ Agregar otra solicitud</button>
+        <button class="btn btn-gold btn-sm" data-save-dictamen>Guardar Dictamen</button>
       </div>
     </div>
     <div class="dictamen-total">
@@ -524,48 +527,138 @@ function dictamenBlockHTML(p,d){
   </div>`;
 }
 
+function solicitudRowHTML(dicId, s){
+  const esNueva = esTemporal(s.id);
+  return `
+      <div class="solicitud-row">
+        <div class="sfield"><label>Solicitud No.</label><input value="${esNueva? 'Nueva' : s.numero}" disabled></div>
+        <div class="sfield"><label>Cantidad de Personas</label><input type="number" min="0" value="${s.personas||0}" data-sol-personas="${dicId}|${s.id}"></div>
+        <button class="icon-btn" title="Eliminar solicitud" data-del-solicitud="${s.id}">✕</button>
+      </div>`;
+}
+
+/* Recalcula en vivo (sin llamar a la API) las cifras de "Personas" y
+   "Recurso comprometido" que se muestran al pie del dictamen, conforme se
+   agregan/quitan solicitudes o se edita la cantidad de personas. */
+function recomputeDictamenTotals(block, montoBeneficiario){
+  const personas = Array.from(block.querySelectorAll('[data-sol-personas]')).reduce((s,inp)=> s+Number(inp.value||0), 0);
+  const comprometido = personas * Number(montoBeneficiario||0);
+  const totalDiv = block.querySelector('.dictamen-total');
+  if(totalDiv){
+    totalDiv.innerHTML = `<div>Personas: <b>${fmtNum(personas)}</b></div><div>Recurso comprometido: <b>${fmtMoney(comprometido)}</b></div>`;
+  }
+}
+
+function bindDictamenBlock(block, p){
+  const pid = p.id;
+  const dicId = block.dataset.dictamenBlock;
+
+  block.querySelector('[data-del-dictamen]').addEventListener('click', (e)=> handleDeleteDictamen(pid, block, dicId, e.currentTarget));
+  block.querySelector('[data-add-solicitud]').addEventListener('click', ()=> addSolicitudLocal(block, p));
+  block.querySelector('[data-save-dictamen]').addEventListener('click', (e)=> saveDictamen(pid, dicId, block, e.currentTarget));
+  block.querySelectorAll('.solicitud-row').forEach(row=> bindSolicitudRow(row, block, p));
+}
+
+function bindSolicitudRow(row, block, p){
+  const delBtn = row.querySelector('[data-del-solicitud]');
+  delBtn.addEventListener('click', (e)=> handleDeleteSolicitud(p, block, delBtn.dataset.delSolicitud, e.currentTarget));
+  const inp = row.querySelector('[data-sol-personas]');
+  inp.addEventListener('input', ()=> recomputeDictamenTotals(block, p.monto_beneficiario));
+}
+
+/* + Agregar Otro Dictamen: solo inserta un bloque vacío en el formulario.
+   No se registra nada en el servidor hasta presionar "Guardar Dictamen". */
+function addDictamenLocal(p){
+  const card = document.getElementById('dictamenesCard');
+  const emptyState = card.querySelector('.empty-state');
+  if(emptyState) emptyState.remove();
+
+  const draft = { id: tmpId(), numero: null, monto_autorizado: 0, solicitudes: [] };
+  const wrap = document.createElement('div');
+  wrap.innerHTML = dictamenBlockHTML(p, draft).trim();
+  const block = wrap.firstElementChild;
+
+  document.getElementById('dictamenAddWrap').insertAdjacentElement('beforebegin', block);
+  bindDictamenBlock(block, p);
+  block.scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+/* + Agregar otra solicitud: inserta la fila dentro del mismo dictamen, sin
+   tocar el servidor ni redibujar la pantalla. */
+function addSolicitudLocal(block, p){
+  const dicId = block.dataset.dictamenBlock;
+  const draft = { id: tmpId(), numero: null, personas: 0 };
+  const wrap = document.createElement('div');
+  wrap.innerHTML = solicitudRowHTML(dicId, draft).trim();
+  const row = wrap.firstElementChild;
+
+  const actionsRow = block.querySelector('[data-dictamen-actions]');
+  actionsRow.insertAdjacentElement('beforebegin', row);
+  bindSolicitudRow(row, block, p);
+  recomputeDictamenTotals(block, p.monto_beneficiario);
+}
+
 /* ---------- Mutaciones vía API ---------- */
-async function addDictamen(pid, btn){
-  await withLoading(btn, ()=>safeCall(()=>Api.post(`/programs/${pid}/dictamenes`, {monto_autorizado:0}), 'Dictamen agregado.'), 'Agregando…');
-  await refreshOneProgram(pid); renderDetalle(pid);
-}
-async function addSolicitud(pid, dicId, btn){
-  await withLoading(btn, ()=>safeCall(()=>Api.post(`/programs/${pid}/dictamenes/${dicId}/solicitudes`, {personas:0}), 'Solicitud agregada.'), 'Agregando…');
-  await refreshOneProgram(pid); renderDetalle(pid);
-}
-/* Guarda el dictamen completo de una sola vez: el monto autorizado del
-   dictamen y las personas de todas sus solicitudes, leyendo los valores
-   actuales del formulario (no se guarda nada hasta presionar el botón). */
+/* Guarda el dictamen completo de una sola vez: crea (POST) lo que se haya
+   agregado localmente —el dictamen mismo y/o sus solicitudes nuevas— y
+   actualiza (PATCH) lo que ya existía, leyendo los valores actuales del
+   formulario. Solo aquí se llama a la API y se refresca la pantalla. */
 async function saveDictamen(pid, dicId, blockEl, btn){
   if(!blockEl) return;
   const montoInput = blockEl.querySelector('[data-dic-monto]');
-  const solInputs = Array.from(blockEl.querySelectorAll('[data-sol-personas]'));
   const montoValue = Number(montoInput ? montoInput.value : 0) || 0;
+  const solRows = Array.from(blockEl.querySelectorAll('.solicitud-row'));
 
   await withLoading(btn, ()=>safeCall(async ()=>{
-    await Api.patch(`/programs/${pid}/dictamenes/${dicId}`, {monto_autorizado: montoValue});
-    await Promise.all(solInputs.map(inp=>{
-      const [dId, solId] = inp.dataset.solPersonas.split('|');
-      return Api.patch(`/programs/${pid}/dictamenes/${dId}/solicitudes/${solId}`, {personas: Number(inp.value||0)});
-    }));
+    let realDicId = dicId;
+    if(esTemporal(dicId)){
+      const creado = await Api.post(`/programs/${pid}/dictamenes`, {monto_autorizado: montoValue});
+      realDicId = creado.id;
+    } else {
+      await Api.patch(`/programs/${pid}/dictamenes/${dicId}`, {monto_autorizado: montoValue});
+    }
+
+    for(const row of solRows){
+      const inp = row.querySelector('[data-sol-personas]');
+      if(!inp) continue;
+      const [, solId] = inp.dataset.solPersonas.split('|');
+      const personas = Number(inp.value||0);
+      if(esTemporal(solId)){
+        await Api.post(`/programs/${pid}/dictamenes/${realDicId}/solicitudes`, {personas});
+      } else {
+        await Api.patch(`/programs/${pid}/dictamenes/${realDicId}/solicitudes/${solId}`, {personas});
+      }
+    }
   }, 'Dictamen guardado correctamente.'), 'Guardando…');
 
   await refreshOneProgram(pid); renderDetalle(pid);
 }
-async function delSolicitud(pid, dicId, solId, btn){
+
+async function handleDeleteSolicitud(p, block, solId, btn){
+  if(esTemporal(solId)){
+    btn.closest('.solicitud-row').remove();
+    recomputeDictamenTotals(block, p.monto_beneficiario);
+    return;
+  }
+  const dicId = block.dataset.dictamenBlock;
   const ok = await confirmAction({
     title: 'Eliminar Solicitud',
-    message: '¿Eliminar esta solicitud? Esta acción no se puede deshacer.',
+    message: '¿Eliminar esta solicitud ya guardada? Esta acción no se puede deshacer.',
     confirmText: 'Sí, Eliminar',
   });
   if(!ok) return;
-  await withLoading(btn, ()=>safeCall(()=>Api.del(`/programs/${pid}/dictamenes/${dicId}/solicitudes/${solId}`), 'Solicitud eliminada.'), 'Eliminando…');
-  await refreshOneProgram(pid); renderDetalle(pid);
+  await withLoading(btn, ()=>safeCall(()=>Api.del(`/programs/${p.id}/dictamenes/${dicId}/solicitudes/${solId}`), 'Solicitud eliminada.'), 'Eliminando…');
+  await refreshOneProgram(p.id); renderDetalle(p.id);
 }
-async function delDictamen(pid, dicId, btn){
+
+async function handleDeleteDictamen(pid, block, dicId, btn){
+  if(esTemporal(dicId)){
+    block.remove();
+    return;
+  }
   const ok = await confirmAction({
     title: 'Eliminar Dictamen',
-    message: '¿Eliminar este dictamen y todas sus solicitudes? Esta acción no se puede deshacer.',
+    message: '¿Eliminar este dictamen ya guardado y todas sus solicitudes? Esta acción no se puede deshacer.',
     confirmText: 'Sí, Eliminar',
   });
   if(!ok) return;
