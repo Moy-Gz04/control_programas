@@ -376,6 +376,7 @@ async function renderDetalle(id){
           <tbody>
             <tr><td>Recurso Autorizado</td><td>${fmtMoney(autorizadoNeto)}</td></tr>
             <tr><td>Recurso Comprometido</td><td>${fmtMoney(comprometido)}</td></tr>
+            <tr><td>Solicitado a Hacienda</td><td>${fmtMoney(solicitadoHacienda)}</td></tr>
             <tr><td>Recurso Pagado</td><td>${fmtMoney(pagado)}</td></tr>
           </tbody>
         </table>
@@ -431,7 +432,9 @@ async function renderDetalle(id){
       <div class="log-list">
         ${(p.solicitudesHacienda||[]).length? p.solicitudesHacienda.map(h=>`
           <div class="log-row">
-            <div><div style="font-weight:700;">Folio ${h.folio}</div><div class="lmeta">${fmtDate(h.fecha)}</div></div>
+            <div><div style="font-weight:700;">Folio ${h.folio}</div><div class="lmeta">${fmtDate(h.fecha)}
+              ${h.documento_url ? ` · <a href="${h.documento_url}" target="_blank" rel="noopener">Ver Documento</a>` : ''}
+            </div></div>
             <div class="lamount">${fmtMoney(h.monto)}</div>
           </div>`).join('') : `<div class="empty-state">Sin trámites enviados a Hacienda.</div>`}
       </div>
@@ -445,7 +448,9 @@ async function renderDetalle(id){
       <div class="log-list">
         ${(p.pagos||[]).length? p.pagos.map(g=>`
           <div class="log-row">
-            <div><div style="font-weight:700;">Folio ${g.folio}</div><div class="lmeta">${fmtDate(g.fecha)}</div></div>
+            <div><div style="font-weight:700;">Folio ${g.folio}</div><div class="lmeta">${fmtDate(g.fecha)}
+              ${g.documento_url ? ` · <a href="${g.documento_url}" target="_blank" rel="noopener">Ver Documento</a>` : ''}
+            </div></div>
             <div class="lamount pos">${fmtMoney(g.monto)}</div>
           </div>`).join('') : `<div class="empty-state">Sin pagos registrados.</div>`}
       </div>
@@ -470,11 +475,14 @@ async function renderDetalle(id){
   el.querySelectorAll('[data-add-solicitud]').forEach(b=>b.addEventListener('click', (e)=>addSolicitud(p.id,b.dataset.addSolicitud,e.currentTarget)));
   el.querySelectorAll('[data-del-solicitud]').forEach(b=>b.addEventListener('click', (e)=>delSolicitud(p.id,b.dataset.dic,b.dataset.delSolicitud,e.currentTarget)));
   el.querySelectorAll('[data-del-dictamen]').forEach(b=>b.addEventListener('click', (e)=>delDictamen(p.id,b.dataset.delDictamen,e.currentTarget)));
-  el.querySelectorAll('[data-dic-monto]').forEach(inp=>inp.addEventListener('change', (e)=>updateDictamenMonto(p.id, inp.dataset.dicMonto, e.target.value)));
-  el.querySelectorAll('[data-sol-personas]').forEach(inp=>inp.addEventListener('change', (e)=>{
-    const [dicId, solId] = inp.dataset.solPersonas.split('|');
-    updateSolicitudPersonas(p.id, dicId, solId, e.target.value);
-  }));
+  // El monto del dictamen y la cantidad de personas por solicitud YA NO se
+  // guardan en cada cambio de campo (evita refrescar/perder foco en cada
+  // tecleo). Se capturan del DOM y se envían todos juntos al presionar
+  // "Guardar Dictamen" (ver saveDictamen).
+  el.querySelectorAll('[data-save-dictamen]').forEach(b=>{
+    const block = b.closest('.dictamen-block');
+    b.addEventListener('click', (e)=> saveDictamen(p.id, b.dataset.saveDictamen, block, e.currentTarget));
+  });
 
   buildComparativeChart('chartPrograma', [p], true);
 }
@@ -483,7 +491,7 @@ function dictamenBlockHTML(p,d){
   const personas = (d.solicitudes||[]).reduce((s,so)=>s+Number(so.personas||0),0);
   const comprometido = personas * Number(p.monto_beneficiario);
   return `
-  <div class="dictamen-block">
+  <div class="dictamen-block" data-dictamen-block="${d.id}">
     <div class="dictamen-head">
       <h4>Dictamen ${d.numero}</h4>
       <div style="display:flex;align-items:center;gap:10px;">
@@ -502,8 +510,12 @@ function dictamenBlockHTML(p,d){
         <button class="icon-btn" title="Eliminar solicitud" data-dic="${d.id}" data-del-solicitud="${s.id}">✕</button>
       </div>
     `).join('')}
-    <div style="text-align:right;margin-top:6px;">
-      <button class="btn btn-ghost btn-sm" data-add-solicitud="${d.id}">+ Agregar otra solicitud</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:8px;">
+      <div class="field-hint" style="margin:0;">Llena el monto y las personas de cada solicitud y presiona “Guardar Dictamen” para registrar los cambios.</div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost btn-sm" data-add-solicitud="${d.id}">+ Agregar otra solicitud</button>
+        <button class="btn btn-gold btn-sm" data-save-dictamen="${d.id}">Guardar Dictamen</button>
+      </div>
     </div>
     <div class="dictamen-total">
       <div>Personas: <b>${fmtNum(personas)}</b></div>
@@ -517,16 +529,27 @@ async function addDictamen(pid, btn){
   await withLoading(btn, ()=>safeCall(()=>Api.post(`/programs/${pid}/dictamenes`, {monto_autorizado:0}), 'Dictamen agregado.'), 'Agregando…');
   await refreshOneProgram(pid); renderDetalle(pid);
 }
-async function updateDictamenMonto(pid, dicId, value){
-  await safeCall(()=>Api.patch(`/programs/${pid}/dictamenes/${dicId}`, {monto_autorizado:Number(value||0)}));
-  await refreshOneProgram(pid); renderDetalle(pid);
-}
 async function addSolicitud(pid, dicId, btn){
   await withLoading(btn, ()=>safeCall(()=>Api.post(`/programs/${pid}/dictamenes/${dicId}/solicitudes`, {personas:0}), 'Solicitud agregada.'), 'Agregando…');
   await refreshOneProgram(pid); renderDetalle(pid);
 }
-async function updateSolicitudPersonas(pid, dicId, solId, value){
-  await safeCall(()=>Api.patch(`/programs/${pid}/dictamenes/${dicId}/solicitudes/${solId}`, {personas:Number(value||0)}));
+/* Guarda el dictamen completo de una sola vez: el monto autorizado del
+   dictamen y las personas de todas sus solicitudes, leyendo los valores
+   actuales del formulario (no se guarda nada hasta presionar el botón). */
+async function saveDictamen(pid, dicId, blockEl, btn){
+  if(!blockEl) return;
+  const montoInput = blockEl.querySelector('[data-dic-monto]');
+  const solInputs = Array.from(blockEl.querySelectorAll('[data-sol-personas]'));
+  const montoValue = Number(montoInput ? montoInput.value : 0) || 0;
+
+  await withLoading(btn, ()=>safeCall(async ()=>{
+    await Api.patch(`/programs/${pid}/dictamenes/${dicId}`, {monto_autorizado: montoValue});
+    await Promise.all(solInputs.map(inp=>{
+      const [dId, solId] = inp.dataset.solPersonas.split('|');
+      return Api.patch(`/programs/${pid}/dictamenes/${dId}/solicitudes/${solId}`, {personas: Number(inp.value||0)});
+    }));
+  }, 'Dictamen guardado correctamente.'), 'Guardando…');
+
   await refreshOneProgram(pid); renderDetalle(pid);
 }
 async function delSolicitud(pid, dicId, solId, btn){
@@ -552,7 +575,9 @@ async function delDictamen(pid, dicId, btn){
 
 /* =========================================================================
    ANÁLISIS DINÁMICO — texto que describe la situación actual de la gráfica.
-   Se recalcula cada vez que se renderiza, a partir de los datos vigentes.
+   Se recalcula cada vez que se renderiza, a partir de los datos vigentes,
+   siguiendo el flujo real del recurso: Autorizado → Comprometido →
+   Solicitado a Hacienda → Pagado.
    ========================================================================= */
 function generateInsightGeneral(programs){
   if(!programs.length){
@@ -561,10 +586,12 @@ function generateInsightGeneral(programs){
 
   const totA = programs.reduce((s,p)=>s+totalAutorizadoNeto(p),0);
   const totComp = programs.reduce((s,p)=>s+totalComprometido(p),0);
+  const totHac = programs.reduce((s,p)=>s+totalSolicitadoHacienda(p),0);
   const totPag = programs.reduce((s,p)=>s+totalPagado(p),0);
   const pctComprometido = totA>0 ? (totComp/totA*100) : 0;
-  const pctPagado = totComp>0 ? (totPag/totComp*100) : 0;
-  const pendiente = totComp - totPag;
+  const pctSolicitado = totComp>0 ? (totHac/totComp*100) : 0;
+  const pctPagadoDeSolicitado = totHac>0 ? (totPag/totHac*100) : 0;
+  const pendienteComprometido = Math.max(totComp - totPag, 0);
 
   const sobregirados = programs.filter(p=> p.monto_autorizado!==null && totalDisponible(p) < 0);
   const sinAutorizar = programs.filter(p=> p.monto_autorizado===null);
@@ -572,10 +599,23 @@ function generateInsightGeneral(programs){
 
   let html = `<p>De los <b>${programs.length}</b> programa${programs.length===1?'':'s'} registrados, el recurso autorizado total es de <b>${fmtMoney(totA)}</b>. Se ha comprometido <b>${fmtMoney(totComp)}</b> mediante dictaminación, equivalente al <b>${pctComprometido.toFixed(1)}%</b> del autorizado.</p>`;
 
-  html += `<p>Del monto comprometido se ha pagado <b>${fmtMoney(totPag)}</b> (<b>${pctPagado.toFixed(1)}%</b>), quedando <b>${fmtMoney(pendiente)}</b> pendientes por ministrar.</p>`;
+  if(totComp>0){
+    if(totHac===0){
+      html += `<p>De ese recurso comprometido, ningún programa ha enviado todavía una solicitud a Hacienda; ese es el siguiente paso pendiente antes de poder ministrar los pagos.</p>`;
+    } else {
+      html += `<p>De lo comprometido se ha solicitado a Hacienda <b>${fmtMoney(totHac)}</b> (<b>${pctSolicitado.toFixed(1)}%</b>), y de lo solicitado se ha pagado <b>${fmtMoney(totPag)}</b> (<b>${pctPagadoDeSolicitado.toFixed(1)}%</b>). Quedan <b>${fmtMoney(pendienteComprometido)}</b> pendientes por ministrar del total comprometido.</p>`;
+    }
+  }
 
   if(totComp>0 && mayor){
     html += `<p>El programa con mayor recurso comprometido es <b>${mayor.nombre}</b>, con <b>${fmtMoney(totalComprometido(mayor))}</b>.</p>`;
+  }
+
+  if(totHac > totComp + 0.01){
+    html += `<p style="color:#FF9FB0;font-weight:700;">Atención: el total solicitado a Hacienda (${fmtMoney(totHac)}) supera el total comprometido (${fmtMoney(totComp)}). Conviene revisar los trámites registrados.</p>`;
+  }
+  if(totPag > totHac + 0.01 && totHac>0){
+    html += `<p style="color:#FF9FB0;font-weight:700;">Atención: el total pagado (${fmtMoney(totPag)}) supera lo solicitado a Hacienda (${fmtMoney(totHac)}). Conviene revisar los pagos registrados.</p>`;
   }
 
   if(sobregirados.length){
@@ -599,20 +639,48 @@ function generateInsightPrograma(p){
 
   const autorizado = totalAutorizadoNeto(p);
   const comprometido = totalComprometido(p);
+  const solicitado = totalSolicitadoHacienda(p);
   const pagado = totalPagado(p);
   const disponible = totalDisponible(p);
   const personas = totalPersonasDictaminadas(p);
   const numDictamenes = (p.dictamenes||[]).length;
+  const numTramitesHacienda = (p.solicitudesHacienda||[]).length;
+  const numPagos = (p.pagos||[]).length;
   const pctComprometido = autorizado>0 ? (comprometido/autorizado*100) : 0;
-  const pctPagado = comprometido>0 ? (pagado/comprometido*100) : 0;
+  const pctSolicitado = comprometido>0 ? (solicitado/comprometido*100) : 0;
+  const pctPagado = solicitado>0 ? (pagado/solicitado*100) : (comprometido>0 ? (pagado/comprometido*100) : 0);
 
   let html = '';
 
   if(numDictamenes===0){
-    html += `<p>Con un recurso autorizado de <b>${fmtMoney(autorizado)}</b>, este programa aún no tiene dictámenes registrados, por lo que no se ha comprometido recurso todavía.</p>`;
+    html += `<p>Con un recurso autorizado de <b>${fmtMoney(autorizado)}</b>, este programa aún no tiene dictámenes registrados: dictaminar es el primer paso pendiente antes de poder comprometer recurso.</p>`;
+    if(disponible<0){
+      html += `<p style="color:#FF9FB0;font-weight:700;">El programa excede su recurso autorizado por <b>${fmtMoney(Math.abs(disponible))}</b>.</p>`;
+    }
+    return html;
+  }
+
+  html += `<p>De los <b>${fmtMoney(autorizado)}</b> autorizados, se han comprometido <b>${fmtMoney(comprometido)}</b> a través de <b>${numDictamenes}</b> dictamen${numDictamenes===1?'':'es'} y <b>${fmtNum(personas)}</b> persona${personas===1?'':'s'} dictaminada${personas===1?'':'s'} (<b>${pctComprometido.toFixed(1)}%</b> del autorizado).</p>`;
+
+  if(numTramitesHacienda===0){
+    html += `<p>Aún no se ha enviado ninguna solicitud a Hacienda; el siguiente paso es tramitar la ministración del recurso comprometido.</p>`;
   } else {
-    html += `<p>Con un recurso autorizado de <b>${fmtMoney(autorizado)}</b>, este programa ha comprometido <b>${fmtMoney(comprometido)}</b> a través de <b>${numDictamenes}</b> dictamen${numDictamenes===1?'':'es'} y <b>${fmtNum(personas)}</b> persona${personas===1?'':'s'} (<b>${pctComprometido.toFixed(1)}%</b> del autorizado).</p>`;
-    html += `<p>De lo comprometido se ha pagado <b>${fmtMoney(pagado)}</b> (<b>${pctPagado.toFixed(1)}%</b>), quedando <b>${fmtMoney(comprometido-pagado)}</b> pendientes por ministrar.</p>`;
+    html += `<p>Se ha solicitado a Hacienda <b>${fmtMoney(solicitado)}</b> en <b>${numTramitesHacienda}</b> trámite${numTramitesHacienda===1?'':'s'} (<b>${pctSolicitado.toFixed(1)}%</b> de lo comprometido).</p>`;
+  }
+
+  if(numPagos===0){
+    html += solicitado>0
+      ? `<p>Todavía no se registra ningún pago; el recurso solicitado a Hacienda sigue pendiente de ministración.</p>`
+      : `<p>Todavía no se registra ningún pago a beneficiarios.</p>`;
+  } else {
+    html += `<p>Se han ministrado <b>${fmtMoney(pagado)}</b> en <b>${numPagos}</b> pago${numPagos===1?'':'s'} (<b>${pctPagado.toFixed(1)}%</b> de lo solicitado a Hacienda), quedando <b>${fmtMoney(Math.max(comprometido-pagado,0))}</b> pendientes por ministrar del total comprometido.</p>`;
+  }
+
+  if(solicitado > comprometido + 0.01){
+    html += `<p style="color:#FF9FB0;font-weight:700;">Atención: lo solicitado a Hacienda (${fmtMoney(solicitado)}) supera el recurso comprometido (${fmtMoney(comprometido)}). Conviene revisar los trámites registrados.</p>`;
+  }
+  if(pagado > solicitado + 0.01 && solicitado>0){
+    html += `<p style="color:#FF9FB0;font-weight:700;">Atención: el recurso pagado (${fmtMoney(pagado)}) supera lo solicitado a Hacienda (${fmtMoney(solicitado)}). Conviene revisar los pagos registrados.</p>`;
   }
 
   if(disponible<0){
@@ -912,6 +980,7 @@ function openModalHacienda(pid){
       <div class="form-grid single">
         <div class="field"><label>Folio</label><input type="text" id="h-folio" placeholder="Ej. SH-2026-0001"></div>
         <div class="field"><label>Monto Solicitado</label><input type="number" id="h-monto" min="0" step="0.01" placeholder="$0.00"></div>
+        <div class="field"><label>Documento que avala la solicitud</label><input type="file" id="h-doc" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"></div>
       </div>
     </div>
     <div class="modal-footer">
@@ -923,9 +992,14 @@ function openModalHacienda(pid){
     const btn = e.currentTarget;
     const folio = document.getElementById('h-folio').value.trim();
     const monto = Number(document.getElementById('h-monto').value);
+    const archivo = document.getElementById('h-doc').files[0];
     if(!monto) return;
+    const fd = new FormData();
+    fd.append('folio', folio);
+    fd.append('monto', monto);
+    if(archivo) fd.append('documento', archivo);
     try{
-      await withLoading(btn, ()=>safeCall(()=>Api.post(`/programs/${pid}/hacienda`, {folio, monto}), 'Solicitud a Hacienda registrada.'), 'Guardando…');
+      await withLoading(btn, ()=>safeCall(()=>Api.postForm(`/programs/${pid}/hacienda`, fd), 'Solicitud a Hacienda registrada.'), archivo ? 'Subiendo documento…' : 'Guardando…');
       closeModal();
       await refreshOneProgram(pid); renderDetalle(pid);
     }catch(e){ /* el error ya se mostró vía safeCall */ }
@@ -940,6 +1014,7 @@ function openModalPago(pid){
       <div class="form-grid single">
         <div class="field"><label>Folio</label><input type="text" id="g-folio" placeholder="Ej. PG-2026-0001"></div>
         <div class="field"><label>Monto Pagado</label><input type="number" id="g-monto" min="0" step="0.01" placeholder="$0.00"></div>
+        <div class="field"><label>Documento que avala el pago</label><input type="file" id="g-doc" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"></div>
       </div>
     </div>
     <div class="modal-footer">
@@ -951,9 +1026,14 @@ function openModalPago(pid){
     const btn = e.currentTarget;
     const folio = document.getElementById('g-folio').value.trim();
     const monto = Number(document.getElementById('g-monto').value);
+    const archivo = document.getElementById('g-doc').files[0];
     if(!monto) return;
+    const fd = new FormData();
+    fd.append('folio', folio);
+    fd.append('monto', monto);
+    if(archivo) fd.append('documento', archivo);
     try{
-      await withLoading(btn, ()=>safeCall(()=>Api.post(`/programs/${pid}/pagos`, {folio, monto}), 'Pago registrado.'), 'Guardando…');
+      await withLoading(btn, ()=>safeCall(()=>Api.postForm(`/programs/${pid}/pagos`, fd), 'Pago registrado.'), archivo ? 'Subiendo documento…' : 'Guardando…');
       closeModal();
       await refreshOneProgram(pid); renderDetalle(pid);
     }catch(e){ /* el error ya se mostró vía safeCall */ }
