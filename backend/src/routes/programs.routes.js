@@ -368,14 +368,31 @@ router.delete('/:id/dictamenes/:dicId/solicitudes/:solId', async (req, res) => {
 /* Solicitado a Hacienda / Pagos                                           */
 /* ---------------------------------------------------------------------- */
 
-router.post('/:id/hacienda', async (req, res) => {
+router.post('/:id/hacienda', upload.single('documento'), async (req, res) => {
   const { folio, monto } = req.body || {};
   if (!monto || Number(monto) <= 0) return res.status(400).json({ error: 'El monto es obligatorio.' });
   try {
     const programa = await getPrograma(req.params.id);
     if (!programa) return res.status(404).json({ error: 'Programa no encontrado.' });
 
-    await db.query('INSERT INTO solicitudes_hacienda (programa_id, folio, monto, created_by) VALUES ($1,$2,$3,$4)', [req.params.id, folio || 'S/F', monto, req.user.id]);
+    let documentoUrl = null;
+    let documentoNombre = null;
+    if (req.file) {
+      try {
+        const subido = await uploadDocumento(req.file.buffer, req.file.originalname, req.file.mimetype);
+        documentoUrl = subido.url;
+        documentoNombre = subido.nombre;
+      } catch (uploadErr) {
+        console.error('[programs/hacienda] Google Drive', uploadErr);
+        return res.status(502).json({ error: uploadErr.message || 'No se pudo subir el documento a Google Drive.' });
+      }
+    }
+
+    await db.query(
+      `INSERT INTO solicitudes_hacienda (programa_id, folio, monto, created_by, documento_url, documento_nombre)
+       VALUES ($1,$2,$3,$4,$5,$6)`,
+      [req.params.id, folio || 'S/F', monto, req.user.id, documentoUrl, documentoNombre]
+    );
     res.status(201).json(await getProgramaCompleto(req.params.id));
   } catch (err) {
     console.error('[programs/hacienda]', err);
@@ -383,14 +400,31 @@ router.post('/:id/hacienda', async (req, res) => {
   }
 });
 
-router.post('/:id/pagos', async (req, res) => {
+router.post('/:id/pagos', upload.single('documento'), async (req, res) => {
   const { folio, monto } = req.body || {};
   if (!monto || Number(monto) <= 0) return res.status(400).json({ error: 'El monto es obligatorio.' });
   try {
     const programa = await getPrograma(req.params.id);
     if (!programa) return res.status(404).json({ error: 'Programa no encontrado.' });
 
-    await db.query('INSERT INTO pagos (programa_id, folio, monto, created_by) VALUES ($1,$2,$3,$4)', [req.params.id, folio || 'S/F', monto, req.user.id]);
+    let documentoUrl = null;
+    let documentoNombre = null;
+    if (req.file) {
+      try {
+        const subido = await uploadDocumento(req.file.buffer, req.file.originalname, req.file.mimetype);
+        documentoUrl = subido.url;
+        documentoNombre = subido.nombre;
+      } catch (uploadErr) {
+        console.error('[programs/pagos] Google Drive', uploadErr);
+        return res.status(502).json({ error: uploadErr.message || 'No se pudo subir el documento a Google Drive.' });
+      }
+    }
+
+    await db.query(
+      `INSERT INTO pagos (programa_id, folio, monto, created_by, documento_url, documento_nombre)
+       VALUES ($1,$2,$3,$4,$5,$6)`,
+      [req.params.id, folio || 'S/F', monto, req.user.id, documentoUrl, documentoNombre]
+    );
     res.status(201).json(await getProgramaCompleto(req.params.id));
   } catch (err) {
     console.error('[programs/pagos]', err);
