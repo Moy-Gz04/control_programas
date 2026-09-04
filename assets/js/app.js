@@ -91,7 +91,23 @@ function confirmAction({ title = '¿Estás seguro?', message = 'Esta acción no 
       que las tarjetas y el dashboard muestren cifras correctas de inmediato,
       sin depender de que el programa se haya abierto antes.
    Si el arreglo anidado existe se usa (dato más fresco/editable); si no,
-   se cae al total agregado que manda el listado. ---------- */
+   se cae al total agregado que manda el listado.
+
+   ---- TOTALES vs. ESTADO REAL ----
+   Las funciones total*() de abajo (totalModificado, totalComprometido,
+   totalSolicitadoHacienda, totalPagado) son y siempre han sido acumulados
+   históricos: suman TODOS los registros capturados y nunca "restan" nada
+   porque el recurso haya avanzado a la siguiente etapa (comprometer,
+   solicitar a Hacienda o pagar no elimina ni reduce el historial anterior).
+   Esas son las cifras que se muestran en el apartado "Totales del Programa".
+
+   Las funciones *Disponible/*Pendiente de más abajo sí son dinámicas: se
+   calculan restando lo que ya avanzó a una etapa posterior, y son las que
+   alimentan el apartado "Estado Real del Recurso". El mismo peso jamás se
+   cuenta dos veces como disponible: por eso se restan de manera acumulada
+   siguiendo el flujo Autorizado → Comprometido → Solicitado a Hacienda →
+   Pagado, y se acotan a 0 como piso cuando no tiene sentido un pendiente
+   negativo (p. ej. si se pagó de más respecto a lo solicitado). ---------- */
 function montoAutorizadoBase(p){ return Number(p.monto_autorizado || 0); }
 function totalModificado(p){
   if(p.modificaciones) return p.modificaciones.reduce((s,m)=> s + (m.tipo==='Ampliación'? Number(m.monto) : -Number(m.monto)), 0);
@@ -114,7 +130,23 @@ function totalPagado(p){
   if(p.pagos) return p.pagos.reduce((s,g)=>s+Number(g.monto),0);
   return Number(p.pagado_total || 0);
 }
+/* "Disponible" contra el monto autorizado neto (autorizado + modificaciones).
+   Se conserva con este nombre porque ya se usaba en otras vistas (tarjetas
+   de listado, insights, gráfica comparativa); en el detalle del programa es
+   el mismo valor que "Recurso Modificado Disponible" del Estado Real. */
 function totalDisponible(p){ return totalAutorizadoNeto(p) - totalComprometido(p); }
+
+/* Estado Real: cuánto queda disponible contra el autorizado ORIGINAL (sin
+   contar modificaciones) una vez descontado lo ya comprometido. */
+function totalAutorizadoDisponible(p){ return montoAutorizadoBase(p) - totalComprometido(p); }
+/* Estado Real: de lo comprometido, cuánto sigue comprometido pendiente de
+   solicitar/pagar (lo ya pagado deja de contar aquí, pero sigue intacto en
+   el histórico de totalComprometido). */
+function totalComprometidoPendiente(p){ return Math.max(totalComprometido(p) - totalPagado(p), 0); }
+/* Estado Real: de lo solicitado a Hacienda, cuánto sigue pendiente de pago
+   (lo ya pagado deja de contar aquí, pero sigue intacto en el histórico de
+   totalSolicitadoHacienda). */
+function totalHaciendaPendiente(p){ return Math.max(totalSolicitadoHacienda(p) - totalPagado(p), 0); }
 
 function estadoPrograma(p){
   if(p.monto_autorizado===null || p.monto_autorizado===undefined) return {label:'Registrado', color:'var(--status-registrado)'};
@@ -329,6 +361,15 @@ async function renderDetalle(id){
   const pagado = totalPagado(p);
   const personas = totalPersonasDictaminadas(p);
 
+  // Estado Real: situación actual del recurso en cada etapa del flujo
+  // (Autorizado → Dictaminación/Comprometido → Solicitud a Hacienda → Pago).
+  // A diferencia de los Totales de arriba, estas cifras SÍ se recalculan
+  // conforme el recurso avanza de etapa, sin contar dos veces el mismo peso.
+  const autorizadoDisponible = totalAutorizadoDisponible(p);
+  const modificadoDisponible = disponible; // = autorizadoNeto - comprometido
+  const comprometidoPendiente = totalComprometidoPendiente(p);
+  const haciendaPendiente = totalHaciendaPendiente(p);
+
   el.innerHTML = `
     <button class="back-link" id="backToList">← Volver a Programas</button>
 
@@ -356,11 +397,21 @@ async function renderDetalle(id){
       </div>
     </div>
 
+    <div class="section-title"><h2>Totales del Programa</h2><span class="hint">Histórico acumulado — no disminuye al avanzar de etapa</span></div>
     <div class="kpi-grid">
-      ${kpiTile('Recurso Autorizado', fmtMoney(autorizadoNeto), autorizadoBase? 'Base '+fmtMoney(autorizadoBase):'Sin monto cargado', COLOR_AUTORIZADO)}
-      ${kpiTile('Recurso Modificado', fmtMoney(modificado), (p.modificaciones||[]).length+' movimiento(s)', COLOR_MODIFICADO)}
-      ${kpiTile('Recurso Comprometido', fmtMoney(comprometido), fmtNum(personas)+' personas', COLOR_COMPROMETIDO)}
-      ${kpiTile('Solicitado a Hacienda', fmtMoney(solicitadoHacienda), (p.solicitudesHacienda||[]).length+' trámite(s)', COLOR_HACIENDA)}
+      ${kpiTile('Recurso Autorizado', fmtMoney(autorizadoBase), autorizadoBase? 'Monto autorizado inicial':'Sin monto cargado', COLOR_AUTORIZADO)}
+      ${kpiTile('Recurso Modificado', fmtMoney(autorizadoNeto), 'Autorizado + '+(p.modificaciones||[]).length+' movimiento(s)', COLOR_MODIFICADO)}
+      ${kpiTile('Recurso Comprometido', fmtMoney(comprometido), fmtNum(personas)+' personas dictaminadas', COLOR_COMPROMETIDO)}
+      ${kpiTile('Recurso Solicitado a Hacienda', fmtMoney(solicitadoHacienda), (p.solicitudesHacienda||[]).length+' trámite(s)', COLOR_HACIENDA)}
+      ${kpiTile('Recurso Pagado', fmtMoney(pagado), (p.pagos||[]).length+' pago(s)', COLOR_PAGADO)}
+    </div>
+
+    <div class="section-title"><h2>Estado Real del Recurso</h2><span class="hint">Situación actual — se recalcula conforme el recurso avanza de etapa</span></div>
+    <div class="kpi-grid">
+      ${kpiTile('Recurso Autorizado Disponible', fmtMoney(autorizadoDisponible), 'Autorizado − Comprometido', COLOR_AUTORIZADO)}
+      ${kpiTile('Recurso Modificado Disponible', fmtMoney(modificadoDisponible), 'Modificado − Comprometido', COLOR_MODIFICADO)}
+      ${kpiTile('Recurso Comprometido', fmtMoney(comprometidoPendiente), 'Pendiente de solicitar/pagar', COLOR_COMPROMETIDO)}
+      ${kpiTile('Recurso Solicitado a Hacienda', fmtMoney(haciendaPendiente), 'Pendiente de pago', COLOR_HACIENDA)}
       ${kpiTile('Recurso Pagado', fmtMoney(pagado), (p.pagos||[]).length+' pago(s)', COLOR_PAGADO)}
     </div>
 
