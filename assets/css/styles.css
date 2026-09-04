@@ -308,42 +308,65 @@ textarea:focus-visible,
 .loading-block{display:flex;align-items:center;justify-content:center;gap:11px;padding:40px 10px;color:var(--text-secondary);font-size:14px;}
 .loading-spinner{width:20px;height:20px;border-radius:50%;border:2.5px solid var(--border-strong);border-top-color:var(--maroon-700);display:inline-block;animation:btnspin 0.85s linear infinite;}
 
-/* ===== FORMS ===== */
-.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+/* ===== FORMS =====
+   Formularios compactos: menos relleno, campos agrupados, sin espacios
+   vacíos innecesarios. .form-grid ahora es de 2 columnas por defecto y
+   colapsa a 1 en pantallas angostas o dentro de un modal .compact. */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;}
 .form-grid.single{grid-template-columns:1fr;}
-@media (max-width:520px){.form-grid{grid-template-columns:1fr;}}
-.field label{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-secondary);margin-bottom:7px;}
+.form-grid.cols-3{grid-template-columns:1fr 1fr 1fr;}
+@media (max-width:520px){.form-grid,.form-grid.cols-3{grid-template-columns:1fr;}}
+.field{margin-bottom:0;}
+.field label{display:block;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-secondary);margin-bottom:4px;}
 .field input,.field select,.field textarea{
-  width:100%;padding:11px 14px;border-radius:var(--radius-sm);border:1.5px solid var(--border-strong);
-  background:var(--surface-2);font-size:13.5px;color:var(--text-primary);font-weight:500;
+  width:100%;padding:8px 11px;border-radius:var(--radius-sm);border:1.5px solid var(--border-strong);
+  background:var(--surface-2);font-size:13px;color:var(--text-primary);font-weight:500;
   transition:border-color var(--dur-base) var(--ease-standard), background var(--dur-base) var(--ease-standard), box-shadow var(--dur-base) var(--ease-standard);
 }
+.field textarea{min-height:56px;resize:vertical;}
 .field input:hover,.field select:hover,.field textarea:hover{border-color:#D8D0BE;}
 .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--maroon-600);background:var(--surface-1);box-shadow:var(--focus-ring);}
 .field input:disabled{opacity:0.6;background:var(--cream-100);}
-.field-hint{font-size:11px;color:var(--text-secondary);margin-top:6px;}
+.field-hint{font-size:10.5px;color:var(--text-secondary);margin-top:4px;line-height:1.4;}
 
-/* ===== MODAL ===== */
+/* Grupo de campos relacionados (ej. fecha + hora, o monto + folio) dentro
+   de una misma tarjeta ligera, para que se perciban como una sola unidad
+   y no como campos sueltos. */
+.field-group{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;
+  background:var(--surface-2);border:1px solid var(--border-hairline);border-radius:var(--radius-sm);
+  padding:10px 12px;margin-bottom:10px;
+}
+.field-group.cols-3{grid-template-columns:1fr 1fr 1fr;}
+@media (max-width:480px){.field-group,.field-group.cols-3{grid-template-columns:1fr;}}
+.field-group .field input,.field-group .field select{background:var(--surface-1);}
+.field-group-label{grid-column:1/-1;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--maroon-700);margin-bottom:2px;}
+
+/* ===== MODAL =====
+   Ventanas más pequeñas y con menos relleno; .compact reduce aún más el
+   ancho para formularios cortos (una sola columna). */
 .modal-overlay{
   position:fixed;inset:0;background:rgba(24,10,17,0.5);backdrop-filter:blur(6px);
-  display:none;align-items:center;justify-content:center;z-index:100;padding:20px;
+  display:none;align-items:center;justify-content:center;z-index:100;padding:16px;
 }
 .modal-overlay.show{display:flex;animation:overlayIn var(--dur-base) var(--ease-out);}
 @keyframes overlayIn{from{opacity:0;}to{opacity:1;}}
 .modal{
-  background:var(--surface-1);border-radius:var(--radius-xl);width:100%;max-width:560px;max-height:88vh;overflow-y:auto;
+  background:var(--surface-1);border-radius:var(--radius-lg);width:100%;max-width:460px;max-height:86vh;overflow-y:auto;
   box-shadow:var(--shadow-modal);animation:modalIn var(--dur-slow) var(--ease-spring);
 }
+.modal.modal-wide{max-width:600px;}
 @keyframes modalIn{from{opacity:0;transform:translateY(14px) scale(0.98);}to{opacity:1;transform:none;}}
 .modal-header{
-  padding:20px 26px;background:linear-gradient(120deg,var(--maroon-800),var(--maroon-700));
-  color:#fff;border-radius:var(--radius-xl) var(--radius-xl) 0 0;display:flex;align-items:center;justify-content:space-between;
+  padding:14px 20px;background:linear-gradient(120deg,var(--maroon-800),var(--maroon-700));
+  color:#fff;border-radius:var(--radius-lg) var(--radius-lg) 0 0;display:flex;align-items:center;justify-content:space-between;
 }
-.modal-header h3{margin:0;font-size:15.5px;font-weight:700;}
-.modal-close{background:rgba(255,255,255,0.12);border:none;color:#fff;width:30px;height:30px;border-radius:50%;font-size:15px;line-height:1;transition:background var(--dur-base) var(--ease-standard);}
+.modal-header h3{margin:0;font-size:14px;font-weight:700;}
+.modal-close{background:rgba(255,255,255,0.12);border:none;color:#fff;width:26px;height:26px;border-radius:50%;font-size:13px;line-height:1;transition:background var(--dur-base) var(--ease-standard);flex-shrink:0;}
 .modal-close:hover{background:rgba(255,255,255,0.28);}
-.modal-body{padding:24px 26px;}
-.modal-footer{padding:16px 26px 22px;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;}
+.modal-body{padding:16px 20px;}
+.modal-body>*+*{margin-top:10px;}
+.modal-footer{padding:10px 20px 16px;display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;}
 
 /* ===== TABS / SUBTLE DIVIDER ===== */
 .divider{height:1px;background:var(--border-hairline);margin:18px 0;border:none;}
@@ -365,7 +388,8 @@ textarea:focus-visible,
 .dictamen-block{border:1px solid var(--border-hairline);border-radius:var(--radius-md);padding:17px 18px;margin-bottom:14px;background:var(--surface-2);}
 .dictamen-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:10px;flex-wrap:wrap;}
 .dictamen-head h4{margin:0;font-size:13.5px;font-weight:700;color:var(--text-primary);}
-.solicitud-row{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;background:var(--surface-1);border:1px solid var(--border-hairline);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:8px;}
+.solicitud-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:10px;align-items:end;background:var(--surface-1);border:1px solid var(--border-hairline);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:8px;}
+@media (max-width:760px){.solicitud-row{grid-template-columns:1fr 1fr;}}
 @media (max-width:480px){.solicitud-row{grid-template-columns:1fr;}}
 .solicitud-row .sfield label{font-size:9.5px;color:var(--text-secondary);font-weight:600;text-transform:uppercase;}
 .solicitud-row .sfield input{width:100%;padding:7px 10px;border-radius:var(--radius-xs);border:1px solid var(--border-strong);font-size:13px;font-weight:500;}
@@ -407,3 +431,72 @@ footer.app-footer{text-align:center;padding:30px;color:var(--text-tertiary);font
 .login-error{background:#FCECEE;color:var(--red);border:1px solid #F5C9CE;border-radius:var(--radius-sm);padding:11px 14px;font-size:12.5px;font-weight:600;margin-bottom:18px;display:none;}
 .login-error.show{display:block;animation:fadein var(--dur-base) var(--ease-out);}
 .login-footer-note{text-align:center;font-size:11px;color:var(--text-tertiary);margin-top:20px;line-height:1.6;}
+
+/* =========================================================================
+   SECCIONES MINIMIZABLES
+   Envuelve cada bloque grande del detalle de programa (Dictaminación,
+   Solicitudes a Hacienda, Pagos, Documentos, etc.) para reducir la
+   saturación visual: colapsadas solo muestran el encabezado + un resumen
+   de una línea; expandidas muestran el contenido completo.
+   ========================================================================= */
+.section-title.collapsible-header{cursor:pointer;user-select:none;}
+.section-title.collapsible-header:hover h2{color:var(--maroon-700);}
+.section-toggle-btn{
+  background:var(--cream-100);border:1px solid var(--border-strong);color:var(--maroon-800);
+  width:26px;height:26px;border-radius:50%;font-size:11px;line-height:1;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  transition:background var(--dur-base) var(--ease-standard), transform var(--dur-base) var(--ease-standard);
+}
+.section-toggle-btn:hover{background:var(--cream-200);}
+.section-toggle-btn[aria-expanded="false"]{transform:rotate(-90deg);}
+.section-summary{font-size:var(--fs-xs);color:var(--text-secondary);}
+.section-body{transition:none;}
+.section-body[hidden]{display:none;}
+
+/* =========================================================================
+   DRAG & DROP DE ARCHIVOS
+   Reemplaza el <input type="file"> nativo por una zona visual moderna que
+   distingue claramente "sin archivo" de "archivo cargado", y permite
+   arrastrar, hacer clic, ver nombre/tipo/tamaño, y quitar/reemplazar.
+   ========================================================================= */
+.dropzone{
+  position:relative;border:1.5px dashed var(--border-strong);border-radius:var(--radius-md);
+  background:var(--surface-2);padding:16px 14px;text-align:center;cursor:pointer;
+  transition:border-color var(--dur-base) var(--ease-standard), background var(--dur-base) var(--ease-standard);
+}
+.dropzone:hover{border-color:var(--gold-600);background:var(--cream-50);}
+.dropzone.dragover{border-color:var(--maroon-600);background:#FBF3F6;box-shadow:var(--focus-ring);}
+.dropzone.has-file{border-style:solid;border-color:#9FDCC0;background:#F2FBF7;cursor:default;padding:10px 12px;}
+.dropzone-empty{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.dropzone-icon{font-size:19px;color:var(--gold-600);line-height:1;}
+.dropzone-text{font-size:12.5px;color:var(--text-primary);font-weight:500;}
+.dropzone-text b{color:var(--maroon-700);font-weight:700;}
+.dropzone-hint{font-size:10.5px;color:var(--text-tertiary);}
+.dropzone-file{display:flex;align-items:center;gap:10px;text-align:left;}
+.dz-file-icon{font-size:20px;flex-shrink:0;}
+.dz-file-info{flex:1;min-width:0;}
+.dz-file-name{font-size:12.5px;font-weight:700;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dz-file-meta{font-size:10.5px;color:var(--text-secondary);margin-top:1px;}
+.dz-file-status{font-size:10.5px;font-weight:700;color:#0F7C57;white-space:nowrap;flex-shrink:0;}
+.dropzone .icon-btn{flex-shrink:0;}
+
+/* =========================================================================
+   ESTADO DE SOLICITUDES A HACIENDA (Autorización / disponible para pago)
+   ========================================================================= */
+.hacienda-item{border:1px solid var(--border-hairline);border-radius:var(--radius-md);padding:12px 14px;margin-bottom:10px;background:var(--surface-2);}
+.hacienda-item:last-child{margin-bottom:0;}
+.hacienda-item-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+.hacienda-sub{font-size:11px;color:var(--text-secondary);margin-top:6px;line-height:1.6;}
+.badge-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:var(--radius-pill);font-size:10px;font-weight:700;letter-spacing:0.2px;}
+.badge-pendiente{background:#FBEFD8;color:#8A6512;}
+.badge-autorizada{background:#E1EFE9;color:#0F7C57;}
+.badge-pagada{background:#E5E1F0;color:var(--maroon-700);}
+
+/* =========================================================================
+   SELECT DE SOLICITUD DE HACIENDA (modal Registrar Pago)
+   ========================================================================= */
+.hacienda-preview{
+  background:var(--surface-2);border:1px solid var(--border-hairline);border-radius:var(--radius-sm);
+  padding:10px 12px;font-size:12px;color:var(--text-primary);line-height:1.6;
+}
+.hacienda-preview b{color:var(--maroon-800);}

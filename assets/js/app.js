@@ -26,6 +26,12 @@ const fmtMoney = (n)=> '$' + Number(n||0).toLocaleString('es-MX',{minimumFractio
 const fmtMoneyCompact = (n)=> new Intl.NumberFormat('es-MX',{notation:'compact',compactDisplay:'short',style:'currency',currency:'MXN',maximumFractionDigits:1}).format(n||0);
 const fmtNum = (n)=> Number(n||0).toLocaleString('es-MX');
 const fmtDate = (iso)=> { if(!iso) return '—'; const d=new Date(iso); return d.toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'}) + ' · ' + d.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}); };
+const fmtFileSize = (bytes)=>{
+  if(!bytes && bytes!==0) return '';
+  if(bytes < 1024) return bytes+' B';
+  if(bytes < 1024*1024) return (bytes/1024).toFixed(1)+' KB';
+  return (bytes/(1024*1024)).toFixed(1)+' MB';
+};
 
 function toast(msg, isError){
   const t = document.getElementById('toast');
@@ -80,6 +86,173 @@ function confirmAction({ title = '¿Estás seguro?', message = 'Esta acción no 
     document.getElementById('confirmCancel').addEventListener('click', ()=>finish(false));
     document.getElementById('confirmOk').addEventListener('click', ()=>finish(true));
   });
+}
+
+/* ---------- FECHA Y HORA MANUAL ----------
+   Cada etapa del proceso (dictamen, recurso comprometido, solicitud a
+   Hacienda, autorización, pago) captura su propia fecha/hora real de
+   ejecución mediante un selector visual de calendario + hora, en vez de
+   usar siempre la fecha/hora automática del servidor. Los campos se
+   precargan con "ahora" pero son 100% editables. */
+function pad2(n){ return String(n).padStart(2,'0'); }
+function splitFechaHora(value){
+  const d = value ? new Date(value) : new Date();
+  const base = isNaN(d.getTime()) ? new Date() : d;
+  return {
+    fecha: `${base.getFullYear()}-${pad2(base.getMonth()+1)}-${pad2(base.getDate())}`,
+    hora: `${pad2(base.getHours())}:${pad2(base.getMinutes())}`
+  };
+}
+/* Bloque compacto de Fecha + Hora para usarse dentro de modales. */
+function dateTimeFieldGroupHTML(idPrefix, label, value){
+  const { fecha, hora } = splitFechaHora(value);
+  return `
+    <div class="field-group">
+      <div class="field-group-label">${label}</div>
+      <div class="field"><label>Fecha</label><input type="date" id="${idPrefix}-fecha" value="${fecha}"></div>
+      <div class="field"><label>Hora</label><input type="time" id="${idPrefix}-hora" value="${hora}"></div>
+    </div>`;
+}
+/* Combina fecha (YYYY-MM-DD) + hora (HH:mm), tal como las capturó el
+   usuario en SU hora local (la del navegador, que es la de Ciudad de
+   México/Pachuca), y regresa un ISO string en UTC (con sufijo "Z").
+   Es importante construir el Date con el constructor de componentes
+   (año, mes, día, hora, minuto) y NO con `new Date("YYYY-MM-DDTHH:mm")`:
+   esa segunda forma también se interpreta en hora local del navegador,
+   pero si el string se mandara tal cual al backend, Node.js lo
+   interpretaría en la zona horaria DEL SERVIDOR (normalmente UTC en
+   Render), desfasando la hora capturada por varias horas. Al convertir a
+   ISO/UTC aquí mismo, el backend puede hacer `new Date(iso)` sin ambigüedad
+   sin importar en qué zona horaria corra. */
+function combineFechaHoraISO(fechaStr, horaStr){
+  if(!fechaStr) return null;
+  const [y,m,d] = fechaStr.split('-').map(Number);
+  const [hh,mm] = (horaStr||'00:00').split(':').map(Number);
+  if(!y || !m || !d) return null;
+  const dt = new Date(y, m-1, d, hh||0, mm||0, 0, 0);
+  return isNaN(dt.getTime()) ? null : dt.toISOString();
+}
+function readDateTimeGroup(idPrefix){
+  const fechaEl = document.getElementById(idPrefix+'-fecha');
+  const horaEl = document.getElementById(idPrefix+'-hora');
+  if(!fechaEl || !fechaEl.value) return null;
+  return combineFechaHoraISO(fechaEl.value, horaEl ? horaEl.value : '00:00');
+}
+/* Variante compacta (dos inputs sueltos, sin tarjeta) para usarse dentro de
+   filas ya existentes, como la fila de una solicitud dentro de un dictamen. */
+function dateTimeInlineHTML(dataAttr, key, label, value){
+  const { fecha, hora } = splitFechaHora(value);
+  return `
+      <div class="sfield"><label>${label}</label><input type="date" value="${fecha}" data-${dataAttr}-fecha="${key}"></div>
+      <div class="sfield"><label>Hora</label><input type="time" value="${hora}" data-${dataAttr}-hora="${key}"></div>`;
+}
+function readDateTimeInline(root, dataAttr, key){
+  const fechaEl = root.querySelector(`[data-${dataAttr}-fecha="${key}"]`);
+  const horaEl = root.querySelector(`[data-${dataAttr}-hora="${key}"]`);
+  if(!fechaEl || !fechaEl.value) return null;
+  return combineFechaHoraISO(fechaEl.value, horaEl ? horaEl.value : '00:00');
+}
+
+/* ---------- SECCIONES MINIMIZABLES ----------
+   Envuelve un bloque grande del detalle de programa en un encabezado
+   colapsable + tarjeta de contenido. El estado (abierta/cerrada) se
+   conserva en memoria por sección mientras dura la sesión, para que no se
+   pierda cada vez que se vuelve a dibujar la pantalla tras guardar algo. */
+const __sectionState = {};
+function isSectionOpen(id, defaultOpen){
+  return __sectionState.hasOwnProperty(id) ? __sectionState[id] : defaultOpen;
+}
+function collapsibleSection(id, title, hint, bodyHtml, defaultOpen){
+  const open = isSectionOpen(id, defaultOpen !== false);
+  return `
+    <div class="section-title collapsible-header" data-toggle-section="${id}">
+      <h2>${title}</h2>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="hint section-summary">${hint||''}</span>
+        <button type="button" class="section-toggle-btn" data-section-toggle-btn aria-expanded="${open}" title="${open?'Minimizar':'Expandir'}">▾</button>
+      </div>
+    </div>
+    <div class="card section-body" id="section-body-${id}" ${open?'':'hidden'}>${bodyHtml}</div>`;
+}
+function bindCollapsibleSections(root){
+  root.querySelectorAll('[data-toggle-section]').forEach(header=>{
+    header.addEventListener('click', ()=>{
+      const id = header.dataset.toggleSection;
+      const body = document.getElementById('section-body-'+id);
+      const btn = header.querySelector('[data-section-toggle-btn]');
+      if(!body || !btn) return;
+      const willOpen = body.hasAttribute('hidden');
+      if(willOpen){ body.removeAttribute('hidden'); } else { body.setAttribute('hidden',''); }
+      btn.setAttribute('aria-expanded', String(willOpen));
+      btn.title = willOpen ? 'Minimizar' : 'Expandir';
+      __sectionState[id] = willOpen;
+    });
+  });
+}
+
+/* ---------- DRAG & DROP DE ARCHIVOS ----------
+   Reemplaza el <input type="file"> tradicional por una zona moderna:
+   arrastrar, hacer clic, ver nombre/tipo/tamaño del archivo cargado, y
+   poder quitarlo o reemplazarlo. El <input type="file"> real se conserva
+   (oculto) dentro de la zona, así que el resto del código que lee
+   `document.getElementById(id).files[0]` sigue funcionando sin cambios. */
+function fileDropZoneHTML(id, label, accept, hint){
+  return `
+    <div class="field">
+      <label>${label}</label>
+      <div class="dropzone" data-dropzone="${id}" tabindex="0">
+        <input type="file" id="${id}" accept="${accept||''}" hidden>
+        <div class="dropzone-empty" data-dz-empty="${id}">
+          <div class="dropzone-icon">⬆</div>
+          <div class="dropzone-text"><b>Haz clic</b> o arrastra un archivo aquí</div>
+          <div class="dropzone-hint">${hint || 'PDF, JPG, PNG o Word · máx. 15 MB'}</div>
+        </div>
+        <div class="dropzone-file" data-dz-file="${id}" hidden>
+          <div class="dz-file-icon">📄</div>
+          <div class="dz-file-info">
+            <div class="dz-file-name" data-dz-name="${id}"></div>
+            <div class="dz-file-meta" data-dz-meta="${id}"></div>
+          </div>
+          <div class="dz-file-status" data-dz-status="${id}">✓ Cargado</div>
+          <button type="button" class="icon-btn" data-dz-remove="${id}" title="Quitar archivo">✕</button>
+        </div>
+      </div>
+    </div>`;
+}
+function bindDropZone(id){
+  const zone = document.querySelector(`[data-dropzone="${id}"]`);
+  const input = document.getElementById(id);
+  if(!zone || !input) return;
+  const empty = zone.querySelector(`[data-dz-empty="${id}"]`);
+  const fileBox = zone.querySelector(`[data-dz-file="${id}"]`);
+  const nameEl = zone.querySelector(`[data-dz-name="${id}"]`);
+  const metaEl = zone.querySelector(`[data-dz-meta="${id}"]`);
+  const removeBtn = zone.querySelector(`[data-dz-remove="${id}"]`);
+
+  function showFile(file){
+    empty.hidden = true; fileBox.hidden = false;
+    nameEl.textContent = file.name;
+    const ext = (file.name.split('.').pop()||'').toUpperCase();
+    metaEl.textContent = `${ext} · ${fmtFileSize(file.size)}`;
+    zone.classList.add('has-file');
+  }
+  function clearFile(){
+    input.value = '';
+    empty.hidden = false; fileBox.hidden = true;
+    zone.classList.remove('has-file');
+  }
+  zone.addEventListener('click', (e)=>{ if(e.target.closest('[data-dz-remove]')) return; input.click(); });
+  zone.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); input.click(); } });
+  input.addEventListener('change', ()=>{ if(input.files[0]) showFile(input.files[0]); else clearFile(); });
+  ['dragenter','dragover'].forEach(evt=> zone.addEventListener(evt, (e)=>{ e.preventDefault(); e.stopPropagation(); zone.classList.add('dragover'); }));
+  ['dragleave','drop'].forEach(evt=> zone.addEventListener(evt, (e)=>{ e.preventDefault(); e.stopPropagation(); zone.classList.remove('dragover'); }));
+  zone.addEventListener('drop', (e)=>{
+    const file = e.dataTransfer.files && e.dataTransfer.files[0];
+    if(!file) return;
+    input.files = e.dataTransfer.files;
+    showFile(file);
+  });
+  removeBtn.addEventListener('click', (e)=>{ e.stopPropagation(); clearFile(); });
 }
 
 /* ---------- COMPUTED HELPERS (sobre datos numéricos del API) ----------
@@ -370,6 +543,8 @@ async function renderDetalle(id){
   const comprometidoPendiente = totalComprometidoPendiente(p);
   const haciendaPendiente = totalHaciendaPendiente(p);
 
+  const disponiblesParaPago = (p.solicitudesHacienda||[]).filter(h=>h.disponibleParaPago);
+
   el.innerHTML = `
     <button class="back-link" id="backToList">← Volver a Programas</button>
 
@@ -470,45 +645,32 @@ async function renderDetalle(id){
       `}
     </div>
 
-    <div class="section-title"><h2>Dictaminación</h2><span class="hint">${(p.dictamenes||[]).length} dictamen(es) · ${fmtNum(personas)} personas</span></div>
-    <div class="card" id="dictamenesCard">
+    ${collapsibleSection('dictaminacion','Dictaminación', `${(p.dictamenes||[]).length} dictamen(es) · ${fmtNum(personas)} personas`, `
       ${(p.dictamenes||[]).map(d=>dictamenBlockHTML(p,d)).join('') || `<div class="empty-state">Sin dictámenes registrados.</div>`}
       <div style="text-align:center;margin-top:8px;" id="dictamenAddWrap">
         <button class="btn btn-primary btn-sm" id="btnAddDictamen">+ Agregar Otro Dictamen</button>
       </div>
-    </div>
+    `)}
 
-    <div class="section-title"><h2>Recurso Solicitado a Hacienda</h2></div>
-    <div class="card">
-      <div class="log-list">
-        ${(p.solicitudesHacienda||[]).length? p.solicitudesHacienda.map(h=>`
-          <div class="log-row">
-            <div><div style="font-weight:700;">Folio ${h.folio}</div><div class="lmeta">${fmtDate(h.fecha)}
-              ${h.documento_url ? ` · <a href="${h.documento_url}" target="_blank" rel="noopener">Ver Documento</a>` : ''}
-            </div></div>
-            <div class="lamount">${fmtMoney(h.monto)}</div>
-          </div>`).join('') : `<div class="empty-state">Sin trámites enviados a Hacienda.</div>`}
-      </div>
+    ${collapsibleSection('hacienda','Solicitudes a Hacienda', `${(p.solicitudesHacienda||[]).length} trámite(s)`, `
+      ${(p.solicitudesHacienda||[]).length? p.solicitudesHacienda.map(haciendaItemHTML).join('') : `<div class="empty-state">Sin trámites enviados a Hacienda.</div>`}
       <div style="text-align:center;margin-top:10px;">
         <button class="btn btn-outline btn-sm" id="btnAddHacienda">+ Registrar Solicitud a Hacienda</button>
       </div>
-    </div>
+    `)}
 
-    <div class="section-title"><h2>Recurso Pagado</h2></div>
-    <div class="card">
+    ${collapsibleSection('pagos','Recurso Pagado', `${(p.pagos||[]).length} pago(s)`, `
       <div class="log-list">
-        ${(p.pagos||[]).length? p.pagos.map(g=>`
-          <div class="log-row">
-            <div><div style="font-weight:700;">Folio ${g.folio}</div><div class="lmeta">${fmtDate(g.fecha)}
-              ${g.documento_url ? ` · <a href="${g.documento_url}" target="_blank" rel="noopener">Ver Documento</a>` : ''}
-            </div></div>
-            <div class="lamount pos">${fmtMoney(g.monto)}</div>
-          </div>`).join('') : `<div class="empty-state">Sin pagos registrados.</div>`}
+        ${(p.pagos||[]).length? p.pagos.map(g=>pagoRowHTML(p,g)).join('') : `<div class="empty-state">Sin pagos registrados.</div>`}
       </div>
       <div style="text-align:center;margin-top:10px;">
-        <button class="btn btn-outline btn-sm" id="btnAddPago">+ Registrar Pago</button>
+        ${disponiblesParaPago.length
+          ? `<button class="btn btn-outline btn-sm" id="btnAddPago">+ Registrar Pago</button>`
+          : `<div class="field-hint" style="margin-bottom:8px;">No hay solicitudes a Hacienda autorizadas y pendientes de pago.</div>`}
       </div>
-    </div>
+    `)}
+
+    ${collapsibleSection('documentos','Documentos', `${documentosCount(p)} archivo(s)`, documentosSectionBody(p), false)}
   `;
 
   document.getElementById('backToList').addEventListener('click', ()=>navigate({name:'programas'}));
@@ -521,7 +683,14 @@ async function renderDetalle(id){
   if(btnMod) btnMod.addEventListener('click', ()=>openModalModificacion(p.id));
   document.getElementById('btnAddDictamen').addEventListener('click', ()=> addDictamenLocal(p));
   document.getElementById('btnAddHacienda').addEventListener('click', ()=>openModalHacienda(p.id));
-  document.getElementById('btnAddPago').addEventListener('click', ()=>openModalPago(p.id));
+  const btnPago = document.getElementById('btnAddPago');
+  if(btnPago) btnPago.addEventListener('click', ()=>openModalPago(p));
+
+  bindCollapsibleSections(el);
+
+  el.querySelectorAll('[data-autorizar-hacienda]').forEach(btn=>{
+    btn.addEventListener('click', ()=> openModalAutorizacion(p.id, btn.dataset.autorizarHacienda));
+  });
 
   // Nada de lo que pasa dentro de un dictamen (agregar el dictamen, llenar
   // el monto, agregar solicitudes, llenar personas) toca el servidor ni
@@ -533,6 +702,85 @@ async function renderDetalle(id){
   el.querySelectorAll('.dictamen-block').forEach(block=> bindDictamenBlock(block, p));
 
   buildComparativeChart('chartPrograma', [p], true);
+}
+
+/* ---------- Recurso Pagado: fila con referencia a la solicitud de Hacienda ---------- */
+function pagoRowHTML(p, g){
+  const hac = (p.solicitudesHacienda||[]).find(h=>h.id===g.hacienda_id);
+  return `
+          <div class="log-row">
+            <div><div style="font-weight:700;">Folio ${g.folio}</div><div class="lmeta">${fmtDate(g.fecha)}${hac? ` · Solicitud a Hacienda folio ${hac.folio}` : ''}
+              ${g.documento_url ? ` · <a href="${g.documento_url}" target="_blank" rel="noopener">Ver Documento</a>` : ''}
+            </div></div>
+            <div class="lamount pos">${fmtMoney(g.monto)}</div>
+          </div>`;
+}
+
+/* ---------- Solicitudes a Hacienda: estado (pendiente / autorizada / pagada) ---------- */
+function haciendaItemHTML(h){
+  const badge = h.pagada
+    ? { cls:'badge-pagada', label:'Pagada' }
+    : h.autorizacion
+      ? { cls:'badge-autorizada', label:'Autorizada · disponible para pago' }
+      : { cls:'badge-pendiente', label:'Pendiente de autorización' };
+  return `
+  <div class="hacienda-item">
+    <div class="hacienda-item-head">
+      <div>
+        <div style="font-weight:700;">Folio ${h.folio}</div>
+        <div class="lmeta">Solicitado: ${fmtMoney(h.monto)} · ${fmtDate(h.fecha)}
+          ${h.documento_url ? ` · <a href="${h.documento_url}" target="_blank" rel="noopener">Ver Documento</a>` : ''}
+        </div>
+      </div>
+      <span class="badge-pill ${badge.cls}">${badge.label}</span>
+    </div>
+    ${h.autorizacion ? `
+      <div class="hacienda-sub">Autorizado: <b>${fmtMoney(h.autorizacion.monto_autorizado)}</b> · ${fmtDate(h.autorizacion.fecha_autorizacion)}
+        ${h.autorizacion.documento_url ? ` · <a href="${h.autorizacion.documento_url}" target="_blank" rel="noopener">Ver Documento</a>` : ''}
+      </div>
+    ` : `
+      <div style="text-align:right;margin-top:8px;">
+        <button class="btn btn-outline btn-sm" data-autorizar-hacienda="${h.id}">+ Registrar Autorización</button>
+      </div>
+    `}
+  </div>`;
+}
+
+/* ---------- Documentos: resumen de todos los archivos cargados en el programa ---------- */
+function documentosCount(p){
+  let n = 0;
+  if(p.monto_autorizado_documento_url) n++;
+  n += (p.modificaciones||[]).filter(m=>m.documento_url).length;
+  (p.solicitudesHacienda||[]).forEach(h=>{
+    if(h.documento_url) n++;
+    if(h.autorizacion && h.autorizacion.documento_url) n++;
+  });
+  n += (p.pagos||[]).filter(g=>g.documento_url).length;
+  return n;
+}
+function documentosSectionBody(p){
+  const rows = [];
+  if(p.monto_autorizado_documento_url){
+    rows.push({ tipo:'Monto Autorizado', ref:'Referencia '+(p.monto_autorizado_referencia||'S/R'), fecha:p.monto_autorizado_fecha, url:p.monto_autorizado_documento_url });
+  }
+  (p.modificaciones||[]).forEach(m=>{
+    if(m.documento_url) rows.push({ tipo:`Modificación (${m.tipo})`, ref:m.motivo||'', fecha:m.created_at, url:m.documento_url });
+  });
+  (p.solicitudesHacienda||[]).forEach(h=>{
+    if(h.documento_url) rows.push({ tipo:'Solicitud a Hacienda', ref:'Folio '+h.folio, fecha:h.fecha, url:h.documento_url });
+    if(h.autorizacion && h.autorizacion.documento_url) rows.push({ tipo:'Autorización de Hacienda', ref:'Folio '+h.folio, fecha:h.autorizacion.fecha_autorizacion, url:h.autorizacion.documento_url });
+  });
+  (p.pagos||[]).forEach(g=>{
+    if(g.documento_url) rows.push({ tipo:'Pago', ref:'Folio '+g.folio, fecha:g.fecha, url:g.documento_url });
+  });
+
+  if(!rows.length) return `<div class="empty-state">Sin documentos cargados todavía.</div>`;
+  rows.sort((a,b)=> new Date(b.fecha||0) - new Date(a.fecha||0));
+  return `<div class="log-list">${rows.map(r=>`
+    <div class="log-row">
+      <div><div style="font-weight:700;">${r.tipo}</div><div class="lmeta">${r.ref} · ${fmtDate(r.fecha)}</div></div>
+      <a class="btn btn-outline btn-sm" href="${r.url}" target="_blank" rel="noopener">Ver Documento</a>
+    </div>`).join('')}</div>`;
 }
 
 /* ---------- Dictaminación: alta/edición local + guardado en un solo paso ----------
@@ -557,9 +805,12 @@ function dictamenBlockHTML(p,d){
         <button class="btn btn-danger btn-sm" data-del-dictamen="${d.id}">Eliminar Dictamen</button>
       </div>
     </div>
-    <div class="field" style="max-width:260px;margin-bottom:12px;">
-      <label>Monto Autorizado del Dictamen</label>
-      <input type="number" min="0" step="0.01" value="${d.monto_autorizado}" data-dic-monto="${d.id}">
+    <div class="form-grid cols-3" style="margin-bottom:12px;">
+      <div class="field">
+        <label>Monto Autorizado del Dictamen</label>
+        <input type="number" min="0" step="0.01" value="${d.monto_autorizado}" data-dic-monto="${d.id}">
+      </div>
+      ${dateTimeInlineWrapper('dic', d.id, 'Registro del dictamen', d.fecha_dictamen)}
     </div>
     <div class="solicitudes-list">
       ${(d.solicitudes||[]).map(s=>solicitudRowHTML(d.id,s)).join('')}
@@ -578,12 +829,23 @@ function dictamenBlockHTML(p,d){
   </div>`;
 }
 
+/* Envuelve dateTimeInlineHTML como dos <div class="field"> sueltos, para que
+   quepan en el mismo form-grid.cols-3 que el monto del dictamen (en vez del
+   .field-group de tarjeta, pensado para modales). */
+function dateTimeInlineWrapper(dataAttr, key, label, value){
+  const { fecha, hora } = splitFechaHora(value);
+  return `
+      <div class="field"><label>${label} (fecha)</label><input type="date" value="${fecha}" data-${dataAttr}-fecha="${key}"></div>
+      <div class="field"><label>${label} (hora)</label><input type="time" value="${hora}" data-${dataAttr}-hora="${key}"></div>`;
+}
+
 function solicitudRowHTML(dicId, s){
   const esNueva = esTemporal(s.id);
   return `
       <div class="solicitud-row">
         <div class="sfield"><label>Solicitud No.</label><input value="${esNueva? 'Nueva' : s.numero}" disabled></div>
         <div class="sfield"><label>Cantidad de Personas</label><input type="number" min="0" value="${s.personas||0}" data-sol-personas="${dicId}|${s.id}"></div>
+        ${dateTimeInlineHTML('sol', dicId+'|'+s.id, 'Compromiso', s.fecha_compromiso)}
         <button class="icon-btn" title="Eliminar solicitud" data-del-solicitud="${s.id}">✕</button>
       </div>`;
 }
@@ -620,7 +882,7 @@ function bindSolicitudRow(row, block, p){
 /* + Agregar Otro Dictamen: solo inserta un bloque vacío en el formulario.
    No se registra nada en el servidor hasta presionar "Guardar Dictamen". */
 function addDictamenLocal(p){
-  const card = document.getElementById('dictamenesCard');
+  const card = document.getElementById('dictamenesCard') || document.getElementById('section-body-dictaminacion');
   const emptyState = card.querySelector('.empty-state');
   if(emptyState) emptyState.remove();
 
@@ -658,15 +920,16 @@ async function saveDictamen(pid, dicId, blockEl, btn){
   if(!blockEl) return;
   const montoInput = blockEl.querySelector('[data-dic-monto]');
   const montoValue = Number(montoInput ? montoInput.value : 0) || 0;
+  const fechaDictamen = readDateTimeInline(blockEl, 'dic', dicId);
   const solRows = Array.from(blockEl.querySelectorAll('.solicitud-row'));
 
   await withLoading(btn, ()=>safeCall(async ()=>{
     let realDicId = dicId;
     if(esTemporal(dicId)){
-      const creado = await Api.post(`/programs/${pid}/dictamenes`, {monto_autorizado: montoValue});
+      const creado = await Api.post(`/programs/${pid}/dictamenes`, {monto_autorizado: montoValue, fecha_dictamen: fechaDictamen});
       realDicId = creado.id;
     } else {
-      await Api.patch(`/programs/${pid}/dictamenes/${dicId}`, {monto_autorizado: montoValue});
+      await Api.patch(`/programs/${pid}/dictamenes/${dicId}`, {monto_autorizado: montoValue, fecha_dictamen: fechaDictamen});
     }
 
     for(const row of solRows){
@@ -674,10 +937,11 @@ async function saveDictamen(pid, dicId, blockEl, btn){
       if(!inp) continue;
       const [, solId] = inp.dataset.solPersonas.split('|');
       const personas = Number(inp.value||0);
+      const fechaCompromiso = readDateTimeInline(row, 'sol', dicId+'|'+solId);
       if(esTemporal(solId)){
-        await Api.post(`/programs/${pid}/dictamenes/${realDicId}/solicitudes`, {personas});
+        await Api.post(`/programs/${pid}/dictamenes/${realDicId}/solicitudes`, {personas, fecha_compromiso: fechaCompromiso});
       } else {
-        await Api.patch(`/programs/${pid}/dictamenes/${realDicId}/solicitudes/${solId}`, {personas});
+        await Api.patch(`/programs/${pid}/dictamenes/${realDicId}/solicitudes/${solId}`, {personas, fecha_compromiso: fechaCompromiso});
       }
     }
   }, 'Dictamen guardado correctamente.'), 'Guardando…');
@@ -909,8 +1173,12 @@ function buildComparativeChart(canvasId, programs){
    ========================================================================= */
 const overlay = document.getElementById('modalOverlay');
 const modalBox = document.getElementById('modalBox');
-function openModal(html){ modalBox.innerHTML = html; overlay.classList.add('show'); }
-function closeModal(){ overlay.classList.remove('show'); modalBox.innerHTML=''; }
+function openModal(html, opts){
+  modalBox.innerHTML = html;
+  modalBox.classList.toggle('modal-wide', !!(opts && opts.wide));
+  overlay.classList.add('show');
+}
+function closeModal(){ overlay.classList.remove('show'); modalBox.innerHTML=''; modalBox.classList.remove('modal-wide'); }
 overlay.addEventListener('click', (e)=>{ if(e.target===overlay) closeModal(); });
 
 /* ---- Nuevo Programa ---- */
@@ -929,11 +1197,11 @@ function openModalNuevoPrograma(){
         </div>
         <div class="field"><label>Nombre del Proyecto</label><input type="text" id="f-nombre" placeholder="Ej. Programa de Apoyo a..."></div>
       </div>
-      <div class="form-grid" style="margin-top:16px;">
+      <div class="form-grid">
         <div class="field"><label>Cantidad por Beneficiario</label><input type="number" id="f-montoBenef" min="0" step="0.01" placeholder="$0.00"></div>
         <div class="field"><label>Meta de Beneficiarios</label><input type="number" id="f-meta" min="0" step="1" placeholder="0"></div>
       </div>
-      <div id="f-error" style="color:var(--red);font-size:12.5px;font-weight:700;margin-top:12px;display:none;"></div>
+      <div id="f-error" style="color:var(--red);font-size:12.5px;font-weight:700;display:none;"></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
@@ -974,12 +1242,12 @@ function openModalEditarPrograma(p){
       <div class="form-grid single">
         <div class="field"><label>Nombre del Proyecto</label><input type="text" id="e-nombre" value="${p.nombre.replace(/"/g,'&quot;')}"></div>
       </div>
-      <div class="form-grid" style="margin-top:16px;">
+      <div class="form-grid">
         <div class="field"><label>Cantidad por Beneficiario</label><input type="number" id="e-montoBenef" min="0" step="0.01" value="${p.monto_beneficiario}"></div>
         <div class="field"><label>Meta de Beneficiarios</label><input type="number" id="e-meta" min="0" step="1" value="${p.meta_beneficiarios}"></div>
       </div>
-      <div class="field-hint" style="margin-top:12px;">La Unidad Presupuestal y la clave (${p.clave}) no se pueden cambiar una vez creado el programa.</div>
-      <div id="e-error" style="color:var(--red);font-size:12.5px;font-weight:700;margin-top:12px;display:none;"></div>
+      <div class="field-hint">La Unidad Presupuestal y la clave (${p.clave}) no se pueden cambiar una vez creado el programa.</div>
+      <div id="e-error" style="color:var(--red);font-size:12.5px;font-weight:700;display:none;"></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
@@ -1020,7 +1288,7 @@ function openModalEliminarPrograma(p){
         Estás a punto de eliminar permanentemente el programa <b>${p.nombre}</b> (${p.clave}).
       </p>
       <p style="font-size:13.5px;line-height:1.6;color:var(--red);font-weight:700;margin:0;">
-        Esto borra también todos sus movimientos: monto autorizado, modificaciones, dictámenes, solicitudes, trámites a Hacienda y pagos. Esta acción no se puede deshacer.
+        Esto borra también todos sus movimientos: monto autorizado, modificaciones, dictámenes, solicitudes, trámites a Hacienda, autorizaciones y pagos. Esta acción no se puede deshacer.
       </p>
     </div>
     <div class="modal-footer">
@@ -1050,7 +1318,7 @@ function openModalCargarMonto(pid){
       <div class="form-grid single">
         <div class="field"><label>Monto Autorizado</label><input type="number" id="m-monto" min="0" step="0.01" placeholder="$0.00"></div>
         <div class="field"><label>Referencia / Oficio</label><input type="text" id="m-ref" placeholder="Ej. OF-DGPPE-0001-2026"></div>
-        <div class="field"><label>Oficio (documento)</label><input type="file" id="m-doc" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"></div>
+        ${fileDropZoneHTML('m-doc','Oficio (documento)','.pdf,.jpg,.jpeg,.png,.doc,.docx')}
         <div class="field-hint">Este monto será la base de referencia para las gráficas y cálculos del programa.</div>
       </div>
     </div>
@@ -1059,6 +1327,7 @@ function openModalCargarMonto(pid){
       <button class="btn btn-gold" id="submitMonto">Guardar Monto</button>
     </div>
   `);
+  bindDropZone('m-doc');
   document.getElementById('submitMonto').addEventListener('click', async (e)=>{
     const btn = e.currentTarget;
     const monto = Number(document.getElementById('m-monto').value);
@@ -1087,8 +1356,8 @@ function openModalModificacion(pid){
           <select id="mo-tipo"><option value="Ampliación">Ampliación (+)</option><option value="Reducción">Reducción (−)</option></select>
         </div>
         <div class="field"><label>Monto</label><input type="number" id="mo-monto" min="0" step="0.01" placeholder="$0.00"></div>
-        <div class="field"><label>Motivo</label><textarea id="mo-motivo" rows="3" placeholder="Describe el motivo de la modificación…"></textarea></div>
-        <div class="field"><label>Oficio (documento)</label><input type="file" id="mo-doc" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"></div>
+        <div class="field"><label>Motivo</label><textarea id="mo-motivo" rows="2" placeholder="Describe el motivo de la modificación…"></textarea></div>
+        ${fileDropZoneHTML('mo-doc','Oficio (documento)','.pdf,.jpg,.jpeg,.png,.doc,.docx')}
       </div>
     </div>
     <div class="modal-footer">
@@ -1096,6 +1365,7 @@ function openModalModificacion(pid){
       <button class="btn btn-primary" id="submitMod">Registrar</button>
     </div>
   `);
+  bindDropZone('mo-doc');
   document.getElementById('submitMod').addEventListener('click', async (e)=>{
     const btn = e.currentTarget;
     const tipo = document.getElementById('mo-tipo').value;
@@ -1124,7 +1394,8 @@ function openModalHacienda(pid){
       <div class="form-grid single">
         <div class="field"><label>Folio</label><input type="text" id="h-folio" placeholder="Ej. SH-2026-0001"></div>
         <div class="field"><label>Monto Solicitado</label><input type="number" id="h-monto" min="0" step="0.01" placeholder="$0.00"></div>
-        <div class="field"><label>Documento que avala la solicitud</label><input type="file" id="h-doc" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"></div>
+        ${dateTimeFieldGroupHTML('h-fecha','Solicitud de recurso a Hacienda')}
+        ${fileDropZoneHTML('h-doc','Documento que avala la solicitud','.pdf,.jpg,.jpeg,.png,.doc,.docx')}
       </div>
     </div>
     <div class="modal-footer">
@@ -1132,15 +1403,18 @@ function openModalHacienda(pid){
       <button class="btn btn-primary" id="submitHac">Registrar</button>
     </div>
   `);
+  bindDropZone('h-doc');
   document.getElementById('submitHac').addEventListener('click', async (e)=>{
     const btn = e.currentTarget;
     const folio = document.getElementById('h-folio').value.trim();
     const monto = Number(document.getElementById('h-monto').value);
+    const fecha = readDateTimeGroup('h-fecha');
     const archivo = document.getElementById('h-doc').files[0];
     if(!monto) return;
     const fd = new FormData();
     fd.append('folio', folio);
     fd.append('monto', monto);
+    if(fecha) fd.append('fecha', fecha);
     if(archivo) fd.append('documento', archivo);
     try{
       await withLoading(btn, ()=>safeCall(()=>Api.postForm(`/programs/${pid}/hacienda`, fd), 'Solicitud a Hacienda registrada.'), archivo ? 'Subiendo documento…' : 'Guardando…');
@@ -1150,15 +1424,75 @@ function openModalHacienda(pid){
   });
 }
 
-/* ---- Pago ---- */
-function openModalPago(pid){
+/* ---- Autorización de Hacienda ----
+   Registra que una solicitud ya enviada a Hacienda fue autorizada: monto
+   autorizado, fecha/hora propia y su documento. A partir de ahí la
+   solicitud queda disponible para ligarle un pago. */
+function openModalAutorizacion(pid, hacId){
+  const p = state.programs.find(x=>x.id===pid);
+  const hac = p && (p.solicitudesHacienda||[]).find(h=>String(h.id)===String(hacId));
+  openModal(`
+    <div class="modal-header"><h3>Registrar Autorización de Hacienda</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      ${hac ? `<div class="hacienda-preview">Solicitud <b>Folio ${hac.folio}</b> · Monto solicitado <b>${fmtMoney(hac.monto)}</b> · ${fmtDate(hac.fecha)}</div>` : ''}
+      <div class="form-grid single">
+        <div class="field"><label>Monto Autorizado por Hacienda</label><input type="number" id="au-monto" min="0" step="0.01" placeholder="$0.00" value="${hac? hac.monto : ''}"></div>
+        ${dateTimeFieldGroupHTML('au-fecha','Autorización de Hacienda')}
+        ${fileDropZoneHTML('au-doc','Documento de autorización','.pdf,.jpg,.jpeg,.png,.doc,.docx')}
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" id="submitAutorizacion">Registrar</button>
+    </div>
+  `);
+  bindDropZone('au-doc');
+  document.getElementById('submitAutorizacion').addEventListener('click', async (e)=>{
+    const btn = e.currentTarget;
+    const monto = Number(document.getElementById('au-monto').value);
+    const fecha = readDateTimeGroup('au-fecha');
+    const archivo = document.getElementById('au-doc').files[0];
+    if(!monto) return;
+    const fd = new FormData();
+    fd.append('monto_autorizado', monto);
+    if(fecha) fd.append('fecha_autorizacion', fecha);
+    if(archivo) fd.append('documento', archivo);
+    try{
+      await withLoading(btn, ()=>safeCall(()=>Api.postForm(`/programs/${pid}/hacienda/${hacId}/autorizacion`, fd), 'Autorización de Hacienda registrada.'), archivo ? 'Subiendo documento…' : 'Guardando…');
+      closeModal();
+      await refreshOneProgram(pid); renderDetalle(pid);
+    }catch(e){ /* el error ya se mostró vía safeCall */ }
+  });
+}
+
+/* ---- Pago ----
+   En vez de capturar un monto suelto, el usuario elige de un desplegable
+   cuál de las solicitudes a Hacienda YA AUTORIZADAS y sin pago todavía es
+   la que se está pagando. Al seleccionarla se muestra su información y el
+   pago queda ligado a esa solicitud (Solicitud a Hacienda → Pago →
+   Documento comprobatorio). */
+function openModalPago(p){
+  const disponibles = (p.solicitudesHacienda||[]).filter(h=>h.disponibleParaPago);
+  if(!disponibles.length){
+    toast('No hay solicitudes a Hacienda autorizadas y disponibles para pago.', true);
+    return;
+  }
   openModal(`
     <div class="modal-header"><h3>Registrar Pago</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
     <div class="modal-body">
       <div class="form-grid single">
-        <div class="field"><label>Folio</label><input type="text" id="g-folio" placeholder="Ej. PG-2026-0001"></div>
+        <div class="field">
+          <label>Solicitud a Hacienda pagada</label>
+          <select id="g-hacienda">
+            <option value="">Selecciona la solicitud que se pagó…</option>
+            ${disponibles.map(h=>`<option value="${h.id}">Solicitud folio ${h.folio} — ${fmtMoney(h.autorizacion.monto_autorizado)}</option>`).join('')}
+          </select>
+        </div>
+        <div id="g-preview"></div>
+        <div class="field"><label>Folio del Pago</label><input type="text" id="g-folio" placeholder="Ej. PG-2026-0001"></div>
         <div class="field"><label>Monto Pagado</label><input type="number" id="g-monto" min="0" step="0.01" placeholder="$0.00"></div>
-        <div class="field"><label>Documento que avala el pago</label><input type="file" id="g-doc" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"></div>
+        ${dateTimeFieldGroupHTML('g-fecha','Registro del pago')}
+        ${fileDropZoneHTML('g-doc','Documento que avala el pago','.pdf,.jpg,.jpeg,.png,.doc,.docx')}
       </div>
     </div>
     <div class="modal-footer">
@@ -1166,20 +1500,40 @@ function openModalPago(pid){
       <button class="btn btn-primary" id="submitPago">Registrar</button>
     </div>
   `);
+  bindDropZone('g-doc');
+
+  const selHacienda = document.getElementById('g-hacienda');
+  const preview = document.getElementById('g-preview');
+  const montoInput = document.getElementById('g-monto');
+  selHacienda.addEventListener('change', ()=>{
+    const hac = disponibles.find(h=>String(h.id)===selHacienda.value);
+    if(!hac){ preview.innerHTML=''; return; }
+    preview.innerHTML = `<div class="hacienda-preview">
+      Solicitado: <b>${fmtMoney(hac.monto)}</b> · ${fmtDate(hac.fecha)}<br>
+      Autorizado por Hacienda: <b>${fmtMoney(hac.autorizacion.monto_autorizado)}</b> · ${fmtDate(hac.autorizacion.fecha_autorizacion)}
+    </div>`;
+    if(!montoInput.value) montoInput.value = hac.autorizacion.monto_autorizado;
+  });
+
   document.getElementById('submitPago').addEventListener('click', async (e)=>{
     const btn = e.currentTarget;
+    const haciendaId = selHacienda.value;
     const folio = document.getElementById('g-folio').value.trim();
-    const monto = Number(document.getElementById('g-monto').value);
+    const monto = Number(montoInput.value);
+    const fecha = readDateTimeGroup('g-fecha');
     const archivo = document.getElementById('g-doc').files[0];
+    if(!haciendaId){ toast('Selecciona la solicitud a Hacienda que se pagó.', true); return; }
     if(!monto) return;
     const fd = new FormData();
+    fd.append('hacienda_id', haciendaId);
     fd.append('folio', folio);
     fd.append('monto', monto);
+    if(fecha) fd.append('fecha', fecha);
     if(archivo) fd.append('documento', archivo);
     try{
-      await withLoading(btn, ()=>safeCall(()=>Api.postForm(`/programs/${pid}/pagos`, fd), 'Pago registrado.'), archivo ? 'Subiendo documento…' : 'Guardando…');
+      await withLoading(btn, ()=>safeCall(()=>Api.postForm(`/programs/${p.id}/pagos`, fd), 'Pago registrado.'), archivo ? 'Subiendo documento…' : 'Guardando…');
       closeModal();
-      await refreshOneProgram(pid); renderDetalle(pid);
+      await refreshOneProgram(p.id); renderDetalle(p.id);
     }catch(e){ /* el error ya se mostró vía safeCall */ }
   });
 }
