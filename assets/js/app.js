@@ -22,7 +22,7 @@ const COLOR_HACIENDA     = '#2A78D6';
 
 let chartRegistry = {};
 let UNIDADES = [];
-let state = { view:{name:'inicio'}, programs: [] };
+let state = { view:{name:'programas'}, programs: [] };
 
 /* ---------- FORMAT HELPERS ---------- */
 const fmtMoney = (n)=> '$' + Number(n||0).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -35,6 +35,62 @@ const fmtFileSize = (bytes)=>{
   if(bytes < 1024*1024) return (bytes/1024).toFixed(1)+' KB';
   return (bytes/(1024*1024)).toFixed(1)+' MB';
 };
+
+/* ---------- CAMPOS NUMÉRICOS CON SEPARADOR DE MILES EN VIVO ----------
+   Un <input type="number"> nativo no admite comas, así que estos campos
+   (montos y cantidades) se escriben como texto y se les agrega separador
+   de miles y punto decimal mientras el usuario teclea, para que las
+   cifras grandes sean legibles (ej. 1,000,000.00). data-money admite
+   decimales (dinero); data-int solo enteros (personas, meta de
+   beneficiarios). numValue() quita las comas antes de usar el valor en
+   cálculos o al enviarlo a la API — el valor real nunca lleva comas. */
+function formatDigitsLive(raw, allowDecimals){
+  let clean = String(raw||'').replace(/[^\d.]/g,'');
+  if(!allowDecimals){
+    clean = clean.replace(/\./g,'');
+  } else {
+    const firstDot = clean.indexOf('.');
+    if(firstDot!==-1) clean = clean.slice(0,firstDot+1) + clean.slice(firstDot+1).replace(/\./g,'');
+  }
+  const [intRaw, decRaw] = clean.split('.');
+  const intFormatted = intRaw ? Number(intRaw).toLocaleString('es-MX') : '';
+  if(decRaw!==undefined) return intFormatted + '.' + decRaw.slice(0,2);
+  return intFormatted;
+}
+function bindNumberInputs(root){
+  (root||document).querySelectorAll('[data-money],[data-int]').forEach(el=>{
+    if(el.dataset.fmtBound) return;
+    el.dataset.fmtBound = '1';
+    const allowDecimals = el.hasAttribute('data-money');
+    el.setAttribute('inputmode','decimal');
+    el.addEventListener('input', ()=>{
+      const prevPos = el.selectionStart===null ? el.value.length : el.selectionStart;
+      const digitsBefore = el.value.slice(0, prevPos).replace(/[^\d.]/g,'').length;
+      el.value = formatDigitsLive(el.value, allowDecimals);
+      let count = 0, pos = el.value.length;
+      for(let i=0;i<el.value.length;i++){
+        if(/[\d.]/.test(el.value[i])) count++;
+        if(count>=digitsBefore){ pos = i+1; break; }
+      }
+      el.setSelectionRange(pos,pos);
+    });
+  });
+}
+function numValue(el){
+  if(!el) return 0;
+  const n = Number(String(el.value||'').replace(/,/g,''));
+  return isNaN(n) ? 0 : n;
+}
+function fmtInputMoney(v){
+  if(v===null||v===undefined||v==='') return '';
+  const n = Number(v);
+  return isNaN(n) ? '' : n.toLocaleString('es-MX',{maximumFractionDigits:2});
+}
+function fmtInputInt(v){
+  if(v===null||v===undefined||v==='') return '';
+  const n = Number(v);
+  return isNaN(n) ? '' : n.toLocaleString('es-MX');
+}
 
 function toast(msg, isError){
   const t = document.getElementById('toast');
@@ -346,7 +402,10 @@ async function init(){
     window.location.href = 'index.html';
   });
 
-  document.getElementById('view-inicio').innerHTML = `<div class="loading-block"><span class="loading-spinner"></span> Cargando información…</div>`;
+  const footerYearEl = document.getElementById('footerYear');
+  if(footerYearEl) footerYearEl.textContent = new Date().getFullYear();
+
+  document.getElementById('view-programas').innerHTML = `<div class="loading-block"><span class="loading-spinner"></span> Cargando información…</div>`;
 
   try{
     UNIDADES = await Api.get('/unidades');
@@ -354,7 +413,7 @@ async function init(){
   }catch(err){
     toast(err.message || 'No se pudieron cargar los datos.', true);
   }
-  navigate({name:'inicio'});
+  navigate({name:'programas'});
 }
 
 async function refreshPrograms(){ state.programs = await Api.get('/programs'); }
@@ -373,12 +432,7 @@ function navigate(view){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.querySelectorAll('.nav-link').forEach(n=>n.classList.remove('active'));
 
-  if(view.name==='inicio'){
-    document.getElementById('view-inicio').classList.add('active');
-    document.querySelector('[data-nav="inicio"]').classList.add('active');
-    setHeader('SISTEMA DE PROGRAMAS SOCIALES','Gestión Presupuestal, Dictaminación y Seguimiento','Secretaría de Bienestar e Inclusión Social');
-    renderInicio();
-  } else if(view.name==='programas'){
+  if(view.name==='programas'){
     document.getElementById('view-programas').classList.add('active');
     document.querySelector('[data-nav="programas"]').classList.add('active');
     setHeader('PROGRAMAS REGISTRADOS','Listado general de programas sociales', CURRENT_USER.rol==='admin' ? 'Todas las unidades presupuestales' : ('UP '+CURRENT_USER.unidad_codigo));
@@ -400,58 +454,6 @@ document.getElementById('navLinks').addEventListener('click', (e)=>{
   const link = e.target.closest('[data-nav]');
   if(link){ e.preventDefault(); navigate({name: link.dataset.nav}); }
 });
-
-/* =========================================================================
-   VIEW: INICIO (DASHBOARD)
-   ========================================================================= */
-function renderInicio(){
-  const el = document.getElementById('view-inicio');
-  const totA = state.programs.reduce((s,p)=>s+totalAutorizadoNeto(p),0);
-  const totMod = state.programs.reduce((s,p)=>s+totalModificado(p),0);
-  const totComp = state.programs.reduce((s,p)=>s+totalComprometido(p),0);
-  const totHac = state.programs.reduce((s,p)=>s+totalSolicitadoHacienda(p),0);
-  const totPag = state.programs.reduce((s,p)=>s+totalPagado(p),0);
-
-  el.innerHTML = `
-    <div class="kpi-grid">
-      ${kpiTile('Recurso Autorizado', fmtMoney(totA), state.programs.length+' programas', COLOR_AUTORIZADO)}
-      ${kpiTile('Recurso Modificado', fmtMoney(totMod), 'Ampliaciones / reducciones', COLOR_MODIFICADO)}
-      ${kpiTile('Recurso Comprometido', fmtMoney(totComp), 'Vía dictaminación', COLOR_COMPROMETIDO)}
-      ${kpiTile('Solicitado a Hacienda', fmtMoney(totHac), 'Trámites enviados', COLOR_HACIENDA)}
-      ${kpiTile('Recurso Pagado', fmtMoney(totPag), 'Ministrado a beneficiarios', COLOR_PAGADO)}
-    </div>
-
-    <div class="section-title"><h2>Comparativo por Programa</h2><span class="hint">Autorizado · Comprometido · Pagado</span></div>
-    <div class="chart-flex">
-      <div class="chart-card">
-        <div class="chart-head">
-          <h3>Recurso Autorizado vs. Comprometido vs. Pagado</h3>
-          <button class="table-toggle" id="toggleTableDash">Ver tabla de datos</button>
-        </div>
-        <div style="height:320px;"><canvas id="chartDashboard"></canvas></div>
-        <table class="data-table" id="tableDash">
-          <thead><tr><th>Programa</th><th>Autorizado</th><th>Comprometido</th><th>Pagado</th></tr></thead>
-          <tbody>
-            ${state.programs.map(p=>`<tr><td>${p.nombre}</td><td>${fmtMoney(totalAutorizadoNeto(p))}</td><td>${fmtMoney(totalComprometido(p))}</td><td>${fmtMoney(totalPagado(p))}</td></tr>`).join('')}
-          </tbody>
-        </table>
-      </div>
-      <div class="insight-card">
-        <div class="insight-head">Situación Actual</div>
-        ${generateInsightGeneral(state.programs)}
-      </div>
-    </div>
-
-    <div class="section-title"><h2>Programas</h2><span class="hint">${state.programs.length} registrados</span></div>
-    <div class="programs-grid">
-      ${state.programs.map(programTileHTML).join('') || emptyPrograms()}
-    </div>
-  `;
-
-  document.getElementById('toggleTableDash').addEventListener('click', ()=>document.getElementById('tableDash').classList.toggle('show'));
-  bindProgramTileClicks(el);
-  buildComparativeChart('chartDashboard', state.programs);
-}
 
 function kpiTile(label,value,sub,color){
   return `<div class="kpi-card" style="--accent:${color}">
@@ -493,7 +495,7 @@ function bindProgramTileClicks(root){
 }
 
 /* =========================================================================
-   VIEW: PROGRAMAS (listado)
+   VIEW: PROGRAMAS (única vista principal del sistema: solo el listado).
    ========================================================================= */
 function renderProgramas(){
   const el = document.getElementById('view-programas');
@@ -587,35 +589,14 @@ async function renderDetalle(id){
 
     <div class="section-title"><h2>Estado Real del Recurso</h2><span class="hint">Situación actual — se recalcula conforme el recurso avanza de etapa</span></div>
     <div class="kpi-grid">
-      ${kpiTile('Recurso Autorizado Disponible', fmtMoney(autorizadoDisponible), 'Autorizado − Comprometido', COLOR_AUTORIZADO)}
-      ${kpiTile('Recurso Modificado Disponible', fmtMoney(modificadoDisponible), 'Modificado − Comprometido', COLOR_MODIFICADO)}
-      ${kpiTile('Recurso Comprometido', fmtMoney(comprometidoPendiente), 'Pendiente de solicitar/pagar', COLOR_COMPROMETIDO)}
-      ${kpiTile('Recurso Solicitado a Hacienda', fmtMoney(haciendaPendiente), 'Pendiente de pago', COLOR_HACIENDA)}
-      ${kpiTile('Recurso Pagado', fmtMoney(pagado), (p.pagos||[]).length+' pago(s)', COLOR_PAGADO)}
+      ${kpiTileBrand('Recurso Autorizado Disponible', fmtMoney(autorizadoDisponible), 'Autorizado − Comprometido')}
+      ${kpiTileBrand('Recurso Modificado Disponible', fmtMoney(modificadoDisponible), 'Modificado − Comprometido')}
+      ${kpiTileBrand('Recurso Comprometido', fmtMoney(comprometidoPendiente), 'Pendiente de solicitar/pagar')}
+      ${kpiTileBrand('Recurso Solicitado a Hacienda', fmtMoney(haciendaPendiente), 'Pendiente de pago')}
+      ${kpiTileBrand('Recurso Pagado', fmtMoney(pagado), (p.pagos||[]).length+' pago(s)')}
     </div>
 
-    <div class="chart-flex">
-      <div class="chart-card">
-        <div class="chart-head">
-          <h3>Comparativo del Programa</h3>
-          <button class="table-toggle" id="toggleTableProg">Ver tabla de datos</button>
-        </div>
-        <div style="height:260px;"><canvas id="chartPrograma"></canvas></div>
-        <table class="data-table" id="tableProg">
-          <thead><tr><th>Concepto</th><th>Monto</th></tr></thead>
-          <tbody>
-            <tr><td>Recurso Autorizado</td><td>${fmtMoney(autorizadoNeto)}</td></tr>
-            <tr><td>Recurso Comprometido</td><td>${fmtMoney(comprometido)}</td></tr>
-            <tr><td>Solicitado a Hacienda</td><td>${fmtMoney(solicitadoHacienda)}</td></tr>
-            <tr><td>Recurso Pagado</td><td>${fmtMoney(pagado)}</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="insight-card">
-        <div class="insight-head">Situación Actual</div>
-        ${generateInsightPrograma(p)}
-      </div>
-    </div>
+    ${pipelinePresupuestoHTML(p)}
 
     <div class="section-title"><h2>Monto Autorizado y Modificaciones</h2></div>
     <div class="card">
@@ -634,10 +615,11 @@ async function renderDetalle(id){
         <div class="log-list">
           ${(p.modificaciones||[]).length ? p.modificaciones.map(m=>`
             <div class="log-row">
-              <div>
-                <div style="font-weight:700;">${m.tipo}</div>
+              <div class="log-row-icon ${m.tipo==='Ampliación'?'log-row-icon-pos':'log-row-icon-neg'}">${m.tipo==='Ampliación'?'+':'−'}</div>
+              <div class="log-row-main">
+                <div class="log-row-title">${m.tipo}</div>
                 <div class="lmeta">${m.motivo||''} · ${fmtDate(m.created_at)}
-                  ${m.documento_url ? ` · <a href="${m.documento_url}" target="_blank" rel="noopener">Ver Documento</a>` : ''}
+                  ${m.documento_url ? ` · <a class="doc-link" href="${m.documento_url}" target="_blank" rel="noopener">Ver Documento</a>` : ''}
                 </div>
               </div>
               <div class="lamount ${m.tipo==='Ampliación'?'pos':'neg'}">${m.tipo==='Ampliación'?'+':'−'} ${fmtMoney(m.monto)}</div>
@@ -678,7 +660,8 @@ async function renderDetalle(id){
   `;
 
   document.getElementById('backToList').addEventListener('click', ()=>navigate({name:'programas'}));
-  document.getElementById('toggleTableProg').addEventListener('click', ()=>document.getElementById('tableProg').classList.toggle('show'));
+  const btnToggleTableProg = document.getElementById('toggleTableProg');
+  if(btnToggleTableProg) btnToggleTableProg.addEventListener('click', ()=>document.getElementById('tableProg').classList.toggle('show'));
   document.getElementById('btnEditarPrograma').addEventListener('click', ()=>openModalEditarPrograma(p));
   document.getElementById('btnEliminarPrograma').addEventListener('click', ()=>openModalEliminarPrograma(p));
   const btnCargar = document.getElementById('btnCargarMonto');
@@ -691,6 +674,7 @@ async function renderDetalle(id){
   if(btnPago) btnPago.addEventListener('click', ()=>openModalPago(p));
 
   bindCollapsibleSections(el);
+  bindNumberInputs(el);
 
   el.querySelectorAll('[data-autorizar-hacienda]').forEach(btn=>{
     btn.addEventListener('click', ()=> openModalAutorizacion(p.id, btn.dataset.autorizarHacienda));
@@ -704,18 +688,164 @@ async function renderDetalle(id){
   // API (con confirmación), pero uno agregado localmente y aún no guardado
   // simplemente se quita del formulario.
   el.querySelectorAll('.dictamen-block').forEach(block=> bindDictamenBlock(block, p));
+}
 
-  buildComparativeChart('chartPrograma', [p], true);
+/* ---------- KPI con estilo "marca" (fondo guinda sólido) ----------
+   Usado en "Estado Real del Recurso": a diferencia de las tarjetas de
+   "Totales del Programa" (con acento de color por concepto), aquí las 5
+   tarjetas comparten el mismo color institucional sólido para leerse como
+   un solo bloque de "situación actual". */
+function kpiTileBrand(label,value,sub){
+  return `<div class="kpi-card kpi-card-brand">
+    <div class="kpi-label">${label}</div>
+    <div class="kpi-value">${value}</div>
+    <div class="kpi-sub">${sub}</div>
+  </div>`;
+}
+
+/* ---------- FLUJO DE RECURSOS DEL PROGRAMA ----------
+   Diagrama de barras tipo "flujo" (no es una gráfica de Chart.js, es HTML/
+   CSS puro): muestra en una sola vista cómo el Recurso Autorizado inicial
+   se reparte entre Comprometido y Disponible sin comprometer, y cuánto de
+   eso ya se convirtió en Recurso Pagado — pensado para leerse de un
+   vistazo, en vez de tener que comparar varias tarjetas sueltas. */
+/* =========================================================================
+   PIPELINE DE FLUJO PRESUPUESTAL (vista integrada Histórico + Situación Actual)
+   Componente oscuro tipo "pipeline/funnel": 5 nodos con barras conectadas
+   por listones (ribbons) tipo Sankey dibujados en SVG puro (sin librerías
+   nuevas), más un panel lateral con el Recurso Disponible Libre, una
+   alerta de validación y las notificaciones (reutiliza generateInsightPrograma).
+   Los listones y las barras comparten la MISMA rejilla de 5 columnas
+   (grid-template-columns:repeat(5,1fr) en CSS y 5 franjas iguales en el
+   viewBox del SVG), así que quedan alineados sin necesidad de calcular
+   píxeles fijos ni depender del ancho real del contenedor.
+   ========================================================================= */
+function pipelinePresupuestoHTML(p){
+  const autorizadoBase = montoAutorizadoBase(p);
+  if(!autorizadoBase){
+    return `<div class="card"><div class="empty-state">Aún no hay Monto Autorizado cargado; el flujo del presupuesto aparecerá aquí en cuanto se registre.</div></div>`;
+  }
+  const comprometido = totalComprometido(p);
+  const solicitadoHacienda = totalSolicitadoHacienda(p);
+  const pagado = totalPagado(p);
+  const disponible = Math.max(totalAutorizadoDisponible(p), 0);
+  const comprometidoPendiente = totalComprometidoPendiente(p);
+  const haciendaPendiente = totalHaciendaPendiente(p);
+  const pctDisponible = autorizadoBase>0 ? (disponible/autorizadoBase*100) : 0;
+
+  const nodos = [
+    { titulo:'Recurso Autorizado', sub:'Inicial', valor:autorizadoBase },
+    { titulo:'Recurso Disponible', sub:`${pctDisponible.toFixed(1)}% del autorizado`, valor:disponible },
+    { titulo:'Comprometido', sub:`Histórico: ${fmtMoney(comprometido)}`, valor:comprometidoPendiente },
+    { titulo:'Solicitado a Hacienda', sub:`Histórico: ${fmtMoney(solicitadoHacienda)}`, valor:haciendaPendiente },
+    { titulo:'Pagado Real', sub:`${(p.pagos||[]).length} pago(s)`, valor:pagado },
+  ];
+
+  // Alerta de validación: la misma condición ya usada en generateInsightPrograma
+  // (montos reales, nada inventado) — si Hacienda o el pago exceden la etapa
+  // previa, se avisa; si no, se confirma que no hay inconsistencias.
+  const excedeHacienda = solicitadoHacienda > comprometido + 0.01;
+  const excedePago = pagado > solicitadoHacienda + 0.01 && solicitadoHacienda>0;
+  const hayAlerta = excedeHacienda || excedePago;
+  const alertaHtml = hayAlerta
+    ? `<div class="pipeline-alert pipeline-alert-warn">⚠ ${excedePago ? 'El pago excede lo solicitado a Hacienda.' : 'Lo solicitado a Hacienda excede el recurso comprometido.'} Revisa los registros.</div>`
+    : `<div class="pipeline-alert pipeline-alert-ok">✓ Sin inconsistencias entre comprometido, solicitado y pagado.</div>`;
+
+  const BAR_H = 170; // debe coincidir con --pipeline-bar-h en CSS
+  const N = nodos.length;
+  const maxScale = Math.max(autorizadoBase, comprometido, solicitadoHacienda, pagado, 1);
+  const heightFor = (v)=> v>0 ? Math.max((v/maxScale) * BAR_H, 5) : 0;
+  const alturas = nodos.map(n=>heightFor(n.valor));
+
+  // Listones SVG: viewBox de N*100 unidades de ancho por BAR_H de alto.
+  // Cada nodo ocupa una franja de 100 unidades (igual que las columnas del
+  // grid en CSS); la barra se centra en esa franja con 56% de ancho.
+  const slotW = 100;
+  const barHalfW = slotW*0.28;
+  const gradId = `pipeGrad-${p.id}`;
+  let ribbons = '';
+  for(let i=0;i<N-1;i++){
+    const x1 = i*slotW + slotW/2 + barHalfW;
+    const x2 = (i+1)*slotW + slotW/2 - barHalfW;
+    const y1top = BAR_H - alturas[i];
+    const y2top = BAR_H - alturas[i+1];
+    const xm = (x1+x2)/2;
+    ribbons += `<path d="M ${x1} ${y1top} C ${xm} ${y1top}, ${xm} ${y2top}, ${x2} ${y2top} L ${x2} ${BAR_H} C ${xm} ${BAR_H}, ${xm} ${BAR_H}, ${x1} ${BAR_H} Z" fill="url(#${gradId})" opacity="0.55"/>`;
+  }
+
+  return `
+  <div class="pipeline-card pipeline-card-chart">
+    <div class="pipeline-eyebrow">Flujo y Estado del Presupuesto</div>
+    <div class="pipeline-bar-row" style="height:${BAR_H}px;">
+      <svg class="pipeline-svg" viewBox="0 0 ${N*slotW} ${BAR_H}" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="${gradId}" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="var(--pipeline-guinda)"/>
+            <stop offset="100%" stop-color="var(--pipeline-gold)"/>
+          </linearGradient>
+        </defs>
+        ${ribbons}
+      </svg>
+      <div class="pipeline-bar-grid">
+        ${nodos.map((n,i)=>`
+          <div class="pipeline-bar-col">
+            <div class="pipeline-bar has-tooltip" data-tooltip="${n.titulo}: ${fmtMoney(n.valor)} · ${n.sub}" style="height:${alturas[i]}px;">${fmtMoney(n.valor)}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="pipeline-label-grid">
+      ${nodos.map(n=>`
+        <div class="pipeline-node-label">
+          <div class="pipeline-node-title">${n.titulo}</div>
+          <div class="pipeline-node-sub">${n.sub}</div>
+        </div>`).join('')}
+    </div>
+    <div style="text-align:right;margin-top:14px;">
+      <button class="table-toggle" id="toggleTableProg">Ver tabla de datos</button>
+    </div>
+    <table class="data-table" id="tableProg">
+      <thead><tr><th>Concepto</th><th>Monto</th></tr></thead>
+      <tbody>
+        <tr><td>Recurso Autorizado</td><td>${fmtMoney(autorizadoBase)}</td></tr>
+        <tr><td>Recurso Disponible</td><td>${fmtMoney(disponible)}</td></tr>
+        <tr><td>Recurso Comprometido (histórico)</td><td>${fmtMoney(comprometido)}</td></tr>
+        <tr><td>Solicitado a Hacienda (histórico)</td><td>${fmtMoney(solicitadoHacienda)}</td></tr>
+        <tr><td>Recurso Pagado</td><td>${fmtMoney(pagado)}</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pipeline-card pipeline-card-info">
+    <div class="pipeline-info-body">
+      <div class="pipeline-info-side">
+        <div class="pipeline-side-title">Situación Actual</div>
+        <div class="pipeline-side-box">
+          <div class="pipeline-side-label">Recurso Disponible Libre</div>
+          <div class="pipeline-side-value">${fmtMoney(disponible)}</div>
+          <div class="pipeline-side-sub">Histórico pagado: ${fmtMoney(pagado)}</div>
+        </div>
+        ${alertaHtml}
+      </div>
+      <div class="pipeline-info-notifications">
+        <div class="pipeline-side-title">Notificaciones Recientes</div>
+        <div class="pipeline-notifications">${generateInsightPrograma(p)}</div>
+      </div>
+    </div>
+  </div>`;
 }
 
 /* ---------- Recurso Pagado: fila con referencia a la solicitud de Hacienda ---------- */
 function pagoRowHTML(p, g){
   const hac = (p.solicitudesHacienda||[]).find(h=>h.id===g.hacienda_id);
   return `
-          <div class="log-row">
-            <div><div style="font-weight:700;">Folio ${g.folio}</div><div class="lmeta">${fmtDate(g.fecha)}${hac? ` · Solicitud a Hacienda folio ${hac.folio}` : ''}
-              ${g.documento_url ? ` · <a href="${g.documento_url}" target="_blank" rel="noopener">Ver Documento</a>` : ''}
-            </div></div>
+          <div class="log-row log-row-pago">
+            <div class="log-row-icon log-row-icon-pos">$</div>
+            <div class="log-row-main">
+              <div class="log-row-title">Folio ${g.folio}</div>
+              <div class="lmeta">${fmtDate(g.fecha)}${hac? ` · Solicitud a Hacienda folio ${hac.folio}` : ''}
+                ${g.documento_url ? ` · <a class="doc-link" href="${g.documento_url}" target="_blank" rel="noopener">Ver Documento</a>` : ''}
+              </div>
+            </div>
             <div class="lamount pos">${fmtMoney(g.monto)}</div>
           </div>`;
 }
@@ -723,28 +853,31 @@ function pagoRowHTML(p, g){
 /* ---------- Solicitudes a Hacienda: estado (pendiente / autorizada / pagada) ---------- */
 function haciendaItemHTML(h){
   const badge = h.pagada
-    ? { cls:'badge-pagada', label:'Pagada' }
+    ? { cls:'badge-pagada', mod:'is-pagada', label:'Pagada' }
     : h.autorizacion
-      ? { cls:'badge-autorizada', label:'Autorizada · disponible para pago' }
-      : { cls:'badge-pendiente', label:'Pendiente de autorización' };
+      ? { cls:'badge-autorizada', mod:'is-autorizada', label:'Autorizada · disponible para pago' }
+      : { cls:'badge-pendiente', mod:'is-pendiente', label:'Pendiente de autorización' };
   return `
-  <div class="hacienda-item">
+  <div class="hacienda-item ${badge.mod}">
     <div class="hacienda-item-head">
-      <div>
-        <div style="font-weight:700;">Folio ${h.folio}</div>
-        <div class="lmeta">Solicitado: ${fmtMoney(h.monto)} · ${fmtDate(h.fecha)}
-          ${h.documento_url ? ` · <a href="${h.documento_url}" target="_blank" rel="noopener">Ver Documento</a>` : ''}
+      <div class="hacienda-item-main">
+        <div class="hacienda-item-title">Folio ${h.folio}</div>
+        <div class="lmeta">Solicitado: ${fmtDate(h.fecha)}
+          ${h.documento_url ? ` · <a class="doc-link" href="${h.documento_url}" target="_blank" rel="noopener">Ver Documento</a>` : ''}
         </div>
       </div>
-      <span class="badge-pill ${badge.cls}">${badge.label}</span>
+      <div class="hacienda-item-amount">
+        <div class="hacienda-item-monto">${fmtMoney(h.monto)}</div>
+        <span class="badge-pill ${badge.cls}">${badge.label}</span>
+      </div>
     </div>
     ${h.autorizacion ? `
       <div class="hacienda-sub">Autorizado: <b>${fmtMoney(h.autorizacion.monto_autorizado)}</b> · ${fmtDate(h.autorizacion.fecha_autorizacion)}
-        ${h.autorizacion.documento_url ? ` · <a href="${h.autorizacion.documento_url}" target="_blank" rel="noopener">Ver Documento</a>` : ''}
+        ${h.autorizacion.documento_url ? ` · <a class="doc-link" href="${h.autorizacion.documento_url}" target="_blank" rel="noopener">Ver Documento</a>` : ''}
       </div>
     ` : `
       <div style="text-align:right;margin-top:8px;">
-        <button class="btn btn-outline btn-sm" data-autorizar-hacienda="${h.id}">+ Registrar Autorización</button>
+        <button class="btn btn-gold btn-sm" data-autorizar-hacienda="${h.id}">+ Registrar Autorización</button>
       </div>
     `}
   </div>`;
@@ -781,8 +914,9 @@ function documentosSectionBody(p){
   if(!rows.length) return `<div class="empty-state">Sin documentos cargados todavía.</div>`;
   rows.sort((a,b)=> new Date(b.fecha||0) - new Date(a.fecha||0));
   return `<div class="log-list">${rows.map(r=>`
-    <div class="log-row">
-      <div><div style="font-weight:700;">${r.tipo}</div><div class="lmeta">${r.ref} · ${fmtDate(r.fecha)}</div></div>
+    <div class="log-row log-row-doc">
+      <div class="log-row-icon log-row-icon-doc">📄</div>
+      <div class="log-row-main"><div class="log-row-title">${r.tipo}</div><div class="lmeta">${r.ref} · ${fmtDate(r.fecha)}</div></div>
       <a class="btn btn-outline btn-sm" href="${r.url}" target="_blank" rel="noopener">Ver Documento</a>
     </div>`).join('')}</div>`;
 }
@@ -812,7 +946,7 @@ function dictamenBlockHTML(p,d){
     <div class="form-grid cols-3" style="margin-bottom:12px;">
       <div class="field">
         <label>Monto Autorizado del Dictamen</label>
-        <input type="number" min="0" step="0.01" value="${d.monto_autorizado}" data-dic-monto="${d.id}">
+        <input type="text" data-money value="${fmtInputMoney(d.monto_autorizado)}" data-dic-monto="${d.id}">
       </div>
       ${dateTimeInlineWrapper('dic', d.id, 'Registro del dictamen', d.fecha_dictamen)}
     </div>
@@ -848,7 +982,7 @@ function solicitudRowHTML(dicId, s){
   return `
       <div class="solicitud-row">
         <div class="sfield"><label>Solicitud No.</label><input value="${esNueva? 'Nueva' : s.numero}" disabled></div>
-        <div class="sfield"><label>Cantidad de Personas</label><input type="number" min="0" value="${s.personas||0}" data-sol-personas="${dicId}|${s.id}"></div>
+        <div class="sfield"><label>Cantidad de Personas</label><input type="text" data-int value="${fmtInputInt(s.personas||0)}" data-sol-personas="${dicId}|${s.id}"></div>
         ${dateTimeInlineHTML('sol', dicId+'|'+s.id, 'Compromiso', s.fecha_compromiso)}
         <button class="icon-btn" title="Eliminar solicitud" data-del-solicitud="${s.id}">✕</button>
       </div>`;
@@ -858,7 +992,7 @@ function solicitudRowHTML(dicId, s){
    "Recurso comprometido" que se muestran al pie del dictamen, conforme se
    agregan/quitan solicitudes o se edita la cantidad de personas. */
 function recomputeDictamenTotals(block, montoBeneficiario){
-  const personas = Array.from(block.querySelectorAll('[data-sol-personas]')).reduce((s,inp)=> s+Number(inp.value||0), 0);
+  const personas = Array.from(block.querySelectorAll('[data-sol-personas]')).reduce((s,inp)=> s+numValue(inp), 0);
   const comprometido = personas * Number(montoBeneficiario||0);
   const totalDiv = block.querySelector('.dictamen-total');
   if(totalDiv){
@@ -897,6 +1031,7 @@ function addDictamenLocal(p){
 
   document.getElementById('dictamenAddWrap').insertAdjacentElement('beforebegin', block);
   bindDictamenBlock(block, p);
+  bindNumberInputs(block);
   block.scrollIntoView({behavior:'smooth', block:'center'});
 }
 
@@ -912,6 +1047,7 @@ function addSolicitudLocal(block, p){
   const actionsRow = block.querySelector('[data-dictamen-actions]');
   actionsRow.insertAdjacentElement('beforebegin', row);
   bindSolicitudRow(row, block, p);
+  bindNumberInputs(row);
   recomputeDictamenTotals(block, p.monto_beneficiario);
 }
 
@@ -923,7 +1059,7 @@ function addSolicitudLocal(block, p){
 async function saveDictamen(pid, dicId, blockEl, btn){
   if(!blockEl) return;
   const montoInput = blockEl.querySelector('[data-dic-monto]');
-  const montoValue = Number(montoInput ? montoInput.value : 0) || 0;
+  const montoValue = montoInput ? numValue(montoInput) : 0;
   const fechaDictamen = readDateTimeInline(blockEl, 'dic', dicId);
   const solRows = Array.from(blockEl.querySelectorAll('.solicitud-row'));
 
@@ -940,7 +1076,7 @@ async function saveDictamen(pid, dicId, blockEl, btn){
       const inp = row.querySelector('[data-sol-personas]');
       if(!inp) continue;
       const [, solId] = inp.dataset.solPersonas.split('|');
-      const personas = Number(inp.value||0);
+      const personas = numValue(inp);
       const fechaCompromiso = readDateTimeInline(row, 'sol', dicId+'|'+solId);
       if(esTemporal(solId)){
         await Api.post(`/programs/${pid}/dictamenes/${realDicId}/solicitudes`, {personas, fecha_compromiso: fechaCompromiso});
@@ -1046,7 +1182,7 @@ function generateInsightGeneral(programs){
 
 function generateInsightPrograma(p){
   if(p.monto_autorizado===null || p.monto_autorizado===undefined){
-    return `<p>Este programa todavía no tiene Monto Autorizado cargado, por lo que aún no hay cifras que comparar en la gráfica. Carga el monto autorizado para comenzar el seguimiento presupuestal.</p>`;
+    return `<ul class="insight-bullets"><li>Este programa todavía no tiene Monto Autorizado cargado, por lo que aún no hay cifras que comparar en la gráfica. Carga el monto autorizado para comenzar el seguimiento presupuestal.</li></ul>`;
   }
 
   const autorizado = totalAutorizadoNeto(p);
@@ -1065,45 +1201,44 @@ function generateInsightPrograma(p){
   let html = '';
 
   if(numDictamenes===0){
-    html += `<p>Con un recurso autorizado de <b>${fmtMoney(autorizado)}</b>, este programa aún no tiene dictámenes registrados: dictaminar es el primer paso pendiente antes de poder comprometer recurso.</p>`;
+    html += `<li>Con un recurso autorizado de <b>${fmtMoney(autorizado)}</b>, este programa aún no tiene dictámenes registrados: dictaminar es el primer paso pendiente antes de poder comprometer recurso.</li>`;
     if(disponible<0){
-      html += `<p style="color:#FF9FB0;font-weight:700;">El programa excede su recurso autorizado por <b>${fmtMoney(Math.abs(disponible))}</b>.</p>`;
+      html += `<li style="color:#FF9FB0;font-weight:700;">El programa excede su recurso autorizado por <b>${fmtMoney(Math.abs(disponible))}</b>.</li>`;
     }
-    return html;
+    return `<ul class="insight-bullets">${html}</ul>`;
   }
 
-  html += `<p>De los <b>${fmtMoney(autorizado)}</b> autorizados, se han comprometido <b>${fmtMoney(comprometido)}</b> a través de <b>${numDictamenes}</b> dictamen${numDictamenes===1?'':'es'} y <b>${fmtNum(personas)}</b> persona${personas===1?'':'s'} dictaminada${personas===1?'':'s'} (<b>${pctComprometido.toFixed(1)}%</b> del autorizado).</p>`;
+  html += `<li>De los <b>${fmtMoney(autorizado)}</b> autorizados, se han comprometido <b>${fmtMoney(comprometido)}</b> a través de <b>${numDictamenes}</b> dictamen${numDictamenes===1?'':'es'} y <b>${fmtNum(personas)}</b> persona${personas===1?'':'s'} dictaminada${personas===1?'':'s'} (<b>${pctComprometido.toFixed(1)}%</b> del autorizado).</li>`;
 
   if(numTramitesHacienda===0){
-    html += `<p>Aún no se ha enviado ninguna solicitud a Hacienda; el siguiente paso es tramitar la ministración del recurso comprometido.</p>`;
+    html += `<li>Aún no se ha enviado ninguna solicitud a Hacienda; el siguiente paso es tramitar la ministración del recurso comprometido.</li>`;
   } else {
-    html += `<p>Se ha solicitado a Hacienda <b>${fmtMoney(solicitado)}</b> en <b>${numTramitesHacienda}</b> trámite${numTramitesHacienda===1?'':'s'} (<b>${pctSolicitado.toFixed(1)}%</b> de lo comprometido).</p>`;
+    html += `<li>Se ha solicitado a Hacienda <b>${fmtMoney(solicitado)}</b> en <b>${numTramitesHacienda}</b> trámite${numTramitesHacienda===1?'':'s'} (<b>${pctSolicitado.toFixed(1)}%</b> de lo comprometido).</li>`;
   }
 
   if(numPagos===0){
     html += solicitado>0
-      ? `<p>Todavía no se registra ningún pago; el recurso solicitado a Hacienda sigue pendiente de ministración.</p>`
-      : `<p>Todavía no se registra ningún pago a beneficiarios.</p>`;
+      ? `<li>Todavía no se registra ningún pago; el recurso solicitado a Hacienda sigue pendiente de ministración.</li>`
+      : `<li>Todavía no se registra ningún pago a beneficiarios.</li>`;
   } else {
-    html += `<p>Se han ministrado <b>${fmtMoney(pagado)}</b> en <b>${numPagos}</b> pago${numPagos===1?'':'s'} (<b>${pctPagado.toFixed(1)}%</b> de lo solicitado a Hacienda), quedando <b>${fmtMoney(Math.max(comprometido-pagado,0))}</b> pendientes por ministrar del total comprometido.</p>`;
+    html += `<li>Se han ministrado <b>${fmtMoney(pagado)}</b> en <b>${numPagos}</b> pago${numPagos===1?'':'s'} (<b>${pctPagado.toFixed(1)}%</b> de lo solicitado a Hacienda), quedando <b>${fmtMoney(Math.max(comprometido-pagado,0))}</b> pendientes por ministrar del total comprometido.</li>`;
   }
 
   if(solicitado > comprometido + 0.01){
-    html += `<p style="color:#FF9FB0;font-weight:700;">Atención: lo solicitado a Hacienda (${fmtMoney(solicitado)}) supera el recurso comprometido (${fmtMoney(comprometido)}). Conviene revisar los trámites registrados.</p>`;
+    html += `<li style="color:#FF9FB0;font-weight:700;">Atención: lo solicitado a Hacienda (${fmtMoney(solicitado)}) supera el recurso comprometido (${fmtMoney(comprometido)}). Conviene revisar los trámites registrados.</li>`;
   }
   if(pagado > solicitado + 0.01 && solicitado>0){
-    html += `<p style="color:#FF9FB0;font-weight:700;">Atención: el recurso pagado (${fmtMoney(pagado)}) supera lo solicitado a Hacienda (${fmtMoney(solicitado)}). Conviene revisar los pagos registrados.</p>`;
+    html += `<li style="color:#FF9FB0;font-weight:700;">Atención: el recurso pagado (${fmtMoney(pagado)}) supera lo solicitado a Hacienda (${fmtMoney(solicitado)}). Conviene revisar los pagos registrados.</li>`;
   }
 
   if(disponible<0){
-    html += `<p style="color:#FF9FB0;font-weight:700;">El programa excede su recurso autorizado por <b>${fmtMoney(Math.abs(disponible))}</b>. Se recomienda registrar una ampliación o revisar los dictámenes.</p>`;
+    html += `<li style="color:#FF9FB0;font-weight:700;">El programa excede su recurso autorizado por <b>${fmtMoney(Math.abs(disponible))}</b>. Se recomienda registrar una ampliación o revisar los dictámenes.</li>`;
   } else {
-    html += `<p style="color:#7FE3B4;font-weight:700;">Recurso disponible sin comprometer: ${fmtMoney(disponible)}.</p>`;
+    html += `<li style="color:#7FE3B4;font-weight:700;">Recurso disponible sin comprometer: ${fmtMoney(disponible)}.</li>`;
   }
 
-  return html;
+  return `<ul class="insight-bullets">${html}</ul>`;
 }
-
 /* =========================================================================
    CHARTS
    ========================================================================= */
@@ -1180,6 +1315,7 @@ const modalBox = document.getElementById('modalBox');
 function openModal(html, opts){
   modalBox.innerHTML = html;
   modalBox.classList.toggle('modal-wide', !!(opts && opts.wide));
+  bindNumberInputs(modalBox);
   overlay.classList.add('show');
 }
 function closeModal(){ overlay.classList.remove('show'); modalBox.innerHTML=''; modalBox.classList.remove('modal-wide'); }
@@ -1202,8 +1338,8 @@ function openModalNuevoPrograma(){
         <div class="field"><label>Nombre del Proyecto</label><input type="text" id="f-nombre" placeholder="Ej. Programa de Apoyo a..."></div>
       </div>
       <div class="form-grid">
-        <div class="field"><label>Cantidad por Beneficiario</label><input type="number" id="f-montoBenef" min="0" step="0.01" placeholder="$0.00"></div>
-        <div class="field"><label>Meta de Beneficiarios</label><input type="number" id="f-meta" min="0" step="1" placeholder="0"></div>
+        <div class="field"><label>Cantidad por Beneficiario</label><input type="text" data-money id="f-montoBenef" placeholder="$0.00"></div>
+        <div class="field"><label>Meta de Beneficiarios</label><input type="text" data-int id="f-meta" placeholder="0"></div>
       </div>
       <div id="f-error" style="color:var(--red);font-size:12.5px;font-weight:700;display:none;"></div>
     </div>
@@ -1217,8 +1353,8 @@ function openModalNuevoPrograma(){
 async function submitNuevoPrograma(btn){
   const codigo = document.getElementById('f-unidad').value;
   const nombre = document.getElementById('f-nombre').value.trim();
-  const montoBenef = Number(document.getElementById('f-montoBenef').value);
-  const meta = Number(document.getElementById('f-meta').value);
+  const montoBenef = numValue(document.getElementById('f-montoBenef'));
+  const meta = numValue(document.getElementById('f-meta'));
   const err = document.getElementById('f-error');
 
   if(!codigo || !nombre || !montoBenef || !meta){
@@ -1247,8 +1383,8 @@ function openModalEditarPrograma(p){
         <div class="field"><label>Nombre del Proyecto</label><input type="text" id="e-nombre" value="${p.nombre.replace(/"/g,'&quot;')}"></div>
       </div>
       <div class="form-grid">
-        <div class="field"><label>Cantidad por Beneficiario</label><input type="number" id="e-montoBenef" min="0" step="0.01" value="${p.monto_beneficiario}"></div>
-        <div class="field"><label>Meta de Beneficiarios</label><input type="number" id="e-meta" min="0" step="1" value="${p.meta_beneficiarios}"></div>
+        <div class="field"><label>Cantidad por Beneficiario</label><input type="text" data-money id="e-montoBenef" value="${fmtInputMoney(p.monto_beneficiario)}"></div>
+        <div class="field"><label>Meta de Beneficiarios</label><input type="text" data-int id="e-meta" value="${fmtInputInt(p.meta_beneficiarios)}"></div>
       </div>
       <div class="field-hint">La Unidad Presupuestal y la clave (${p.clave}) no se pueden cambiar una vez creado el programa.</div>
       <div id="e-error" style="color:var(--red);font-size:12.5px;font-weight:700;display:none;"></div>
@@ -1261,8 +1397,8 @@ function openModalEditarPrograma(p){
   document.getElementById('submitEditarPrograma').addEventListener('click', async (e)=>{
     const btn = e.currentTarget;
     const nombre = document.getElementById('e-nombre').value.trim();
-    const montoBenef = Number(document.getElementById('e-montoBenef').value);
-    const meta = Number(document.getElementById('e-meta').value);
+    const montoBenef = numValue(document.getElementById('e-montoBenef'));
+    const meta = numValue(document.getElementById('e-meta'));
     const err = document.getElementById('e-error');
 
     if(!nombre || !montoBenef || !meta){
@@ -1320,7 +1456,7 @@ function openModalCargarMonto(pid){
     <div class="modal-header"><h3>Cargar Monto Autorizado</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
     <div class="modal-body">
       <div class="form-grid single">
-        <div class="field"><label>Monto Autorizado</label><input type="number" id="m-monto" min="0" step="0.01" placeholder="$0.00"></div>
+        <div class="field"><label>Monto Autorizado</label><input type="text" data-money id="m-monto" placeholder="$0.00"></div>
         <div class="field"><label>Referencia / Oficio</label><input type="text" id="m-ref" placeholder="Ej. OF-DGPPE-0001-2026"></div>
         ${fileDropZoneHTML('m-doc','Oficio (documento)','.pdf,.jpg,.jpeg,.png,.doc,.docx')}
         <div class="field-hint">Este monto será la base de referencia para las gráficas y cálculos del programa.</div>
@@ -1334,7 +1470,7 @@ function openModalCargarMonto(pid){
   bindDropZone('m-doc');
   document.getElementById('submitMonto').addEventListener('click', async (e)=>{
     const btn = e.currentTarget;
-    const monto = Number(document.getElementById('m-monto').value);
+    const monto = numValue(document.getElementById('m-monto'));
     const referencia = document.getElementById('m-ref').value.trim() || 'S/R';
     const archivo = document.getElementById('m-doc').files[0];
     if(!monto) return;
@@ -1359,7 +1495,7 @@ function openModalModificacion(pid){
         <div class="field"><label>Tipo de Movimiento</label>
           <select id="mo-tipo"><option value="Ampliación">Ampliación (+)</option><option value="Reducción">Reducción (−)</option></select>
         </div>
-        <div class="field"><label>Monto</label><input type="number" id="mo-monto" min="0" step="0.01" placeholder="$0.00"></div>
+        <div class="field"><label>Monto</label><input type="text" data-money id="mo-monto" placeholder="$0.00"></div>
         <div class="field"><label>Motivo</label><textarea id="mo-motivo" rows="2" placeholder="Describe el motivo de la modificación…"></textarea></div>
         ${fileDropZoneHTML('mo-doc','Oficio (documento)','.pdf,.jpg,.jpeg,.png,.doc,.docx')}
       </div>
@@ -1373,7 +1509,7 @@ function openModalModificacion(pid){
   document.getElementById('submitMod').addEventListener('click', async (e)=>{
     const btn = e.currentTarget;
     const tipo = document.getElementById('mo-tipo').value;
-    const monto = Number(document.getElementById('mo-monto').value);
+    const monto = numValue(document.getElementById('mo-monto'));
     const motivo = document.getElementById('mo-motivo').value.trim();
     const archivo = document.getElementById('mo-doc').files[0];
     if(!monto) return;
@@ -1397,7 +1533,7 @@ function openModalHacienda(pid){
     <div class="modal-body">
       <div class="form-grid single">
         <div class="field"><label>Folio</label><input type="text" id="h-folio" placeholder="Ej. SH-2026-0001"></div>
-        <div class="field"><label>Monto Solicitado</label><input type="number" id="h-monto" min="0" step="0.01" placeholder="$0.00"></div>
+        <div class="field"><label>Monto Solicitado</label><input type="text" data-money id="h-monto" placeholder="$0.00"></div>
         ${dateTimeFieldGroupHTML('h-fecha','Solicitud de recurso a Hacienda')}
         ${fileDropZoneHTML('h-doc','Documento que avala la solicitud','.pdf,.jpg,.jpeg,.png,.doc,.docx')}
       </div>
@@ -1411,7 +1547,7 @@ function openModalHacienda(pid){
   document.getElementById('submitHac').addEventListener('click', async (e)=>{
     const btn = e.currentTarget;
     const folio = document.getElementById('h-folio').value.trim();
-    const monto = Number(document.getElementById('h-monto').value);
+    const monto = numValue(document.getElementById('h-monto'));
     const fecha = readDateTimeGroup('h-fecha');
     const archivo = document.getElementById('h-doc').files[0];
     if(!monto) return;
@@ -1440,7 +1576,7 @@ function openModalAutorizacion(pid, hacId){
     <div class="modal-body">
       ${hac ? `<div class="hacienda-preview">Solicitud <b>Folio ${hac.folio}</b> · Monto solicitado <b>${fmtMoney(hac.monto)}</b> · ${fmtDate(hac.fecha)}</div>` : ''}
       <div class="form-grid single">
-        <div class="field"><label>Monto Autorizado por Hacienda</label><input type="number" id="au-monto" min="0" step="0.01" placeholder="$0.00" value="${hac? hac.monto : ''}"></div>
+        <div class="field"><label>Monto Autorizado por Hacienda</label><input type="text" data-money id="au-monto" placeholder="$0.00" value="${hac? fmtInputMoney(hac.monto) : ''}"></div>
         ${dateTimeFieldGroupHTML('au-fecha','Autorización de Hacienda')}
         ${fileDropZoneHTML('au-doc','Documento de autorización','.pdf,.jpg,.jpeg,.png,.doc,.docx')}
       </div>
@@ -1453,7 +1589,7 @@ function openModalAutorizacion(pid, hacId){
   bindDropZone('au-doc');
   document.getElementById('submitAutorizacion').addEventListener('click', async (e)=>{
     const btn = e.currentTarget;
-    const monto = Number(document.getElementById('au-monto').value);
+    const monto = numValue(document.getElementById('au-monto'));
     const fecha = readDateTimeGroup('au-fecha');
     const archivo = document.getElementById('au-doc').files[0];
     if(!monto) return;
@@ -1494,7 +1630,7 @@ function openModalPago(p){
         </div>
         <div id="g-preview"></div>
         <div class="field"><label>Folio del Pago</label><input type="text" id="g-folio" placeholder="Ej. PG-2026-0001"></div>
-        <div class="field"><label>Monto Pagado</label><input type="number" id="g-monto" min="0" step="0.01" placeholder="$0.00"></div>
+        <div class="field"><label>Monto Pagado</label><input type="text" data-money id="g-monto" placeholder="$0.00"></div>
         ${dateTimeFieldGroupHTML('g-fecha','Registro del pago')}
         ${fileDropZoneHTML('g-doc','Documento que avala el pago','.pdf,.jpg,.jpeg,.png,.doc,.docx')}
       </div>
@@ -1516,14 +1652,14 @@ function openModalPago(p){
       Solicitado: <b>${fmtMoney(hac.monto)}</b> · ${fmtDate(hac.fecha)}<br>
       Autorizado por Hacienda: <b>${fmtMoney(hac.autorizacion.monto_autorizado)}</b> · ${fmtDate(hac.autorizacion.fecha_autorizacion)}
     </div>`;
-    if(!montoInput.value) montoInput.value = hac.autorizacion.monto_autorizado;
+    if(!montoInput.value) montoInput.value = fmtInputMoney(hac.autorizacion.monto_autorizado);
   });
 
   document.getElementById('submitPago').addEventListener('click', async (e)=>{
     const btn = e.currentTarget;
     const haciendaId = selHacienda.value;
     const folio = document.getElementById('g-folio').value.trim();
-    const monto = Number(montoInput.value);
+    const monto = numValue(montoInput);
     const fecha = readDateTimeGroup('g-fecha');
     const archivo = document.getElementById('g-doc').files[0];
     if(!haciendaId){ toast('Selecciona la solicitud a Hacienda que se pagó.', true); return; }

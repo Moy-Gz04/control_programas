@@ -221,6 +221,18 @@ textarea:focus-visible,
 .kpi-value{font-size:21px;font-weight:700;color:var(--text-primary);margin-top:6px;letter-spacing:-0.2px;}
 .kpi-sub{font-size:var(--fs-xs);color:var(--text-secondary);margin-top:4px;}
 
+/* Variante "marca": fondo guinda sólido, usada en "Estado Real del
+   Recurso" para que las 5 tarjetas se lean como un solo bloque de
+   situación actual, en vez de un color distinto por concepto. */
+.kpi-card-brand{
+  background:linear-gradient(150deg,var(--maroon-700),var(--maroon-900));
+  border-color:rgba(255,255,255,0.08);
+}
+.kpi-card-brand::before{display:none;}
+.kpi-card-brand .kpi-label{color:var(--gold-500);opacity:0.95;}
+.kpi-card-brand .kpi-value{color:#fff;}
+.kpi-card-brand .kpi-sub{color:var(--text-on-brand);opacity:0.75;}
+
 /* ===== SECTION / CARD ===== */
 .section-title{display:flex;align-items:center;justify-content:space-between;margin:34px 0 14px;gap:12px;flex-wrap:wrap;}
 .section-title h2{font-size:var(--fs-h2);font-weight:700;color:var(--text-primary);margin:0;letter-spacing:-0.1px;}
@@ -244,6 +256,12 @@ textarea:focus-visible,
 .insight-head{font-size:10.5px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:var(--gold-500);border-bottom:1px solid rgba(255,255,255,0.14);padding-bottom:10px;margin-bottom:2px;}
 .insight-card p{margin:0;font-size:12.5px;line-height:1.65;color:var(--text-on-brand);opacity:0.92;}
 .insight-card p b{color:#fff;opacity:1;font-weight:700;}
+/* Lista con viñetas (en vez de párrafos sueltos) para que el panel de
+   "Situación Actual" se lea como puntos rápidos, no como texto corrido. */
+.insight-bullets{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px;}
+.insight-bullets li{position:relative;padding-left:15px;font-size:12.5px;line-height:1.6;color:var(--text-on-brand);opacity:0.92;}
+.insight-bullets li::before{content:"•";position:absolute;left:0;top:0;color:var(--gold-500);font-weight:900;}
+.insight-bullets li b{color:#fff;opacity:1;font-weight:700;}
 .table-toggle{
   border:1px solid var(--border-strong);background:var(--cream-50);color:var(--maroon-800);
   font-size:var(--fs-xs);font-weight:600;padding:7px 13px;border-radius:var(--radius-pill);
@@ -303,6 +321,23 @@ textarea:focus-visible,
 .btn-spinner{width:13px;height:13px;border-radius:50%;border:2px solid rgba(255,255,255,0.45);border-top-color:#fff;display:inline-block;animation:btnspin 0.75s linear infinite;flex-shrink:0;}
 .btn-outline .btn-spinner,.btn-ghost .btn-spinner{border-color:rgba(107,26,50,0.28);border-top-color:var(--maroon-800);}
 @keyframes btnspin{to{transform:rotate(360deg);}}
+
+/* =========================================================================
+   TOOLTIPS (hover sobre elementos de gráficas)
+   Tooltip CSS puro (sin librerías): cualquier elemento con `has-tooltip` y
+   un atributo `data-tooltip` muestra un globo pequeño arriba al pasar el
+   cursor. Se usa en las barras del pipeline de flujo presupuestal.
+   ========================================================================= */
+.has-tooltip{position:relative;}
+.has-tooltip::after{
+  content:attr(data-tooltip);
+  position:absolute;left:50%;bottom:calc(100% + 10px);transform:translateX(-50%) translateY(4px);
+  background:var(--maroon-900);color:#fff;font-size:11px;font-weight:600;line-height:1.45;
+  padding:7px 11px;border-radius:var(--radius-sm);white-space:normal;max-width:220px;text-align:center;
+  box-shadow:var(--shadow-lg);opacity:0;pointer-events:none;z-index:60;
+  transition:opacity var(--dur-base) var(--ease-standard), transform var(--dur-base) var(--ease-standard);
+}
+.has-tooltip:hover::after,.has-tooltip:focus-visible::after{opacity:1;transform:translateX(-50%) translateY(0);}
 
 /* Skeleton de carga para tarjetas/áreas que aún no tienen datos */
 .loading-block{display:flex;align-items:center;justify-content:center;gap:11px;padding:40px 10px;color:var(--text-secondary);font-size:14px;}
@@ -374,11 +409,28 @@ textarea:focus-visible,
 .info-item .label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-secondary);}
 .info-item .value{font-size:15px;font-weight:700;color:var(--text-primary);margin-top:4px;letter-spacing:-0.1px;}
 
-/* ===== LOG LIST (movimientos) ===== */
-.log-list{display:flex;flex-direction:column;gap:0;}
-.log-row{display:flex;align-items:center;justify-content:space-between;padding:13px 2px;border-bottom:1px solid var(--border-hairline);font-size:13px;gap:12px;}
-.log-row:last-child{border-bottom:none;}
-.log-row .lmeta{color:var(--text-secondary);font-size:11.5px;}
+/* ===== LOG LIST (movimientos: modificaciones, pagos, documentos) =====
+   Cada movimiento es una pequeña tarjeta con un ícono circular a la
+   izquierda, en vez de una línea de texto plana separada por un borde. */
+.log-list{display:flex;flex-direction:column;gap:8px;}
+.log-row{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:11px 14px;border-radius:var(--radius-md);border:1px solid var(--border-hairline);
+  background:var(--surface-2);font-size:13px;
+  transition:background var(--dur-base) var(--ease-standard), box-shadow var(--dur-base) var(--ease-standard), transform var(--dur-base) var(--ease-standard);
+}
+.log-row:hover{background:var(--surface-1);box-shadow:var(--shadow-sm);transform:translateY(-1px);}
+.log-row-icon{
+  width:30px;height:30px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;
+  background:var(--cream-200);color:var(--maroon-800);
+}
+.log-row-icon-pos{background:#E1EFE9;color:#0F7C57;}
+.log-row-icon-neg{background:#FCEBEC;color:var(--red);}
+.log-row-icon-doc{background:var(--cream-200);color:var(--maroon-700);font-size:14px;}
+.log-row-main{flex:1;min-width:0;}
+.log-row-title{font-weight:700;color:var(--text-primary);}
+.log-row .lmeta{color:var(--text-secondary);font-size:11.5px;margin-top:1px;}
 .log-row .lamount{font-weight:700;white-space:nowrap;}
 .log-row .lamount.neg{color:var(--red);}
 .log-row .lamount.pos{color:#0F7C57;}
@@ -403,7 +455,28 @@ textarea:focus-visible,
 
 .chip{display:inline-block;padding:4px 11px;border-radius:var(--radius-pill);background:var(--cream-200);color:var(--maroon-800);font-size:10px;font-weight:700;letter-spacing:0.2px;}
 
-footer.app-footer{text-align:center;padding:30px;color:var(--text-tertiary);font-size:11.5px;}
+/* Enlaces "Ver Documento" en texto corrido: antes heredaban el color del
+   texto (a{color:inherit}) y se veían como texto plano, sin indicar que
+   eran clickeables. */
+.doc-link{color:var(--maroon-700);font-weight:700;text-decoration:none;border-bottom:1px solid rgba(107,26,50,0.35);transition:color var(--dur-base) var(--ease-standard), border-color var(--dur-base) var(--ease-standard);}
+.doc-link:hover{color:var(--maroon-900);border-color:var(--maroon-900);}
+
+footer.app-footer{
+  margin-top:44px;padding:22px 5%;
+  background:linear-gradient(135deg,var(--maroon-900),var(--maroon-800) 60%,var(--maroon-700));
+  border-top:1px solid rgba(201,168,78,0.4);
+}
+.footer-inner{max-width:1600px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+.footer-brand{display:flex;align-items:center;gap:12px;}
+.footer-brand-mark{
+  width:34px;height:34px;border-radius:10px;flex-shrink:0;
+  background:radial-gradient(circle at 35% 30%, var(--gold-500), var(--gold-600) 65%, #8a6c14);
+  display:flex;align-items:center;justify-content:center;color:var(--maroon-900);font-weight:700;font-size:14px;
+}
+.footer-brand-name{font-size:12.5px;font-weight:700;color:#fff;letter-spacing:0.2px;}
+.footer-brand-sub{font-size:10.5px;color:var(--text-on-brand);opacity:0.75;margin-top:2px;}
+.footer-meta{font-size:10.5px;color:var(--text-on-brand);opacity:0.65;}
+@media (max-width:600px){.footer-inner{flex-direction:column;text-align:center;}}
 
 /* ===== TOAST ===== */
 .toast{
@@ -489,14 +562,99 @@ footer.app-footer{text-align:center;padding:30px;color:var(--text-tertiary);font
 /* =========================================================================
    ESTADO DE SOLICITUDES A HACIENDA (Autorización / disponible para pago)
    ========================================================================= */
-.hacienda-item{border:1px solid var(--border-hairline);border-radius:var(--radius-md);padding:12px 14px;margin-bottom:10px;background:var(--surface-2);}
+.hacienda-item{
+  border:1px solid var(--border-hairline);border-left:4px solid var(--status-registrado);
+  border-radius:var(--radius-md);padding:13px 16px;margin-bottom:10px;background:var(--surface-1);
+  box-shadow:var(--shadow-xs);
+  transition:box-shadow var(--dur-base) var(--ease-standard), transform var(--dur-base) var(--ease-standard);
+}
+.hacienda-item:hover{box-shadow:var(--shadow-sm);transform:translateY(-1px);}
 .hacienda-item:last-child{margin-bottom:0;}
-.hacienda-item-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;}
-.hacienda-sub{font-size:11px;color:var(--text-secondary);margin-top:6px;line-height:1.6;}
-.badge-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:var(--radius-pill);font-size:10px;font-weight:700;letter-spacing:0.2px;}
+.hacienda-item.is-pendiente{border-left-color:var(--status-autorizado);}
+.hacienda-item.is-autorizada{border-left-color:var(--status-pagado);}
+.hacienda-item.is-pagada{border-left-color:var(--maroon-700);}
+.hacienda-item-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.hacienda-item-title{font-weight:700;font-size:13.5px;color:var(--text-primary);}
+.hacienda-item-amount{display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
+.hacienda-item-monto{font-size:15.5px;font-weight:800;color:var(--maroon-800);letter-spacing:-0.2px;}
+.hacienda-sub{font-size:11px;color:var(--text-secondary);margin-top:8px;line-height:1.6;background:var(--surface-2);border-radius:var(--radius-xs);padding:7px 10px;}
+.badge-pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:var(--radius-pill);font-size:10px;font-weight:700;letter-spacing:0.2px;}
+.badge-pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0;}
 .badge-pendiente{background:#FBEFD8;color:#8A6512;}
 .badge-autorizada{background:#E1EFE9;color:#0F7C57;}
 .badge-pagada{background:#E5E1F0;color:var(--maroon-700);}
+
+/* =========================================================================
+   PIPELINE DE FLUJO PRESUPUESTAL
+   Dos tarjetas oscuras independientes, apiladas: arriba la gráfica de
+   pipeline/funnel (5 nodos unidos por listones SVG, sin librerías nuevas);
+   abajo la explicación (Situación Actual + Notificaciones). Separarlas
+   evita que la gráfica quede con un panel lateral vacío cuando el texto
+   de la derecha es más alto o más corto que las barras. Colores
+   institucionales guinda/dorado dados en la solicitud, aplicados solo
+   dentro de este componente (no se tocan los tokens globales
+   --maroon-… / --gold-… del resto de la app).
+   ========================================================================= */
+.pipeline-card{
+  /* Antes usaba un azul-pizarra oscuro (#0F172A/#1E293B) ajeno a la
+     paleta institucional, por lo que se veía "negro" y desentonaba con
+     el resto del sistema. Se sustituye por el mismo degradado guinda
+     oscuro que ya usan --kpi-card-brand-- e --insight-card-- (arriba y
+     abajo de este componente, en la misma pantalla), para que las tres
+     piezas se lean como un solo bloque de "situación actual". */
+  --pipeline-guinda:#691C32; --pipeline-gold:#B38E5D;
+  background:linear-gradient(160deg,var(--maroon-800),var(--maroon-900));
+  border-radius:var(--radius-xl);border:1px solid rgba(201,168,78,0.4);box-shadow:var(--shadow-modal);
+  margin-bottom:20px;overflow:hidden;font-family:'Montserrat',var(--font-sans);
+}
+.pipeline-card-chart{padding:22px 24px;}
+.pipeline-eyebrow{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--pipeline-gold);margin-bottom:16px;}
+.pipeline-bar-row{position:relative;}
+.pipeline-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}
+.pipeline-bar-grid{position:relative;z-index:1;display:grid;grid-template-columns:repeat(5,1fr);height:100%;column-gap:4px;}
+.pipeline-bar-col{display:flex;align-items:flex-end;justify-content:center;}
+.pipeline-bar{
+  width:58%;min-width:34px;border-radius:8px 8px 3px 3px;background:linear-gradient(180deg,var(--pipeline-gold),var(--pipeline-guinda));
+  color:#fff;font-weight:700;font-size:11px;display:flex;align-items:flex-start;justify-content:center;
+  padding-top:8px;text-align:center;box-shadow:0 4px 10px rgba(0,0,0,0.35);cursor:help;
+  transition:filter var(--dur-base) var(--ease-standard);
+}
+.pipeline-bar:hover{filter:brightness(1.08);}
+.pipeline-label-grid{display:grid;grid-template-columns:repeat(5,1fr);column-gap:4px;margin-top:12px;}
+.pipeline-node-title{font-size:11.5px;font-weight:700;color:#fff;text-align:center;line-height:1.3;}
+.pipeline-node-sub{font-size:9.5px;color:rgba(255,255,255,0.6);text-align:center;margin-top:2px;line-height:1.3;}
+
+/* Tarjeta inferior: Situación Actual + Notificaciones, lado a lado ahora
+   que tiene ancho completo para sí misma. */
+.pipeline-card-info{padding:20px 24px;}
+.pipeline-info-body{display:flex;gap:26px;flex-wrap:wrap;}
+.pipeline-info-side{width:260px;flex-shrink:0;display:flex;flex-direction:column;}
+.pipeline-info-notifications{flex:1;min-width:240px;border-left:1px solid rgba(179,142,93,0.25);padding-left:26px;}
+.pipeline-side-title{font-size:10.5px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:var(--pipeline-gold);margin-bottom:8px;}
+.pipeline-side-box{background:rgba(255,255,255,0.05);border:1px solid rgba(179,142,93,0.25);border-radius:var(--radius-md);padding:12px 14px;}
+.pipeline-side-label{font-size:10px;color:rgba(255,255,255,0.65);font-weight:600;text-transform:uppercase;letter-spacing:0.3px;}
+.pipeline-side-value{font-size:19px;font-weight:800;color:#fff;margin-top:4px;letter-spacing:-0.2px;}
+.pipeline-side-sub{font-size:10.5px;color:rgba(255,255,255,0.55);margin-top:3px;}
+.pipeline-alert{margin-top:10px;padding:8px 11px;border-radius:var(--radius-sm);font-size:11px;font-weight:600;line-height:1.4;}
+.pipeline-alert-ok{background:rgba(21,156,108,0.18);color:#7FE3B4;}
+.pipeline-alert-warn{background:rgba(216,57,76,0.2);color:#FF9FB0;}
+.pipeline-notifications .insight-bullets{gap:8px;}
+.pipeline-notifications .insight-bullets li{font-size:11.5px;}
+/* La tabla de datos y su botón heredan estilos pensados para fondo claro;
+   se sobreescriben aquí porque este componente vive sobre fondo oscuro. */
+.pipeline-card-chart .table-toggle{background:rgba(255,255,255,0.08);border-color:rgba(179,142,93,0.4);color:var(--pipeline-gold);}
+.pipeline-card-chart .table-toggle:hover{background:rgba(255,255,255,0.14);}
+.pipeline-card-chart .data-table th{color:rgba(255,255,255,0.55);border-bottom-color:rgba(255,255,255,0.12);}
+.pipeline-card-chart .data-table td{color:#fff;border-bottom-color:rgba(255,255,255,0.1);}
+.pipeline-card-chart .data-table tbody tr:hover{background:rgba(255,255,255,0.04);}
+@media (max-width:700px){
+  .pipeline-info-notifications{border-left:none;padding-left:0;border-top:1px solid rgba(179,142,93,0.25);padding-top:16px;}
+  .pipeline-info-side{width:auto;}
+}
+@media (max-width:560px){
+  .pipeline-node-title{font-size:10px;}
+  .pipeline-node-sub{display:none;}
+}
 
 /* =========================================================================
    SELECT DE SOLICITUD DE HACIENDA (modal Registrar Pago)
