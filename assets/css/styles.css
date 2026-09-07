@@ -152,10 +152,14 @@ textarea:focus-visible,
 .navbar-wrap{position:sticky;top:0;z-index:40;backdrop-filter:saturate(1.1);}
 .navbar-top{
   display:flex;align-items:center;justify-content:space-between;gap:16px;
-  padding:14px 5%;
-  background:linear-gradient(135deg,var(--maroon-900),var(--maroon-800) 55%,var(--maroon-700));
-  border-bottom:1px solid rgba(201,168,78,0.55);
+  padding:12px 5%;
+  background:var(--surface-1);
+  border-bottom:1px solid var(--border-hairline);
+  position:relative;
 }
+/* Delgada línea guinda→dorado que separa la barra blanca del menú oscuro,
+   para que la marca institucional siga presente aunque el fondo sea claro. */
+.navbar-top::after{content:"";position:absolute;left:0;right:0;bottom:-3px;height:3px;background:linear-gradient(90deg,var(--maroon-700),var(--gold-500));}
 .brand{display:flex;align-items:center;gap:12px;}
 .brand-logo{width:42px;height:42px;object-fit:contain;flex-shrink:0;border-radius:9px;}
 .brand-logo-fallback{
@@ -165,31 +169,33 @@ textarea:focus-visible,
   flex-shrink:0;
 }
 .brand-text{line-height:1.3;}
-.brand-text .t0{font-weight:700;font-size:10.5px;letter-spacing:0.8px;color:var(--gold-500);text-transform:uppercase;}
-.brand-text .t1-full{font-size:16.5px;font-weight:700;color:#fff;letter-spacing:-0.1px;margin-top:1px;}
+.brand-text .t0{font-weight:700;font-size:10.5px;letter-spacing:0.8px;color:var(--maroon-700);text-transform:uppercase;}
+.brand-text .t1-full{font-size:16.5px;font-weight:700;color:var(--text-primary);letter-spacing:-0.1px;margin-top:1px;}
 /* Compatibilidad: si algún lugar todavía usa .t1/.t2 (login, etc.) */
 .brand-text .t1{font-weight:700;font-size:14.5px;letter-spacing:1.2px;color:var(--gold-500);}
 .brand-text .t2{font-size:10.5px;letter-spacing:0.4px;color:var(--text-on-brand);opacity:0.82;font-weight:500;text-transform:uppercase;}
 
 .navbar-top-right{display:flex;align-items:center;gap:16px;}
-.navbar-date{font-size:12px;color:var(--text-on-brand);opacity:0.75;font-weight:500;white-space:nowrap;}
+.navbar-date{font-size:12px;color:var(--text-secondary);font-weight:500;white-space:nowrap;}
 .nav-user{
   display:flex;align-items:center;gap:9px;
-  background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.14);
+  background:var(--cream-100);border:1px solid var(--border-strong);
   border-radius:var(--radius-pill);padding:5px 14px 5px 5px;
 }
 .nav-user .avatar{width:28px;height:28px;border-radius:50%;background:var(--gold-500);color:var(--maroon-900);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;}
 .nav-user .who{line-height:1.2;}
-.nav-user .who .n{font-size:12.5px;font-weight:700;color:#fff;}
-.nav-user .who .r{font-size:9.5px;color:var(--text-on-brand);opacity:0.7;text-transform:uppercase;letter-spacing:0.4px;}
+.nav-user .who .n{font-size:12.5px;font-weight:700;color:var(--text-primary);}
+.nav-user .who .r{font-size:9.5px;color:var(--text-secondary);opacity:1;text-transform:uppercase;letter-spacing:0.4px;}
 .nav-logout{
-  display:inline-flex;align-items:center;gap:6px;
+  display:inline-flex;align-items:center;gap:7px;
   background:linear-gradient(135deg,var(--maroon-700),var(--maroon-800));
-  border:1px solid rgba(255,255,255,0.16);color:#fff;padding:8px 16px;border-radius:var(--radius-pill);
-  font-size:12.5px;font-weight:700;white-space:nowrap;
-  transition:filter var(--dur-base) var(--ease-standard);
+  border:1.5px solid rgba(201,168,78,0.55);color:#fff;padding:9px 18px;border-radius:var(--radius-pill);
+  font-size:12.5px;font-weight:700;white-space:nowrap;letter-spacing:0.2px;
+  box-shadow:0 2px 10px rgba(0,0,0,0.28);
+  transition:filter var(--dur-base) var(--ease-standard), transform var(--dur-fast) var(--ease-standard), box-shadow var(--dur-base) var(--ease-standard), border-color var(--dur-base) var(--ease-standard);
 }
-.nav-logout:hover{filter:brightness(1.15);}
+.nav-logout:hover{filter:brightness(1.18);border-color:rgba(201,168,78,0.85);box-shadow:0 4px 14px rgba(0,0,0,0.34);transform:translateY(-1px);}
+.nav-logout:active{transform:translateY(0);}
 
 .navbar-menu{
   display:flex;align-items:center;gap:6px;
@@ -199,13 +205,16 @@ textarea:focus-visible,
 .navbar-menu-label{font-size:10.5px;font-weight:700;letter-spacing:1px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-right:10px;}
 .nav-link{
   display:flex;align-items:center;gap:7px;
-  padding:8px 18px;border-radius:var(--radius-pill);color:rgba(255,255,255,0.75);
+  padding:8px 18px;border-radius:var(--radius-pill);color:rgba(255,255,255,0.8);
   font-size:12.5px;font-weight:700;text-decoration:none;text-transform:uppercase;letter-spacing:0.3px;
-  background:transparent;border:1px solid transparent;
-  transition:background var(--dur-base) var(--ease-standard), color var(--dur-base) var(--ease-standard);
+  background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);
+  transition:background var(--dur-base) var(--ease-standard), color var(--dur-base) var(--ease-standard), border-color var(--dur-base) var(--ease-standard);
 }
-.nav-link:hover{background:rgba(255,255,255,0.08);color:#fff;}
-.nav-link.active{background:linear-gradient(135deg,var(--gold-500),var(--gold-600));color:var(--maroon-900);}
+.nav-link:hover{background:rgba(255,255,255,0.14);border-color:rgba(255,255,255,0.26);color:#fff;}
+.nav-link.active{
+  background:linear-gradient(135deg,var(--gold-500),var(--gold-600));border-color:transparent;color:var(--maroon-900);
+  box-shadow:0 2px 8px rgba(0,0,0,0.25);
+}
 .nav-cta{
   margin-left:auto;
   padding:8px 18px;border-radius:var(--radius-pill);
@@ -216,17 +225,20 @@ textarea:focus-visible,
 .nav-cta:hover{background:rgba(255,255,255,0.14);}
 .nav-cta:active{transform:scale(0.97);}
 
-/* ===== HEADER BAND ===== */
+/* ===== HEADER BAND =====
+   Vuelve a fondo guinda (la franja blanca es la navbar de arriba, con el
+   nombre de la Secretaría) — solo se conserva el tamaño compacto que sí
+   funcionó, en vez del bloque alto que tenía originalmente. */
 .header-band{
   background:linear-gradient(120deg,var(--maroon-800),var(--maroon-700) 60%,var(--maroon-800));
-  padding:38px 20px 34px;text-align:center;color:#fff;position:relative;
+  padding:20px 20px 18px;text-align:center;color:#fff;position:relative;
 }
 .header-band h1{
-  margin:0;font-size:var(--fs-display);letter-spacing:0.2px;font-weight:700;
+  margin:0;font-size:22px;letter-spacing:0.1px;font-weight:800;
 }
-.header-band .underline{width:52px;height:3px;background:var(--gold-500);margin:14px auto;border-radius:2px;}
-.header-band .sub{font-size:12px;letter-spacing:1px;color:var(--text-on-brand);opacity:0.9;font-weight:600;text-transform:uppercase;margin-top:2px;}
-.header-band .sub2{font-size:12px;color:var(--text-on-brand);opacity:0.65;margin-top:4px;}
+.header-band .underline{width:44px;height:3px;background:var(--gold-500);margin:10px auto;border-radius:2px;}
+.header-band .sub{font-size:11px;letter-spacing:0.8px;color:var(--text-on-brand);opacity:0.9;font-weight:700;text-transform:uppercase;margin-top:2px;}
+.header-band .sub2{font-size:11.5px;color:var(--text-on-brand);opacity:0.65;margin-top:3px;}
 
 /* ===== LAYOUT ===== */
 .container{width:90%;max-width:1600px;margin:0 auto;padding:32px 0 64px;}
@@ -588,7 +600,8 @@ footer.app-footer{
 .dropzone .icon-btn{flex-shrink:0;}
 
 /* =========================================================================
-   ESTADO DE SOLICITUDES A HACIENDA (Autorización / disponible para pago)
+   ESTADO DE SOLICITUDES A HACIENDA (Autorización / Archivo de Asignación /
+   disponible para Dispersión)
    ========================================================================= */
 .hacienda-item{
   border:1px solid var(--border-hairline);border-left:4px solid var(--status-registrado);
@@ -600,6 +613,8 @@ footer.app-footer{
 .hacienda-item:last-child{margin-bottom:0;}
 .hacienda-item.is-pendiente{border-left-color:var(--status-autorizado);}
 .hacienda-item.is-autorizada{border-left-color:var(--status-pagado);}
+.hacienda-item.is-revision{border-left-color:var(--gold-600);}
+.hacienda-item.is-incorrecta{border-left-color:var(--red);}
 .hacienda-item.is-pagada{border-left-color:var(--maroon-700);}
 .hacienda-item-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;}
 .hacienda-item-title{font-weight:700;font-size:13.5px;color:var(--text-primary);}
@@ -611,6 +626,18 @@ footer.app-footer{
 .badge-pendiente{background:#FBEFD8;color:#8A6512;}
 .badge-autorizada{background:#E1EFE9;color:#0F7C57;}
 .badge-pagada{background:#E5E1F0;color:var(--maroon-700);}
+.badge-revision{background:#FBEFD8;color:#8A6512;}
+.badge-incorrecta{background:#FCEBEC;color:var(--red);}
+
+/* ---------- Archivo de Asignación (dentro de cada hacienda-item) ---------- */
+.asignacion-block{
+  margin-top:10px;padding-top:10px;border-top:1px dashed var(--border-hairline);
+}
+.asignacion-block-title{
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:var(--maroon-700);
+  display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;
+}
+.asignacion-actions{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;justify-content:flex-end;}
 
 /* =========================================================================
    PIPELINE DE FLUJO PRESUPUESTAL
@@ -689,7 +716,7 @@ footer.app-footer{
 }
 
 /* =========================================================================
-   SELECT DE SOLICITUD DE HACIENDA (modal Registrar Pago)
+   SELECT DE SOLICITUD DE HACIENDA (modal Registrar Dispersión)
    ========================================================================= */
 .hacienda-preview{
   background:var(--surface-2);border:1px solid var(--border-hairline);border-radius:var(--radius-sm);

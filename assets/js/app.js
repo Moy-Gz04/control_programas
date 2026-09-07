@@ -36,6 +36,19 @@ const fmtFileSize = (bytes)=>{
   return (bytes/(1024*1024)).toFixed(1)+' MB';
 };
 
+/* ---------- ESCAPE DE TEXTO LIBRE ----------
+   Cualquier texto capturado por el usuario que se inserte dentro de HTML
+   armado con template literals (folio, motivo, etc.) debe pasar por aquí
+   antes de insertarse, para evitar inyección de HTML/XSS. */
+function esc(str){
+  return String(str===null||str===undefined ? '' : str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
 /* ---------- CAMPOS NUMÉRICOS CON SEPARADOR DE MILES EN VIVO ----------
    Un <input type="number"> nativo no admite comas, así que estos campos
    (montos y cantidades) se escriben como texto y se les agrega separador
@@ -381,11 +394,27 @@ function totalComprometidoPendiente(p){ return Math.max(totalComprometido(p) - t
    totalSolicitadoHacienda). */
 function totalHaciendaPendiente(p){ return Math.max(totalSolicitadoHacienda(p) - totalPagado(p), 0); }
 
+/* ---------- Cantidad de pagos por beneficiario / Meta - Dispersión ----------
+   cantidadPagosDe() siempre regresa al menos 1 (COALESCE en el mismo
+   espíritu que hace el backend con COALESCE(cantidad_pagos,1) para
+   programas creados antes de que existiera este campo).
+   montoTotalBeneficiario() = monto por beneficiario * cantidad de pagos.
+   totalPersonasDispersion() = personas ya cubiertas por el total realmente
+   dispersado (pagos registrados) del programa, usando ese monto total por
+   beneficiario como "costo por persona". */
+function cantidadPagosDe(p){ const n = Number(p.cantidad_pagos||1); return n>=1 ? Math.floor(n) : 1; }
+function montoTotalBeneficiario(p){ return Number(p.monto_beneficiario||0) * cantidadPagosDe(p); }
+function totalPersonasDispersion(p){
+  const mtb = montoTotalBeneficiario(p);
+  if(mtb<=0) return 0;
+  return Math.floor(totalPagado(p) / mtb);
+}
+
 function estadoPrograma(p){
   if(p.monto_autorizado===null || p.monto_autorizado===undefined) return {label:'Registrado', color:'var(--status-registrado)'};
   if(totalComprometido(p)===0) return {label:'Autorizado', color:'var(--status-autorizado)'};
   if(totalPagado(p) < totalComprometido(p)) return {label:'En Dictaminación', color:'var(--status-dictaminacion)'};
-  return {label:'Pagado', color:'var(--status-pagado)'};
+  return {label:'Dispersado', color:'var(--status-pagado)'};
 }
 
 /* =========================================================================
@@ -488,10 +517,10 @@ function programTileHTML(p){
     <div class="metrics">
       <div><span>Autorizado</span><b>${fmtMoneyCompact(disponible)}</b></div>
       <div><span>Comprometido</span><b>${fmtMoneyCompact(comp)}</b></div>
-      <div><span>Pagado</span><b>${fmtMoneyCompact(pag)}</b></div>
+      <div><span>Dispersado</span><b>${fmtMoneyCompact(pag)}</b></div>
     </div>
     <div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div>
-    <div class="kpi-sub" style="margin-top:6px;">${pct}% pagado del monto comprometido</div>
+    <div class="kpi-sub" style="margin-top:6px;">${pct}% dispersado del monto comprometido</div>
   </div>`;
 }
 function bindProgramTileClicks(root){
@@ -545,6 +574,8 @@ async function renderDetalle(id){
   const solicitadoHacienda = totalSolicitadoHacienda(p);
   const pagado = totalPagado(p);
   const personas = totalPersonasDictaminadas(p);
+  const montoTotalBenef = montoTotalBeneficiario(p);
+  const personasDispersion = totalPersonasDispersion(p);
 
   // Estado Real: situación actual del recurso en cada etapa del flujo
   // (Autorizado → Dictaminación/Comprometido → Solicitud a Hacienda → Pago).
@@ -578,8 +609,10 @@ async function renderDetalle(id){
       <hr class="divider">
       <div class="info-grid">
         <div class="info-item"><div class="label">Monto por beneficiario</div><div class="value">${fmtMoney(p.monto_beneficiario)}</div></div>
+        <div class="info-item"><div class="label">Monto total por beneficiario</div><div class="value">${fmtMoney(montoTotalBenef)} <span class="kpi-sub">(${cantidadPagosDe(p)} pago${cantidadPagosDe(p)===1?'':'s'})</span></div></div>
         <div class="info-item"><div class="label">Meta de beneficiarios</div><div class="value">${fmtNum(p.meta_beneficiarios)}</div></div>
-        <div class="info-item"><div class="label">Personas dictaminadas</div><div class="value">${fmtNum(personas)} <span class="kpi-sub">(${p.meta_beneficiarios? Math.round(personas/p.meta_beneficiarios*100):0}% de la meta)</span></div></div>
+        <div class="info-item"><div class="label">Meta - P. Dictaminadas</div><div class="value">${fmtNum(personas)} <span class="kpi-sub">(${p.meta_beneficiarios? Math.round(personas/p.meta_beneficiarios*100):0}% de la meta)</span></div></div>
+        <div class="info-item"><div class="label">Meta - Dispersión</div><div class="value">${fmtNum(personasDispersion)} <span class="kpi-sub">(${p.meta_beneficiarios? Math.round(personasDispersion/p.meta_beneficiarios*100):0}% de la meta)</span></div></div>
         <div class="info-item"><div class="label">Recurso disponible</div><div class="value" style="color:${disponible<0?'var(--red)':'var(--text-dark)'}">${fmtMoney(disponible)}</div></div>
       </div>
     </div>
@@ -590,16 +623,16 @@ async function renderDetalle(id){
       ${kpiTile('Recurso Modificado', fmtMoney(autorizadoNeto), 'Autorizado + '+(p.modificaciones||[]).length+' movimiento(s)', COLOR_MODIFICADO)}
       ${kpiTile('Recurso Comprometido', fmtMoney(comprometido), fmtNum(personas)+' personas dictaminadas', COLOR_COMPROMETIDO)}
       ${kpiTile('Recurso Solicitado a Hacienda', fmtMoney(solicitadoHacienda), (p.solicitudesHacienda||[]).length+' trámite(s)', COLOR_HACIENDA)}
-      ${kpiTile('Recurso Pagado', fmtMoney(pagado), (p.pagos||[]).length+' pago(s)', COLOR_PAGADO)}
+      ${kpiTile('Recurso Dispersado', fmtMoney(pagado), (p.pagos||[]).length+' dispersión(es)', COLOR_PAGADO)}
     </div>
 
     <div class="section-title"><h2>Estado Real del Recurso</h2><span class="hint">Situación actual — se recalcula conforme el recurso avanza de etapa</span></div>
     <div class="kpi-grid">
       ${kpiTileBrand('Recurso Autorizado Disponible', fmtMoney(autorizadoDisponible), 'Autorizado − Comprometido')}
       ${kpiTileBrand('Recurso Modificado Disponible', fmtMoney(modificadoDisponible), 'Modificado − Comprometido')}
-      ${kpiTileBrand('Recurso Comprometido', fmtMoney(comprometidoPendiente), 'Pendiente de solicitar/pagar')}
-      ${kpiTileBrand('Recurso Solicitado a Hacienda', fmtMoney(haciendaPendiente), 'Pendiente de pago')}
-      ${kpiTileBrand('Recurso Pagado', fmtMoney(pagado), (p.pagos||[]).length+' pago(s)')}
+      ${kpiTileBrand('Recurso Comprometido', fmtMoney(comprometidoPendiente), 'Pendiente de solicitar/dispersar')}
+      ${kpiTileBrand('Recurso Solicitado a Hacienda', fmtMoney(haciendaPendiente), 'Pendiente de dispersión')}
+      ${kpiTileBrand('Recurso Dispersado', fmtMoney(pagado), (p.pagos||[]).length+' dispersión(es)')}
     </div>
 
     ${pipelinePresupuestoHTML(p)}
@@ -624,7 +657,7 @@ async function renderDetalle(id){
               <div class="log-row-icon ${m.tipo==='Ampliación'?'log-row-icon-pos':'log-row-icon-neg'}">${m.tipo==='Ampliación'?'+':'−'}</div>
               <div class="log-row-main">
                 <div class="log-row-title">${m.tipo}</div>
-                <div class="lmeta">${m.motivo||''} · ${fmtDate(m.created_at)}
+                <div class="lmeta">${esc(m.motivo||'')} · ${fmtDate(m.created_at)}
                   ${m.documento_url ? ` · <a class="doc-link" href="${m.documento_url}" target="_blank" rel="noopener">Ver Documento</a>` : ''}
                 </div>
               </div>
@@ -651,14 +684,14 @@ async function renderDetalle(id){
       </div>
     `)}
 
-    ${collapsibleSection('pagos','Recurso Pagado', `${(p.pagos||[]).length} pago(s)`, `
+    ${collapsibleSection('pagos','Recurso Dispersado', `${(p.pagos||[]).length} dispersión(es)`, `
       <div class="log-list">
-        ${(p.pagos||[]).length? p.pagos.map(g=>pagoRowHTML(p,g)).join('') : `<div class="empty-state">Sin pagos registrados.</div>`}
+        ${(p.pagos||[]).length? p.pagos.map(g=>pagoRowHTML(p,g)).join('') : `<div class="empty-state">Sin dispersiones registradas.</div>`}
       </div>
       <div style="text-align:center;margin-top:10px;">
         ${disponiblesParaPago.length
-          ? `<button class="btn btn-outline btn-sm" id="btnAddPago">+ Registrar Pago</button>`
-          : `<div class="field-hint" style="margin-bottom:8px;">No hay solicitudes a Hacienda autorizadas y pendientes de pago.</div>`}
+          ? `<button class="btn btn-outline btn-sm" id="btnAddPago">+ Registrar Dispersión</button>`
+          : `<div class="field-hint" style="margin-bottom:8px;">No hay solicitudes a Hacienda con Archivo de Asignación correcto, pendientes de dispersión.</div>`}
       </div>
     `)}
 
@@ -684,6 +717,20 @@ async function renderDetalle(id){
 
   el.querySelectorAll('[data-autorizar-hacienda]').forEach(btn=>{
     btn.addEventListener('click', ()=> openModalAutorizacion(p.id, btn.dataset.autorizarHacienda));
+  });
+
+  // Archivo de Asignación: cargar, marcar correcto / incorrecto.
+  el.querySelectorAll('[data-asig-upload]').forEach(btn=>{
+    const hid = btn.dataset.asigUpload;
+    const fileInput = document.getElementById('asig-input-'+hid);
+    btn.addEventListener('click', ()=> fileInput && fileInput.click());
+    if(fileInput) fileInput.addEventListener('change', ()=> uploadAsignacion(p.id, hid, fileInput, btn));
+  });
+  el.querySelectorAll('[data-asig-correcto]').forEach(btn=>{
+    btn.addEventListener('click', ()=> openModalAsignacionCorrecto(p.id, btn.dataset.asigCorrecto));
+  });
+  el.querySelectorAll('[data-asig-incorrecto]').forEach(btn=>{
+    btn.addEventListener('click', ()=> openModalAsignacionIncorrecto(p.id, btn.dataset.asigIncorrecto));
   });
 
   // Nada de lo que pasa dentro de un dictamen (agregar el dictamen, llenar
@@ -713,7 +760,7 @@ function kpiTileBrand(label,value,sub){
    Diagrama de barras tipo "flujo" (no es una gráfica de Chart.js, es HTML/
    CSS puro): muestra en una sola vista cómo el Recurso Autorizado inicial
    se reparte entre Comprometido y Disponible sin comprometer, y cuánto de
-   eso ya se convirtió en Recurso Pagado — pensado para leerse de un
+   eso ya se convirtió en Recurso Dispersado — pensado para leerse de un
    vistazo, en vez de tener que comparar varias tarjetas sueltas. */
 /* =========================================================================
    PIPELINE DE FLUJO PRESUPUESTAL (vista integrada Histórico + Situación Actual)
@@ -744,18 +791,18 @@ function pipelinePresupuestoHTML(p){
     { titulo:'Recurso Disponible', sub:`${pctDisponible.toFixed(1)}% del autorizado`, valor:disponible },
     { titulo:'Comprometido', sub:`Histórico: ${fmtMoney(comprometido)}`, valor:comprometidoPendiente },
     { titulo:'Solicitado a Hacienda', sub:`Histórico: ${fmtMoney(solicitadoHacienda)}`, valor:haciendaPendiente },
-    { titulo:'Pagado Real', sub:`${(p.pagos||[]).length} pago(s)`, valor:pagado },
+    { titulo:'Dispersado', sub:`${(p.pagos||[]).length} dispersión(es)`, valor:pagado },
   ];
 
   // Alerta de validación: la misma condición ya usada en generateInsightPrograma
-  // (montos reales, nada inventado) — si Hacienda o el pago exceden la etapa
-  // previa, se avisa; si no, se confirma que no hay inconsistencias.
+  // (montos reales, nada inventado) — si Hacienda o la dispersión exceden la
+  // etapa previa, se avisa; si no, se confirma que no hay inconsistencias.
   const excedeHacienda = solicitadoHacienda > comprometido + 0.01;
   const excedePago = pagado > solicitadoHacienda + 0.01 && solicitadoHacienda>0;
   const hayAlerta = excedeHacienda || excedePago;
   const alertaHtml = hayAlerta
-    ? `<div class="pipeline-alert pipeline-alert-warn">⚠ ${excedePago ? 'El pago excede lo solicitado a Hacienda.' : 'Lo solicitado a Hacienda excede el recurso comprometido.'} Revisa los registros.</div>`
-    : `<div class="pipeline-alert pipeline-alert-ok">✓ Sin inconsistencias entre comprometido, solicitado y pagado.</div>`;
+    ? `<div class="pipeline-alert pipeline-alert-warn">⚠ ${excedePago ? 'La dispersión excede lo solicitado a Hacienda.' : 'Lo solicitado a Hacienda excede el recurso comprometido.'} Revisa los registros.</div>`
+    : `<div class="pipeline-alert pipeline-alert-ok">✓ Sin inconsistencias entre comprometido, solicitado y dispersado.</div>`;
 
   const BAR_H = 170; // debe coincidir con --pipeline-bar-h en CSS
   const N = nodos.length;
@@ -816,7 +863,7 @@ function pipelinePresupuestoHTML(p){
         <tr><td>Recurso Disponible</td><td>${fmtMoney(disponible)}</td></tr>
         <tr><td>Recurso Comprometido (histórico)</td><td>${fmtMoney(comprometido)}</td></tr>
         <tr><td>Solicitado a Hacienda (histórico)</td><td>${fmtMoney(solicitadoHacienda)}</td></tr>
-        <tr><td>Recurso Pagado</td><td>${fmtMoney(pagado)}</td></tr>
+        <tr><td>Recurso Dispersado</td><td>${fmtMoney(pagado)}</td></tr>
       </tbody>
     </table>
   </div>
@@ -828,7 +875,7 @@ function pipelinePresupuestoHTML(p){
         <div class="pipeline-side-box">
           <div class="pipeline-side-label">Recurso Disponible Libre</div>
           <div class="pipeline-side-value">${fmtMoney(disponible)}</div>
-          <div class="pipeline-side-sub">Histórico pagado: ${fmtMoney(pagado)}</div>
+          <div class="pipeline-side-sub">Histórico dispersado: ${fmtMoney(pagado)}</div>
         </div>
         ${alertaHtml}
       </div>
@@ -840,15 +887,15 @@ function pipelinePresupuestoHTML(p){
   </div>`;
 }
 
-/* ---------- Recurso Pagado: fila con referencia a la solicitud de Hacienda ---------- */
+/* ---------- Recurso Dispersado: fila con referencia a la solicitud de Hacienda ---------- */
 function pagoRowHTML(p, g){
   const hac = (p.solicitudesHacienda||[]).find(h=>h.id===g.hacienda_id);
   return `
           <div class="log-row log-row-pago">
             <div class="log-row-icon log-row-icon-pos">$</div>
             <div class="log-row-main">
-              <div class="log-row-title">Folio ${g.folio}</div>
-              <div class="lmeta">${fmtDate(g.fecha)}${hac? ` · Solicitud a Hacienda folio ${hac.folio}` : ''}
+              <div class="log-row-title">Folio ${esc(g.folio)}</div>
+              <div class="lmeta">${fmtDate(g.fecha)}${hac? ` · Solicitud a Hacienda folio ${esc(hac.folio)}` : ''}
                 ${g.documento_url ? ` · <a class="doc-link" href="${g.documento_url}" target="_blank" rel="noopener">Ver Documento</a>` : ''}
               </div>
             </div>
@@ -856,18 +903,27 @@ function pagoRowHTML(p, g){
           </div>`;
 }
 
-/* ---------- Solicitudes a Hacienda: estado (pendiente / autorizada / pagada) ---------- */
+/* ---------- Solicitudes a Hacienda: estado (pendiente / autorizada / en revisión / incorrecta / lista / dispersada) ---------- */
 function haciendaItemHTML(h){
-  const badge = h.pagada
-    ? { cls:'badge-pagada', mod:'is-pagada', label:'Pagada' }
-    : h.autorizacion
-      ? { cls:'badge-autorizada', mod:'is-autorizada', label:'Autorizada · disponible para pago' }
-      : { cls:'badge-pendiente', mod:'is-pendiente', label:'Pendiente de autorización' };
+  let badge;
+  if(h.pagada){
+    badge = { cls:'badge-pagada', mod:'is-pagada', label:'Dispersado' };
+  } else if(h.asignacion && h.asignacion.estatus==='correcto'){
+    badge = { cls:'badge-autorizada', mod:'is-autorizada', label:'Listo para Dispersión' };
+  } else if(h.asignacion && h.asignacion.estatus==='incorrecto'){
+    badge = { cls:'badge-incorrecta', mod:'is-incorrecta', label:'Archivo de Asignación Incorrecto' };
+  } else if(h.asignacion && h.asignacion.estatus==='revision'){
+    badge = { cls:'badge-revision', mod:'is-revision', label:'Archivo de Asignación en Revisión' };
+  } else if(h.autorizacion){
+    badge = { cls:'badge-autorizada', mod:'is-autorizada', label:'Autorizado por Hacienda' };
+  } else {
+    badge = { cls:'badge-pendiente', mod:'is-pendiente', label:'Pendiente de autorización' };
+  }
   return `
   <div class="hacienda-item ${badge.mod}">
     <div class="hacienda-item-head">
       <div class="hacienda-item-main">
-        <div class="hacienda-item-title">Folio ${h.folio}</div>
+        <div class="hacienda-item-title">Folio ${esc(h.folio)}</div>
         <div class="lmeta">Solicitado: ${fmtDate(h.fecha)}
           ${h.documento_url ? ` · <a class="doc-link" href="${h.documento_url}" target="_blank" rel="noopener">Ver Documento</a>` : ''}
         </div>
@@ -878,7 +934,7 @@ function haciendaItemHTML(h){
       </div>
     </div>
     ${h.autorizacion ? `
-      <div class="hacienda-sub">Autorizado: <b>${fmtMoney(h.autorizacion.monto_autorizado)}</b> · ${fmtDate(h.autorizacion.fecha_autorizacion)}
+      <div class="hacienda-sub">Autorizado por Hacienda: <b>${fmtMoney(h.autorizacion.monto_autorizado)}</b> · ${fmtDate(h.autorizacion.fecha_autorizacion)}
         ${h.autorizacion.documento_url ? ` · <a class="doc-link" href="${h.autorizacion.documento_url}" target="_blank" rel="noopener">Ver Documento</a>` : ''}
       </div>
     ` : `
@@ -886,7 +942,63 @@ function haciendaItemHTML(h){
         <button class="btn btn-gold btn-sm" data-autorizar-hacienda="${h.id}">+ Registrar Autorización</button>
       </div>
     `}
+    ${h.autorizacion ? asignacionBlockHTML(h) : ''}
   </div>`;
+}
+
+/* ---------- Archivo de Asignación: bloque de carga / revisión por solicitud a Hacienda ----------
+   Solo se dibuja cuando la solicitud ya tiene su Autorización de Hacienda
+   registrada (ver haciendaItemHTML). Estados:
+     sin registro   -> botón para cargar el archivo.
+     'revision'     -> botones Marcar Correcto / Marcar Incorrecto.
+     'incorrecto'   -> motivo + fecha de revisión, botón para cargar un
+                       nuevo documento (regresa a 'revision').
+     'correcto'     -> folio + fecha de revisión (listo para dispersión). */
+function asignacionBlockHTML(h){
+  const a = h.asignacion;
+  const hid = h.id;
+  if(!a){
+    return `
+    <div class="asignacion-block">
+      <div class="asignacion-block-title">Archivo de Asignación</div>
+      <input type="file" id="asig-input-${hid}" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" hidden>
+      <div class="asignacion-actions">
+        <button class="btn btn-outline btn-sm" data-asig-upload="${hid}">Cargar Archivo de Asignación</button>
+      </div>
+    </div>`;
+  }
+  const cargaInfo = `<div class="lmeta">Cargado: ${fmtDate(a.fecha_carga)}${a.documento_url? ` · <a class="doc-link" href="${a.documento_url}" target="_blank" rel="noopener">Ver Documento</a>`:''}</div>`;
+
+  if(a.estatus==='revision'){
+    return `
+    <div class="asignacion-block">
+      <div class="asignacion-block-title">Archivo de Asignación <span class="badge-pill badge-revision">En Revisión</span></div>
+      ${cargaInfo}
+      <div class="asignacion-actions">
+        <button class="btn btn-outline btn-sm" data-asig-correcto="${hid}">Marcar Correcto</button>
+        <button class="btn btn-danger btn-sm" data-asig-incorrecto="${hid}">Marcar Incorrecto</button>
+      </div>
+    </div>`;
+  }
+  if(a.estatus==='incorrecto'){
+    return `
+    <div class="asignacion-block">
+      <div class="asignacion-block-title">Archivo de Asignación <span class="badge-pill badge-incorrecta">Incorrecto</span></div>
+      ${cargaInfo}
+      <div class="lmeta">Motivo: ${esc(a.motivo_rechazo||'')} · ${fmtDate(a.fecha_revision)}</div>
+      <input type="file" id="asig-input-${hid}" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" hidden>
+      <div class="asignacion-actions">
+        <button class="btn btn-outline btn-sm" data-asig-upload="${hid}">Cargar Nuevo Documento</button>
+      </div>
+    </div>`;
+  }
+  // correcto
+  return `
+    <div class="asignacion-block">
+      <div class="asignacion-block-title">Archivo de Asignación <span class="badge-pill badge-autorizada">Correcto</span></div>
+      ${cargaInfo}
+      <div class="lmeta">Folio proporcionado: <b>${esc(a.folio||'')}</b> · ${fmtDate(a.fecha_revision)}</div>
+    </div>`;
 }
 
 /* ---------- Documentos: resumen de todos los archivos cargados en el programa ---------- */
@@ -894,9 +1006,11 @@ function documentosCount(p){
   let n = 0;
   if(p.monto_autorizado_documento_url) n++;
   n += (p.modificaciones||[]).filter(m=>m.documento_url).length;
+  (p.dictamenes||[]).forEach(d=>{ if(d.acta_documento_url) n++; });
   (p.solicitudesHacienda||[]).forEach(h=>{
     if(h.documento_url) n++;
     if(h.autorizacion && h.autorizacion.documento_url) n++;
+    if(h.asignacion && h.asignacion.documento_url) n++;
   });
   n += (p.pagos||[]).filter(g=>g.documento_url).length;
   return n;
@@ -909,12 +1023,16 @@ function documentosSectionBody(p){
   (p.modificaciones||[]).forEach(m=>{
     if(m.documento_url) rows.push({ tipo:`Modificación (${m.tipo})`, ref:m.motivo||'', fecha:m.created_at, url:m.documento_url });
   });
+  (p.dictamenes||[]).forEach(d=>{
+    if(d.acta_documento_url) rows.push({ tipo:'Acta Firmada de Dictamen', ref:d.numero!=null? ('Dictamen '+d.numero) : '', fecha:d.acta_fecha_carga, url:d.acta_documento_url });
+  });
   (p.solicitudesHacienda||[]).forEach(h=>{
     if(h.documento_url) rows.push({ tipo:'Solicitud a Hacienda', ref:'Folio '+h.folio, fecha:h.fecha, url:h.documento_url });
-    if(h.autorizacion && h.autorizacion.documento_url) rows.push({ tipo:'Autorización de Hacienda', ref:'Folio '+h.folio, fecha:h.autorizacion.fecha_autorizacion, url:h.autorizacion.documento_url });
+    if(h.autorizacion && h.autorizacion.documento_url) rows.push({ tipo:'Autorizado por Hacienda', ref:'Folio '+h.folio, fecha:h.autorizacion.fecha_autorizacion, url:h.autorizacion.documento_url });
+    if(h.asignacion && h.asignacion.documento_url) rows.push({ tipo:'Archivo de Asignación', ref:'Folio '+h.folio, fecha:h.asignacion.fecha_carga, url:h.asignacion.documento_url });
   });
   (p.pagos||[]).forEach(g=>{
-    if(g.documento_url) rows.push({ tipo:'Pago', ref:'Folio '+g.folio, fecha:g.fecha, url:g.documento_url });
+    if(g.documento_url) rows.push({ tipo:'Dispersión', ref:'Folio '+g.folio, fecha:g.fecha, url:g.documento_url });
   });
 
   if(!rows.length) return `<div class="empty-state">Sin documentos cargados todavía.</div>`;
@@ -922,7 +1040,7 @@ function documentosSectionBody(p){
   return `<div class="log-list">${rows.map(r=>`
     <div class="log-row log-row-doc">
       <div class="log-row-icon log-row-icon-doc">📄</div>
-      <div class="log-row-main"><div class="log-row-title">${r.tipo}</div><div class="lmeta">${r.ref} · ${fmtDate(r.fecha)}</div></div>
+      <div class="log-row-main"><div class="log-row-title">${esc(r.tipo)}</div><div class="lmeta">${esc(r.ref)} · ${fmtDate(r.fecha)}</div></div>
       <a class="btn btn-outline btn-sm" href="${r.url}" target="_blank" rel="noopener">Ver Documento</a>
     </div>`).join('')}</div>`;
 }
@@ -940,12 +1058,16 @@ function dictamenBlockHTML(p,d){
   const personas = (d.solicitudes||[]).reduce((s,so)=>s+Number(so.personas||0),0);
   const comprometido = personas * Number(p.monto_beneficiario);
   const titulo = d.numero!=null ? ('Dictamen '+d.numero) : 'Dictamen (nuevo, sin guardar)';
+  const esNuevo = esTemporal(d.id);
   return `
   <div class="dictamen-block" data-dictamen-block="${d.id}">
     <div class="dictamen-head">
       <h4>${titulo}</h4>
-      <div style="display:flex;align-items:center;gap:10px;">
-        <div class="chip">${fmtMoney(d.monto_autorizado)} autorizados</div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div class="chip" data-dic-chip="${d.id}">${fmtMoney(d.monto_autorizado)} autorizados</div>
+        <input type="file" id="acta-input-${d.id}" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" hidden>
+        <button class="btn btn-outline btn-sm" data-upload-acta="${d.id}" ${esNuevo?'disabled title="Guarda el dictamen antes de cargar el acta"':''}>${d.acta_documento_url? 'Reemplazar Acta Firmada':'Cargar Acta Firmada de Dictamen'}</button>
+        ${d.acta_documento_url ? `<a class="btn btn-outline btn-sm" href="${d.acta_documento_url}" target="_blank" rel="noopener">Ver Acta</a>` : ''}
         <button class="btn btn-danger btn-sm" data-del-dictamen="${d.id}">Eliminar Dictamen</button>
       </div>
     </div>
@@ -1014,6 +1136,25 @@ function bindDictamenBlock(block, p){
   block.querySelector('[data-add-solicitud]').addEventListener('click', ()=> addSolicitudLocal(block, p));
   block.querySelector('[data-save-dictamen]').addEventListener('click', (e)=> saveDictamen(p, dicId, block, e.currentTarget));
   block.querySelectorAll('.solicitud-row').forEach(row=> bindSolicitudRow(row, block, p));
+
+  // Recalcula en vivo el chip "$X autorizados" mientras se teclea el monto,
+  // sin llamar a la API (solo se guarda al presionar "Guardar Dictamen").
+  const montoInput = block.querySelector('[data-dic-monto]');
+  const chip = block.querySelector('[data-dic-chip]');
+  if(montoInput && chip){
+    montoInput.addEventListener('input', ()=>{
+      chip.textContent = `${fmtMoney(numValue(montoInput))} autorizados`;
+    });
+  }
+
+  // Acta Firmada de Dictamen: solo disponible si el dictamen ya tiene un id
+  // real (esNuevo=false lo deshabilita en el HTML).
+  const actaBtn = block.querySelector('[data-upload-acta]');
+  if(actaBtn && !esTemporal(dicId)){
+    const fileInput = document.getElementById('acta-input-'+dicId);
+    actaBtn.addEventListener('click', ()=> fileInput && fileInput.click());
+    if(fileInput) fileInput.addEventListener('change', ()=> uploadActaDictamen(pid, dicId, fileInput, actaBtn));
+  }
 }
 
 function bindSolicitudRow(row, block, p){
@@ -1156,11 +1297,24 @@ async function handleDeleteDictamen(pid, block, dicId, btn){
   await refreshOneProgram(pid); renderDetalle(pid);
 }
 
+/* ---- Acta Firmada de Dictamen: subida directa al seleccionar el archivo ---- */
+async function uploadActaDictamen(pid, dicId, fileInput, btn){
+  const archivo = fileInput.files[0];
+  if(!archivo) return;
+  const fd = new FormData();
+  fd.append('documento', archivo);
+  try{
+    await withLoading(btn, ()=>safeCall(()=>Api.postForm(`/programs/${pid}/dictamenes/${dicId}/acta`, fd), 'Acta Firmada de Dictamen cargada.'), 'Subiendo…');
+    await refreshOneProgram(pid); renderDetalle(pid);
+  }catch(e){ /* el error ya se mostró vía safeCall */ }
+  finally{ fileInput.value = ''; }
+}
+
 /* =========================================================================
    ANÁLISIS DINÁMICO — texto que describe la situación actual de la gráfica.
    Se recalcula cada vez que se renderiza, a partir de los datos vigentes,
    siguiendo el flujo real del recurso: Autorizado → Comprometido →
-   Solicitado a Hacienda → Pagado.
+   Solicitado a Hacienda → Dispersado.
    ========================================================================= */
 function generateInsightGeneral(programs){
   if(!programs.length){
@@ -1184,9 +1338,9 @@ function generateInsightGeneral(programs){
 
   if(totComp>0){
     if(totHac===0){
-      html += `<p>De ese recurso comprometido, ningún programa ha enviado todavía una solicitud a Hacienda; ese es el siguiente paso pendiente antes de poder ministrar los pagos.</p>`;
+      html += `<p>De ese recurso comprometido, ningún programa ha enviado todavía una solicitud a Hacienda; ese es el siguiente paso pendiente antes de poder dispersar los pagos.</p>`;
     } else {
-      html += `<p>De lo comprometido se ha solicitado a Hacienda <b>${fmtMoney(totHac)}</b> (<b>${pctSolicitado.toFixed(1)}%</b>), y de lo solicitado se ha pagado <b>${fmtMoney(totPag)}</b> (<b>${pctPagadoDeSolicitado.toFixed(1)}%</b>). Quedan <b>${fmtMoney(pendienteComprometido)}</b> pendientes por ministrar del total comprometido.</p>`;
+      html += `<p>De lo comprometido se ha solicitado a Hacienda <b>${fmtMoney(totHac)}</b> (<b>${pctSolicitado.toFixed(1)}%</b>), y de lo solicitado se ha dispersado <b>${fmtMoney(totPag)}</b> (<b>${pctPagadoDeSolicitado.toFixed(1)}%</b>). Quedan <b>${fmtMoney(pendienteComprometido)}</b> pendientes por dispersar del total comprometido.</p>`;
     }
   }
 
@@ -1198,7 +1352,7 @@ function generateInsightGeneral(programs){
     html += `<p style="color:#FF9FB0;font-weight:700;">Atención: el total solicitado a Hacienda (${fmtMoney(totHac)}) supera el total comprometido (${fmtMoney(totComp)}). Conviene revisar los trámites registrados.</p>`;
   }
   if(totPag > totHac + 0.01 && totHac>0){
-    html += `<p style="color:#FF9FB0;font-weight:700;">Atención: el total pagado (${fmtMoney(totPag)}) supera lo solicitado a Hacienda (${fmtMoney(totHac)}). Conviene revisar los pagos registrados.</p>`;
+    html += `<p style="color:#FF9FB0;font-weight:700;">Atención: el total dispersado (${fmtMoney(totPag)}) supera lo solicitado a Hacienda (${fmtMoney(totHac)}). Conviene revisar las dispersiones registradas.</p>`;
   }
 
   if(sobregirados.length){
@@ -1253,17 +1407,17 @@ function generateInsightPrograma(p){
 
   if(numPagos===0){
     html += solicitado>0
-      ? `<li>Todavía no se registra ningún pago; el recurso solicitado a Hacienda sigue pendiente de ministración.</li>`
-      : `<li>Todavía no se registra ningún pago a beneficiarios.</li>`;
+      ? `<li>Todavía no se registra ninguna dispersión; el recurso solicitado a Hacienda sigue pendiente de dispersión.</li>`
+      : `<li>Todavía no se registra ninguna dispersión a beneficiarios.</li>`;
   } else {
-    html += `<li>Se han ministrado <b>${fmtMoney(pagado)}</b> en <b>${numPagos}</b> pago${numPagos===1?'':'s'} (<b>${pctPagado.toFixed(1)}%</b> de lo solicitado a Hacienda), quedando <b>${fmtMoney(Math.max(comprometido-pagado,0))}</b> pendientes por ministrar del total comprometido.</li>`;
+    html += `<li>Se han dispersado <b>${fmtMoney(pagado)}</b> en <b>${numPagos}</b> dispersión${numPagos===1?'':'es'} (<b>${pctPagado.toFixed(1)}%</b> de lo solicitado a Hacienda), quedando <b>${fmtMoney(Math.max(comprometido-pagado,0))}</b> pendientes por dispersar del total comprometido.</li>`;
   }
 
   if(solicitado > comprometido + 0.01){
     html += `<li style="color:#FF9FB0;font-weight:700;">Atención: lo solicitado a Hacienda (${fmtMoney(solicitado)}) supera el recurso comprometido (${fmtMoney(comprometido)}). Conviene revisar los trámites registrados.</li>`;
   }
   if(pagado > solicitado + 0.01 && solicitado>0){
-    html += `<li style="color:#FF9FB0;font-weight:700;">Atención: el recurso pagado (${fmtMoney(pagado)}) supera lo solicitado a Hacienda (${fmtMoney(solicitado)}). Conviene revisar los pagos registrados.</li>`;
+    html += `<li style="color:#FF9FB0;font-weight:700;">Atención: el recurso dispersado (${fmtMoney(pagado)}) supera lo solicitado a Hacienda (${fmtMoney(solicitado)}). Conviene revisar las dispersiones registradas.</li>`;
   }
 
   if(disponible<0){
@@ -1316,7 +1470,7 @@ function buildComparativeChart(canvasId, programs){
     data:{ labels, datasets:[
       {label:'Autorizado', data:dataAut, backgroundColor:COLOR_AUTORIZADO, borderRadius:6, maxBarThickness:40},
       {label:'Comprometido', data:dataComp, backgroundColor:COLOR_COMPROMETIDO, borderRadius:6, maxBarThickness:40},
-      {label:'Pagado', data:dataPag, backgroundColor:COLOR_PAGADO, borderRadius:6, maxBarThickness:40},
+      {label:'Dispersado', data:dataPag, backgroundColor:COLOR_PAGADO, borderRadius:6, maxBarThickness:40},
     ]},
     options:{
       responsive:true, maintainAspectRatio:false, layout:{padding:{top:24}},
@@ -1372,9 +1526,10 @@ function openModalNuevoPrograma(){
         </div>
         <div class="field"><label>Nombre del Proyecto</label><input type="text" id="f-nombre" placeholder="Ej. Programa de Apoyo a..."></div>
       </div>
-      <div class="form-grid">
+      <div class="form-grid cols-3">
         <div class="field"><label>Cantidad por Beneficiario</label><input type="text" data-money id="f-montoBenef" placeholder="$0.00"></div>
         <div class="field"><label>Meta de Beneficiarios</label><input type="text" data-int id="f-meta" placeholder="0"></div>
+        <div class="field"><label>Cantidad de Pagos por Beneficiario</label><input type="text" data-int id="f-cantidadPagos" placeholder="1" value="1"></div>
       </div>
       <div id="f-error" style="color:var(--red);font-size:12.5px;font-weight:700;display:none;"></div>
     </div>
@@ -1390,6 +1545,8 @@ async function submitNuevoPrograma(btn){
   const nombre = document.getElementById('f-nombre').value.trim();
   const montoBenef = numValue(document.getElementById('f-montoBenef'));
   const meta = numValue(document.getElementById('f-meta'));
+  const cantidadPagosInput = document.getElementById('f-cantidadPagos');
+  const cantidadPagos = numValue(cantidadPagosInput) || 1;
   const err = document.getElementById('f-error');
 
   if(!codigo || !nombre || !montoBenef || !meta){
@@ -1397,8 +1554,13 @@ async function submitNuevoPrograma(btn){
     err.style.display = 'block';
     return;
   }
+  if(cantidadPagos < 1){
+    err.textContent = 'La cantidad de pagos por beneficiario debe ser al menos 1.';
+    err.style.display = 'block';
+    return;
+  }
   try{
-    const programa = await withLoading(btn, ()=>Api.post('/programs', { unidad_codigo:codigo, nombre, monto_beneficiario:montoBenef, meta_beneficiarios:meta }), 'Creando…');
+    const programa = await withLoading(btn, ()=>Api.post('/programs', { unidad_codigo:codigo, nombre, monto_beneficiario:montoBenef, meta_beneficiarios:meta, cantidad_pagos:cantidadPagos }), 'Creando…');
     closeModal();
     toast('Programa creado correctamente.');
     await refreshPrograms();
@@ -1415,13 +1577,14 @@ function openModalEditarPrograma(p){
     <div class="modal-header"><h3>Editar Programa</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
     <div class="modal-body">
       <div class="form-grid single">
-        <div class="field"><label>Nombre del Proyecto</label><input type="text" id="e-nombre" value="${p.nombre.replace(/"/g,'&quot;')}"></div>
+        <div class="field"><label>Nombre del Proyecto</label><input type="text" id="e-nombre" value="${esc(p.nombre)}"></div>
       </div>
-      <div class="form-grid">
+      <div class="form-grid cols-3">
         <div class="field"><label>Cantidad por Beneficiario</label><input type="text" data-money id="e-montoBenef" value="${fmtInputMoney(p.monto_beneficiario)}"></div>
         <div class="field"><label>Meta de Beneficiarios</label><input type="text" data-int id="e-meta" value="${fmtInputInt(p.meta_beneficiarios)}"></div>
+        <div class="field"><label>Cantidad de Pagos por Beneficiario</label><input type="text" data-int id="e-cantidadPagos" value="${fmtInputInt(cantidadPagosDe(p))}"></div>
       </div>
-      <div class="field-hint">La Unidad Presupuestal y la clave (${p.clave}) no se pueden cambiar una vez creado el programa.</div>
+      <div class="field-hint">La Unidad Presupuestal y la clave (${esc(p.clave)}) no se pueden cambiar una vez creado el programa.</div>
       <div id="e-error" style="color:var(--red);font-size:12.5px;font-weight:700;display:none;"></div>
     </div>
     <div class="modal-footer">
@@ -1434,6 +1597,7 @@ function openModalEditarPrograma(p){
     const nombre = document.getElementById('e-nombre').value.trim();
     const montoBenef = numValue(document.getElementById('e-montoBenef'));
     const meta = numValue(document.getElementById('e-meta'));
+    const cantidadPagos = numValue(document.getElementById('e-cantidadPagos')) || 1;
     const err = document.getElementById('e-error');
 
     if(!nombre || !montoBenef || !meta){
@@ -1441,8 +1605,13 @@ function openModalEditarPrograma(p){
       err.style.display = 'block';
       return;
     }
+    if(cantidadPagos < 1){
+      err.textContent = 'La cantidad de pagos por beneficiario debe ser al menos 1.';
+      err.style.display = 'block';
+      return;
+    }
     try{
-      await withLoading(btn, ()=>Api.patch(`/programs/${p.id}`, { nombre, monto_beneficiario:montoBenef, meta_beneficiarios:meta }), 'Guardando…');
+      await withLoading(btn, ()=>Api.patch(`/programs/${p.id}`, { nombre, monto_beneficiario:montoBenef, meta_beneficiarios:meta, cantidad_pagos:cantidadPagos }), 'Guardando…');
       closeModal();
       toast('Programa actualizado correctamente.');
       await refreshOneProgram(p.id);
@@ -1460,10 +1629,10 @@ function openModalEliminarPrograma(p){
     <div class="modal-header"><h3>Eliminar Programa</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
     <div class="modal-body">
       <p style="font-size:13.5px;line-height:1.6;margin:0 0 10px;">
-        Estás a punto de eliminar permanentemente el programa <b>${p.nombre}</b> (${p.clave}).
+        Estás a punto de eliminar permanentemente el programa <b>${esc(p.nombre)}</b> (${esc(p.clave)}).
       </p>
       <p style="font-size:13.5px;line-height:1.6;color:var(--red);font-weight:700;margin:0;">
-        Esto borra también todos sus movimientos: monto autorizado, modificaciones, dictámenes, solicitudes, trámites a Hacienda, autorizaciones y pagos. Esta acción no se puede deshacer.
+        Esto borra también todos sus movimientos: monto autorizado, modificaciones, dictámenes, solicitudes, trámites a Hacienda, autorizaciones, archivos de asignación y dispersiones. Esta acción no se puede deshacer.
       </p>
     </div>
     <div class="modal-footer">
@@ -1616,17 +1785,17 @@ function openModalHacienda(pid){
   });
 }
 
-/* ---- Autorización de Hacienda ----
+/* ---- Autorizado por Hacienda ----
    Registra que una solicitud ya enviada a Hacienda fue autorizada: monto
    autorizado, fecha/hora propia y su documento. A partir de ahí la
-   solicitud queda disponible para ligarle un pago. */
+   solicitud queda habilitada para cargarle su Archivo de Asignación. */
 function openModalAutorizacion(pid, hacId){
   const p = state.programs.find(x=>x.id===pid);
   const hac = p && (p.solicitudesHacienda||[]).find(h=>String(h.id)===String(hacId));
   openModal(`
-    <div class="modal-header"><h3>Registrar Autorización de Hacienda</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-header"><h3>Registrar Autorizado por Hacienda</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
     <div class="modal-body">
-      ${hac ? `<div class="hacienda-preview">Solicitud <b>Folio ${hac.folio}</b> · Monto solicitado <b>${fmtMoney(hac.monto)}</b> · ${fmtDate(hac.fecha)}</div>` : ''}
+      ${hac ? `<div class="hacienda-preview">Solicitud <b>Folio ${esc(hac.folio)}</b> · Monto solicitado <b>${fmtMoney(hac.monto)}</b> · ${fmtDate(hac.fecha)}</div>` : ''}
       <div class="form-grid single">
         <div class="field"><label>Monto Autorizado por Hacienda</label><input type="text" data-money id="au-monto" placeholder="$0.00" value="${hac? fmtInputMoney(hac.monto) : ''}"></div>
         ${dateTimeFieldGroupHTML('au-fecha','Autorización de Hacienda')}
@@ -1660,41 +1829,108 @@ function openModalAutorizacion(pid, hacId){
     if(fecha) fd.append('fecha_autorizacion', fecha);
     if(archivo) fd.append('documento', archivo);
     try{
-      await withLoading(btn, ()=>safeCall(()=>Api.postForm(`/programs/${pid}/hacienda/${hacId}/autorizacion`, fd), 'Autorización de Hacienda registrada.'), archivo ? 'Subiendo documento…' : 'Guardando…');
+      await withLoading(btn, ()=>safeCall(()=>Api.postForm(`/programs/${pid}/hacienda/${hacId}/autorizacion`, fd), 'Autorizado por Hacienda registrado.'), archivo ? 'Subiendo documento…' : 'Guardando…');
       closeModal();
       await refreshOneProgram(pid); renderDetalle(pid);
     }catch(e){ /* el error ya se mostró vía safeCall */ }
   });
 }
 
-/* ---- Pago ----
+/* ---- Archivo de Asignación: carga directa al seleccionar el archivo ---- */
+async function uploadAsignacion(pid, hacId, fileInput, btn){
+  const archivo = fileInput.files[0];
+  if(!archivo) return;
+  const fd = new FormData();
+  fd.append('documento', archivo);
+  try{
+    await withLoading(btn, ()=>safeCall(()=>Api.postForm(`/programs/${pid}/hacienda/${hacId}/asignacion`, fd), 'Archivo de Asignación cargado.'), 'Subiendo…');
+    await refreshOneProgram(pid); renderDetalle(pid);
+  }catch(e){ /* el error ya se mostró vía safeCall */ }
+  finally{ fileInput.value = ''; }
+}
+
+/* ---- Archivo de Asignación: Marcar Correcto (folio proporcionado) ---- */
+function openModalAsignacionCorrecto(pid, hacId){
+  openModal(`
+    <div class="modal-header"><h3>Marcar Archivo de Asignación Correcto</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="form-grid single">
+        <div class="field"><label>Folio proporcionado</label><input type="text" id="asigc-folio" placeholder="Ej. AS-2026-0001"></div>
+        <div class="field-hint">Este folio avala que la asignación ya fue aceptada.</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" id="submitAsigCorrecto">Guardar</button>
+    </div>
+  `);
+  document.getElementById('submitAsigCorrecto').addEventListener('click', async (e)=>{
+    const btn = e.currentTarget;
+    const folio = document.getElementById('asigc-folio').value.trim();
+    if(!folio){ toast('El folio es obligatorio.', true); return; }
+    try{
+      await withLoading(btn, ()=>safeCall(()=>Api.patch(`/programs/${pid}/hacienda/${hacId}/asignacion/correcto`, {folio}), 'Archivo de Asignación marcado como correcto.'), 'Guardando…');
+      closeModal();
+      await refreshOneProgram(pid); renderDetalle(pid);
+    }catch(e){ /* el error ya se mostró vía safeCall */ }
+  });
+}
+
+/* ---- Archivo de Asignación: Marcar Incorrecto (motivo) ---- */
+function openModalAsignacionIncorrecto(pid, hacId){
+  openModal(`
+    <div class="modal-header"><h3>Marcar Archivo de Asignación Incorrecto</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="form-grid single">
+        <div class="field"><label>Motivo</label><textarea id="asigi-motivo" rows="2" placeholder="Describe el motivo del rechazo…"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-danger" id="submitAsigIncorrecto">Marcar Incorrecto</button>
+    </div>
+  `);
+  document.getElementById('submitAsigIncorrecto').addEventListener('click', async (e)=>{
+    const btn = e.currentTarget;
+    const motivo = document.getElementById('asigi-motivo').value.trim();
+    if(!motivo){ toast('El motivo es obligatorio.', true); return; }
+    try{
+      await withLoading(btn, ()=>safeCall(()=>Api.patch(`/programs/${pid}/hacienda/${hacId}/asignacion/incorrecto`, {motivo}), 'Archivo de Asignación marcado como incorrecto.'), 'Guardando…');
+      closeModal();
+      await refreshOneProgram(pid); renderDetalle(pid);
+    }catch(e){ /* el error ya se mostró vía safeCall */ }
+  });
+}
+
+/* ---- Registrar Dispersión (antes "Pago") ----
    En vez de capturar un monto suelto, el usuario elige de un desplegable
-   cuál de las solicitudes a Hacienda YA AUTORIZADAS y sin pago todavía es
-   la que se está pagando. Al seleccionarla se muestra su información y el
-   pago queda ligado a esa solicitud (Solicitud a Hacienda → Pago →
-   Documento comprobatorio). */
+   cuál de las solicitudes a Hacienda YA AUTORIZADAS, con Archivo de
+   Asignación correcto y sin dispersión todavía es la que se está
+   dispersando. Al seleccionarla se muestra su información y la dispersión
+   queda ligada a esa solicitud (Solicitud a Hacienda → Archivo de
+   Asignación correcto → Dispersión → Documento comprobatorio). */
 function openModalPago(p){
   const disponibles = (p.solicitudesHacienda||[]).filter(h=>h.disponibleParaPago);
   if(!disponibles.length){
-    toast('No hay solicitudes a Hacienda autorizadas y disponibles para pago.', true);
+    toast('No hay solicitudes a Hacienda con Archivo de Asignación correcto, disponibles para dispersión.', true);
     return;
   }
   openModal(`
-    <div class="modal-header"><h3>Registrar Pago</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-header"><h3>Registrar Dispersión</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
     <div class="modal-body">
       <div class="form-grid single">
         <div class="field">
-          <label>Solicitud a Hacienda pagada</label>
+          <label>Solicitud a Hacienda dispersada</label>
           <select id="g-hacienda">
-            <option value="">Selecciona la solicitud que se pagó…</option>
-            ${disponibles.map(h=>`<option value="${h.id}">Solicitud folio ${h.folio} — ${fmtMoney(h.autorizacion.monto_autorizado)}</option>`).join('')}
+            <option value="">Selecciona la solicitud que se dispersó…</option>
+            ${disponibles.map(h=>`<option value="${h.id}">Solicitud folio ${esc(h.folio)} — ${fmtMoney(h.autorizacion.monto_autorizado)}</option>`).join('')}
           </select>
         </div>
         <div id="g-preview"></div>
-        <div class="field"><label>Folio del Pago</label><input type="text" id="g-folio" placeholder="Ej. PG-2026-0001"></div>
-        <div class="field"><label>Monto Pagado</label><input type="text" data-money id="g-monto" placeholder="$0.00"></div>
-        ${dateTimeFieldGroupHTML('g-fecha','Registro del pago')}
-        ${fileDropZoneHTML('g-doc','Documento que avala el pago','.pdf,.jpg,.jpeg,.png,.doc,.docx')}
+        <div class="field"><label>Folio de la Dispersión</label><input type="text" id="g-folio" placeholder="Ej. PG-2026-0001"></div>
+        <div class="field"><label>Monto Dispersado</label><input type="text" data-money id="g-monto" placeholder="$0.00"></div>
+        ${dateTimeFieldGroupHTML('g-fecha','Registro de la Dispersión')}
+        ${fileDropZoneHTML('g-doc','Documento que avala la dispersión','.pdf,.jpg,.jpeg,.png,.doc,.docx')}
       </div>
     </div>
     <div class="modal-footer">
@@ -1712,7 +1948,8 @@ function openModalPago(p){
     if(!hac){ preview.innerHTML=''; return; }
     preview.innerHTML = `<div class="hacienda-preview">
       Solicitado: <b>${fmtMoney(hac.monto)}</b> · ${fmtDate(hac.fecha)}<br>
-      Autorizado por Hacienda: <b>${fmtMoney(hac.autorizacion.monto_autorizado)}</b> · ${fmtDate(hac.autorizacion.fecha_autorizacion)}
+      Autorizado por Hacienda: <b>${fmtMoney(hac.autorizacion.monto_autorizado)}</b> · ${fmtDate(hac.autorizacion.fecha_autorizacion)}<br>
+      Archivo de Asignación: <b>Correcto</b>${hac.asignacion && hac.asignacion.folio ? ` · Folio ${esc(hac.asignacion.folio)}` : ''}
     </div>`;
     if(!montoInput.value) montoInput.value = fmtInputMoney(hac.autorizacion.monto_autorizado);
   });
@@ -1724,14 +1961,14 @@ function openModalPago(p){
     const monto = numValue(montoInput);
     const fecha = readDateTimeGroup('g-fecha');
     const archivo = document.getElementById('g-doc').files[0];
-    if(!haciendaId){ toast('Selecciona la solicitud a Hacienda que se pagó.', true); return; }
+    if(!haciendaId){ toast('Selecciona la solicitud a Hacienda que se dispersó.', true); return; }
     if(!monto) return;
 
-    /* Validación: el pago no debería exceder lo que Hacienda autorizó para
-       esa solicitud (ya se precarga con ese monto, pero es editable). */
+    /* Validación: la dispersión no debería exceder lo que Hacienda autorizó
+       para esa solicitud (ya se precarga con ese monto, pero es editable). */
     const hacSeleccionada = disponibles.find(h=>String(h.id)===haciendaId);
     if(hacSeleccionada && monto > Number(hacSeleccionada.autorizacion.monto_autorizado) + 0.01){
-      toast(`El monto del pago (${fmtMoney(monto)}) supera lo que Hacienda autorizó para el folio ${hacSeleccionada.folio} (${fmtMoney(hacSeleccionada.autorizacion.monto_autorizado)}). Verifica el monto antes de registrar.`, true);
+      toast(`El monto de la dispersión (${fmtMoney(monto)}) supera lo que Hacienda autorizó para el folio ${hacSeleccionada.folio} (${fmtMoney(hacSeleccionada.autorizacion.monto_autorizado)}). Verifica el monto antes de registrar.`, true);
       return;
     }
 
@@ -1742,7 +1979,7 @@ function openModalPago(p){
     if(fecha) fd.append('fecha', fecha);
     if(archivo) fd.append('documento', archivo);
     try{
-      await withLoading(btn, ()=>safeCall(()=>Api.postForm(`/programs/${p.id}/pagos`, fd), 'Pago registrado.'), archivo ? 'Subiendo documento…' : 'Guardando…');
+      await withLoading(btn, ()=>safeCall(()=>Api.postForm(`/programs/${p.id}/pagos`, fd), 'Dispersión registrada.'), archivo ? 'Subiendo documento…' : 'Guardando…');
       closeModal();
       await refreshOneProgram(p.id); renderDetalle(p.id);
     }catch(e){ /* el error ya se mostró vía safeCall */ }
