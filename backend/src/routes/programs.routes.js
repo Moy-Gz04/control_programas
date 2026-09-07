@@ -34,6 +34,17 @@ function parseCantidadPagos(value) {
   return n;
 }
 
+// Valida "dictamen_id" (opcional) recibido al registrar una Solicitud a
+// Hacienda: si no llega nada (undefined/null/'') se considera "sin
+// vincular" (retrocompatible con solicitudes que no se ligan a un
+// dictamen en particular). Si llega algo, debe ser un entero.
+function parseDictamenIdInput(value) {
+  if (value === undefined || value === null || value === '') return { provided: false, value: null };
+  const n = Number(value);
+  if (!Number.isInteger(n)) return { provided: true, value: NaN };
+  return { provided: true, value: n };
+}
+
 async function getPrograma(id) {
   const { rows } = await db.query(
     `SELECT p.*, un.nombre AS unidad_nombre
@@ -81,6 +92,15 @@ async function getProgramaCompleto(id) {
   // Con ambas se calcula cuáles solicitudes siguen disponibles para
   // registrar un pago/dispersión: autorizada, con Archivo de Asignación en
   // estatus 'correcto' y sin pago todavía.
+  //
+  // `dictamen_id` (columna propia de solicitudes_hacienda, ver migración
+  // 004_solicitud_hacienda_dictamen_link.sql) ya viene incluido en el
+  // spread `...h` de abajo: es el vínculo real entre una Solicitud a
+  // Hacienda y el dictamen cuyo recurso comprometido está tramitando, y es
+  // lo que permite calcular la dispersión POR DICTAMEN en el frontend
+  // (ver dispersionPorDictamen en app.js) en vez de solo una estimación
+  // global del programa. Puede venir null en solicitudes creadas antes de
+  // este cambio (legado, sin vincular).
   const haciendaIds = solicitudesHacienda.rows.map(h => h.id);
   let autorizaciones = [];
   let asignaciones = [];
@@ -498,9 +518,31 @@ router.delete('/:id/dictamenes/:dicId/solicitudes/:solId', async (req, res) => {
 router.post('/:id/hacienda', upload.single('documento'), async (req, res) => {
   const { folio, monto } = req.body || {};
   if (!monto || Number(monto) <= 0) return res.status(400).json({ error: 'El monto es obligatorio.' });
+
+  // Dictamen relacionado (opcional): vínculo real entre esta Solicitud a
+  // Hacienda y el dictamen cuyo recurso comprometido está tramitando —
+  // ver migración 004_solicitud_hacienda_dictamen_link.sql. Si no se
+  // proporciona, la solicitud queda "sin vincular" (retrocompatible).
+  const dictamenIdInput = parseDictamenIdInput(req.body?.dictamen_id);
+  if (dictamenIdInput.provided && Number.isNaN(dictamenIdInput.value)) {
+    return res.status(400).json({ error: 'El dictamen relacionado no es válido.' });
+  }
+
   try {
     const programa = await getPrograma(req.params.id);
     if (!programa) return res.status(404).json({ error: 'Programa no encontrado.' });
+
+    let dictamenId = null;
+    if (dictamenIdInput.provided) {
+      const { rows: dicRows } = await db.query(
+        'SELECT id FROM dictamenes WHERE id = $1 AND programa_id = $2',
+        [dictamenIdInput.value, req.params.id]
+      );
+      if (!dicRows[0]) {
+        return res.status(400).json({ error: 'El dictamen relacionado no pertenece a este programa.' });
+      }
+      dictamenId = dicRows[0].id;
+    }
 
     let documentoUrl = null;
     let documentoNombre = null;
@@ -517,9 +559,9 @@ router.post('/:id/hacienda', upload.single('documento'), async (req, res) => {
 
     const fecha = parseFechaManual(req.body?.fecha);
     await db.query(
-      `INSERT INTO solicitudes_hacienda (programa_id, folio, monto, fecha, created_by, documento_url, documento_nombre)
-       VALUES ($1,$2,$3,COALESCE($4, now()),$5,$6,$7)`,
-      [req.params.id, folio || 'S/F', monto, fecha, req.user.id, documentoUrl, documentoNombre]
+      `INSERT INTO solicitudes_hacienda (programa_id, folio, monto, fecha, created_by, documento_url, documento_nombre, dictamen_id)
+       VALUES ($1,$2,$3,COALESCE($4, now()),$5,$6,$7,$8)`,
+      [req.params.id, folio || 'S/F', monto, fecha, req.user.id, documentoUrl, documentoNombre, dictamenId]
     );
     res.status(201).json(await getProgramaCompleto(req.params.id));
   } catch (err) {

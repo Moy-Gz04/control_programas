@@ -345,15 +345,15 @@ function bindDropZone(id){
    históricos: suman TODOS los registros capturados y nunca "restan" nada
    porque el recurso haya avanzado a la siguiente etapa (comprometer,
    solicitar a Hacienda o pagar no elimina ni reduce el historial anterior).
-   Esas son las cifras que se muestran en el apartado "Totales del Programa".
 
    Las funciones *Disponible/*Pendiente de más abajo sí son dinámicas: se
-   calculan restando lo que ya avanzó a una etapa posterior, y son las que
-   alimentan el apartado "Estado Real del Recurso". El mismo peso jamás se
-   cuenta dos veces como disponible: por eso se restan de manera acumulada
-   siguiendo el flujo Autorizado → Comprometido → Solicitado a Hacienda →
-   Pagado, y se acotan a 0 como piso cuando no tiene sentido un pendiente
-   negativo (p. ej. si se pagó de más respecto a lo solicitado). ---------- */
+   calculan restando lo que ya avanzó a una etapa posterior. El mismo peso
+   jamás se cuenta dos veces como disponible: por eso se restan de manera
+   acumulada siguiendo el flujo Autorizado → Comprometido → Solicitado a
+   Hacienda → Pagado, y se acotan a 0 como piso cuando no tiene sentido un
+   pendiente negativo (p. ej. si se pagó de más respecto a lo solicitado).
+   Estas cifras alimentan el pipeline "Flujo y Estado del Presupuesto"
+   (pipelinePresupuestoHTML). ---------- */
 function montoAutorizadoBase(p){ return Number(p.monto_autorizado || 0); }
 function totalModificado(p){
   if(p.modificaciones) return p.modificaciones.reduce((s,m)=> s + (m.tipo==='Ampliación'? Number(m.monto) : -Number(m.monto)), 0);
@@ -376,10 +376,18 @@ function totalPagado(p){
   if(p.pagos) return p.pagos.reduce((s,g)=>s+Number(g.monto),0);
   return Number(p.pagado_total || 0);
 }
+/* Total histórico autorizado por Hacienda: suma de los montos ya
+   autorizados (h.autorizacion.monto_autorizado) de las solicitudes a
+   Hacienda del programa. Mismo campo/fuente que ya se usa en
+   haciendaItemHTML y en openModalPago para mostrar "Autorizado por
+   Hacienda" — se reutiliza aquí tal cual, sin inventar otro dato. */
+function totalAutorizadoPorHacienda(p){
+  if(p.solicitudesHacienda) return p.solicitudesHacienda.reduce((s,h)=> s + (h.autorizacion ? Number(h.autorizacion.monto_autorizado||0) : 0), 0);
+  return Number(p.autorizado_hacienda_total || 0);
+}
 /* "Disponible" contra el monto autorizado neto (autorizado + modificaciones).
    Se conserva con este nombre porque ya se usaba en otras vistas (tarjetas
-   de listado, insights, gráfica comparativa); en el detalle del programa es
-   el mismo valor que "Recurso Modificado Disponible" del Estado Real. */
+   de listado, insights, gráfica comparativa). */
 function totalDisponible(p){ return totalAutorizadoNeto(p) - totalComprometido(p); }
 
 /* Estado Real: cuánto queda disponible contra el autorizado ORIGINAL (sin
@@ -393,21 +401,88 @@ function totalComprometidoPendiente(p){ return Math.max(totalComprometido(p) - t
    (lo ya pagado deja de contar aquí, pero sigue intacto en el histórico de
    totalSolicitadoHacienda). */
 function totalHaciendaPendiente(p){ return Math.max(totalSolicitadoHacienda(p) - totalPagado(p), 0); }
+/* Estado Real: de lo solicitado a Hacienda, cuánto sigue pendiente de que
+   Hacienda lo AUTORICE (una vez autorizado deja de ser "solicitado
+   pendiente" — ya avanzó a la siguiente etapa del flujo — aunque sigue
+   intacto en el histórico de totalSolicitadoHacienda). Antes esta etapa
+   mostraba el histórico completo aunque ya estuviera aprobado por
+   Hacienda, contando el mismo peso dos veces (como "solicitado" y como
+   "aprobado") — con este cálculo el peso ya autorizado deja de sumar aquí. */
+function totalSolicitadoHaciendaPendiente(p){ return Math.max(totalSolicitadoHacienda(p) - totalAutorizadoPorHacienda(p), 0); }
+/* Estado Real: de lo ya autorizado por Hacienda, cuánto sigue pendiente de
+   dispersión (lo ya pagado deja de contar aquí, pero sigue intacto en el
+   histórico de totalAutorizadoPorHacienda). */
+function totalAutorizadoHaciendaPendiente(p){ return Math.max(totalAutorizadoPorHacienda(p) - totalPagado(p), 0); }
 
 /* ---------- Cantidad de pagos por beneficiario / Meta - Dispersión ----------
    cantidadPagosDe() siempre regresa al menos 1 (COALESCE en el mismo
    espíritu que hace el backend con COALESCE(cantidad_pagos,1) para
    programas creados antes de que existiera este campo).
    montoTotalBeneficiario() = monto por beneficiario * cantidad de pagos.
-   totalPersonasDispersion() = personas ya cubiertas por el total realmente
-   dispersado (pagos registrados) del programa, usando ese monto total por
-   beneficiario como "costo por persona". */
+
+   ---- DISPERSIÓN POR DICTAMEN (seguimiento inteligente) ----
+   El cálculo de "Meta - Dispersión" ya NO es una estimación global del
+   programa (antes: floor(total dispersado del programa / monto total por
+   beneficiario), sin saber a qué dictamen correspondía ese dinero). Ahora
+   cada Solicitud a Hacienda puede venir vinculada a un dictamen específico
+   (h.dictamen_id, ver migración 004_solicitud_hacienda_dictamen_link.sql y
+   el selector "Dictamen relacionado" en openModalHacienda), así que se
+   puede calcular la dispersión REAL de cada dictamen: cuánto de lo que
+   pertenece a ESE dictamen ya se dispersó entre SUS personas.
+
+   dispersionPorDictamen(p, dictamenId) usa exactamente el mismo criterio de
+   "ya dispersada" que el resto del sistema (h.pagada, calculado en el
+   backend a partir de si existe un registro en `pagos` para esa solicitud —
+   ver getProgramaCompleto en programs.routes.js), y suma el monto de la
+   propia solicitud a Hacienda (no el del pago) porque una solicitud
+   dispersada representa el compromiso de ese dictamen ya liquidado.
+
+   totalPersonasDispersion(p) sigue siendo el nombre público que consume el
+   resto de la UI (tarjeta e info-grid del detalle), pero ahora es la SUMA
+   de la dispersión real de cada dictamen del programa, MÁS un término de
+   respaldo (totalPersonasDispersionSinVincular) para las Solicitudes a
+   Hacienda que quedaron sin vincular a ningún dictamen (registros
+   anteriores a esta funcionalidad, o capturados a propósito sin elegir uno)
+   — calculado con la fórmula proporcional anterior, para no perder de vista
+   dinero realmente dispersado solo porque no está ligado a un dictamen. */
 function cantidadPagosDe(p){ const n = Number(p.cantidad_pagos||1); return n>=1 ? Math.floor(n) : 1; }
 function montoTotalBeneficiario(p){ return Number(p.monto_beneficiario||0) * cantidadPagosDe(p); }
+
+/* Dispersión real de UN dictamen: suma el monto de las Solicitudes a
+   Hacienda vinculadas a ese dictamen (h.dictamen_id === dictamenId) que ya
+   fueron dispersadas (h.pagada), y calcula cuántas personas de ese mismo
+   dictamen quedan cubiertas con ese monto. */
+function dispersionPorDictamen(p, dictamenId){
+  const montoTotalPorBeneficiario = montoTotalBeneficiario(p);
+  const montoDispersado = (p.solicitudesHacienda||[])
+    .filter(h => h.dictamen_id!=null && dictamenId!=null && Number(h.dictamen_id)===Number(dictamenId) && h.pagada)
+    .reduce((s,h)=> s + Number(h.monto||0), 0);
+  const personasDispersadas = montoTotalPorBeneficiario>0 ? Math.floor(montoDispersado / montoTotalPorBeneficiario) : 0;
+  return { montoDispersado, personasDispersadas };
+}
+
+/* Respaldo (fallback) para Solicitudes a Hacienda dispersadas que NO están
+   vinculadas a ningún dictamen (legado / sin elegir uno en el formulario):
+   se calcula de manera proporcional, tal como funcionaba el sistema antes
+   de esta funcionalidad, para no dejar fuera del total dinero que
+   realmente ya se dispersó. */
+function totalPersonasDispersionSinVincular(p){
+  const montoTotalPorBeneficiario = montoTotalBeneficiario(p);
+  if(montoTotalPorBeneficiario<=0) return { montoDispersado:0, personas:0 };
+  const montoDispersado = (p.solicitudesHacienda||[])
+    .filter(h => h.dictamen_id==null && h.pagada)
+    .reduce((s,h)=> s + Number(h.monto||0), 0);
+  return { montoDispersado, personas: Math.floor(montoDispersado / montoTotalPorBeneficiario) };
+}
+
+/* Meta - Dispersión del programa completo: suma de la dispersión real de
+   cada uno de sus dictámenes, más el respaldo de lo dispersado sin
+   vincular a ningún dictamen (ver comentario arriba). Reemplaza el cálculo
+   global anterior — no queda ninguna otra fórmula de "Meta - Dispersión"
+   compitiendo con esta en el resto del archivo. */
 function totalPersonasDispersion(p){
-  const mtb = montoTotalBeneficiario(p);
-  if(mtb<=0) return 0;
-  return Math.floor(totalPagado(p) / mtb);
+  const porDictamenes = (p.dictamenes||[]).reduce((s,d)=> s + dispersionPorDictamen(p, d.id).personasDispersadas, 0);
+  return porDictamenes + totalPersonasDispersionSinVincular(p).personas;
 }
 
 function estadoPrograma(p){
@@ -567,24 +642,12 @@ async function renderDetalle(id){
 
   const st = estadoPrograma(p);
   const autorizadoBase = montoAutorizadoBase(p);
-  const modificado = totalModificado(p);
   const autorizadoNeto = totalAutorizadoNeto(p);
-  const comprometido = totalComprometido(p);
   const disponible = totalDisponible(p);
-  const solicitadoHacienda = totalSolicitadoHacienda(p);
-  const pagado = totalPagado(p);
   const personas = totalPersonasDictaminadas(p);
   const montoTotalBenef = montoTotalBeneficiario(p);
   const personasDispersion = totalPersonasDispersion(p);
-
-  // Estado Real: situación actual del recurso en cada etapa del flujo
-  // (Autorizado → Dictaminación/Comprometido → Solicitud a Hacienda → Pago).
-  // A diferencia de los Totales de arriba, estas cifras SÍ se recalculan
-  // conforme el recurso avanza de etapa, sin contar dos veces el mismo peso.
-  const autorizadoDisponible = totalAutorizadoDisponible(p);
-  const modificadoDisponible = disponible; // = autorizadoNeto - comprometido
-  const comprometidoPendiente = totalComprometidoPendiente(p);
-  const haciendaPendiente = totalHaciendaPendiente(p);
+  const dispersionSinVincular = totalPersonasDispersionSinVincular(p);
 
   const disponiblesParaPago = (p.solicitudesHacienda||[]).filter(h=>h.disponibleParaPago);
 
@@ -612,27 +675,11 @@ async function renderDetalle(id){
         <div class="info-item"><div class="label">Monto total por beneficiario</div><div class="value">${fmtMoney(montoTotalBenef)} <span class="kpi-sub">(${cantidadPagosDe(p)} pago${cantidadPagosDe(p)===1?'':'s'})</span></div></div>
         <div class="info-item"><div class="label">Meta de beneficiarios</div><div class="value">${fmtNum(p.meta_beneficiarios)}</div></div>
         <div class="info-item"><div class="label">Meta - P. Dictaminadas</div><div class="value">${fmtNum(personas)} <span class="kpi-sub">(${p.meta_beneficiarios? Math.round(personas/p.meta_beneficiarios*100):0}% de la meta)</span></div></div>
-        <div class="info-item"><div class="label">Meta - Dispersión</div><div class="value">${fmtNum(personasDispersion)} <span class="kpi-sub">(${p.meta_beneficiarios? Math.round(personasDispersion/p.meta_beneficiarios*100):0}% de la meta)</span></div></div>
+        <div class="info-item"><div class="label">Meta - Dispersión</div><div class="value">${fmtNum(personasDispersion)} <span class="kpi-sub">(${p.meta_beneficiarios? Math.round(personasDispersion/p.meta_beneficiarios*100):0}% de la meta)</span></div>
+          ${dispersionSinVincular.personas>0 ? `<div class="kpi-sub" title="Solicitudes a Hacienda dispersadas sin vincular a un dictamen específico, calculadas de forma proporcional (legado)">(incluye ${fmtNum(dispersionSinVincular.personas)} persona${dispersionSinVincular.personas===1?'':'s'} · ${fmtMoney(dispersionSinVincular.montoDispersado)} sin vincular a un dictamen)</div>` : ''}
+        </div>
         <div class="info-item"><div class="label">Recurso disponible</div><div class="value" style="color:${disponible<0?'var(--red)':'var(--text-dark)'}">${fmtMoney(disponible)}</div></div>
       </div>
-    </div>
-
-    <div class="section-title"><h2>Totales del Programa</h2><span class="hint">Histórico acumulado — no disminuye al avanzar de etapa</span></div>
-    <div class="kpi-grid">
-      ${kpiTile('Recurso Autorizado', fmtMoney(autorizadoBase), autorizadoBase? 'Monto autorizado inicial':'Sin monto cargado', COLOR_AUTORIZADO)}
-      ${kpiTile('Recurso Modificado', fmtMoney(autorizadoNeto), 'Autorizado + '+(p.modificaciones||[]).length+' movimiento(s)', COLOR_MODIFICADO)}
-      ${kpiTile('Recurso Comprometido', fmtMoney(comprometido), fmtNum(personas)+' personas dictaminadas', COLOR_COMPROMETIDO)}
-      ${kpiTile('Recurso Solicitado a Hacienda', fmtMoney(solicitadoHacienda), (p.solicitudesHacienda||[]).length+' trámite(s)', COLOR_HACIENDA)}
-      ${kpiTile('Recurso Dispersado', fmtMoney(pagado), (p.pagos||[]).length+' dispersión(es)', COLOR_PAGADO)}
-    </div>
-
-    <div class="section-title"><h2>Estado Real del Recurso</h2><span class="hint">Situación actual — se recalcula conforme el recurso avanza de etapa</span></div>
-    <div class="kpi-grid">
-      ${kpiTileBrand('Recurso Autorizado Disponible', fmtMoney(autorizadoDisponible), 'Autorizado − Comprometido')}
-      ${kpiTileBrand('Recurso Modificado Disponible', fmtMoney(modificadoDisponible), 'Modificado − Comprometido')}
-      ${kpiTileBrand('Recurso Comprometido', fmtMoney(comprometidoPendiente), 'Pendiente de solicitar/dispersar')}
-      ${kpiTileBrand('Recurso Solicitado a Hacienda', fmtMoney(haciendaPendiente), 'Pendiente de dispersión')}
-      ${kpiTileBrand('Recurso Dispersado', fmtMoney(pagado), (p.pagos||[]).length+' dispersión(es)')}
     </div>
 
     ${pipelinePresupuestoHTML(p)}
@@ -678,7 +725,7 @@ async function renderDetalle(id){
     `)}
 
     ${collapsibleSection('hacienda','Solicitudes a Hacienda', `${(p.solicitudesHacienda||[]).length} trámite(s)`, `
-      ${(p.solicitudesHacienda||[]).length? p.solicitudesHacienda.map(haciendaItemHTML).join('') : `<div class="empty-state">Sin trámites enviados a Hacienda.</div>`}
+      ${(p.solicitudesHacienda||[]).length? p.solicitudesHacienda.map(h=>haciendaItemHTML(h,p)).join('') : `<div class="empty-state">Sin trámites enviados a Hacienda.</div>`}
       <div style="text-align:center;margin-top:10px;">
         <button class="btn btn-outline btn-sm" id="btnAddHacienda">+ Registrar Solicitud a Hacienda</button>
       </div>
@@ -743,19 +790,6 @@ async function renderDetalle(id){
   el.querySelectorAll('.dictamen-block').forEach(block=> bindDictamenBlock(block, p));
 }
 
-/* ---------- KPI con estilo "marca" (fondo guinda sólido) ----------
-   Usado en "Estado Real del Recurso": a diferencia de las tarjetas de
-   "Totales del Programa" (con acento de color por concepto), aquí las 5
-   tarjetas comparten el mismo color institucional sólido para leerse como
-   un solo bloque de "situación actual". */
-function kpiTileBrand(label,value,sub){
-  return `<div class="kpi-card kpi-card-brand">
-    <div class="kpi-label">${label}</div>
-    <div class="kpi-value">${value}</div>
-    <div class="kpi-sub">${sub}</div>
-  </div>`;
-}
-
 /* ---------- FLUJO DE RECURSOS DEL PROGRAMA ----------
    Diagrama de barras tipo "flujo" (no es una gráfica de Chart.js, es HTML/
    CSS puro): muestra en una sola vista cómo el Recurso Autorizado inicial
@@ -763,16 +797,24 @@ function kpiTileBrand(label,value,sub){
    eso ya se convirtió en Recurso Dispersado — pensado para leerse de un
    vistazo, en vez de tener que comparar varias tarjetas sueltas. */
 /* =========================================================================
-   PIPELINE DE FLUJO PRESUPUESTAL (vista integrada Histórico + Situación Actual)
-   Componente oscuro tipo "pipeline/funnel": 5 nodos con barras conectadas
-   por listones (ribbons) tipo Sankey dibujados en SVG puro (sin librerías
-   nuevas), más un panel lateral con el Recurso Disponible Libre, una
-   alerta de validación y las notificaciones (reutiliza generateInsightPrograma).
-   Los listones y las barras comparten la MISMA rejilla de 5 columnas
-   (grid-template-columns:repeat(5,1fr) en CSS y 5 franjas iguales en el
-   viewBox del SVG), así que quedan alineados sin necesidad de calcular
-   píxeles fijos ni depender del ancho real del contenedor.
-   ========================================================================= */
+   PIPELINE DE FLUJO PRESUPUESTAL (histórico + estado real, sin panel de
+   "Situación Actual"/"Notificaciones Recientes": ver nota más abajo)
+   Componente oscuro tipo "pipeline/funnel": nodos (barras) conectados por
+   listones (ribbons) tipo Sankey dibujados en SVG puro (sin librerías
+   nuevas). Los listones y las barras comparten la MISMA rejilla de N
+   columnas (grid-template-columns:repeat(N,1fr) en CSS y N franjas iguales
+   en el viewBox del SVG), así que quedan alineados sin necesidad de
+   calcular píxeles fijos ni depender del ancho real del contenedor. El
+   número de nodos NO está hardcodeado en ningún lado (N = nodos.length),
+   así que agregar/quitar un nodo del arreglo `nodos` no rompe el layout.
+
+   NOTA: el panel inferior "Situación Actual" (Recurso Disponible Libre +
+   alerta de inconsistencias) y "Notificaciones Recientes"
+   (generateInsightPrograma) se eliminó de esta vista por decisión del
+   usuario. generateInsightPrograma() se deja definida más abajo como
+   código muerto inofensivo (ya no se invoca desde ningún lado) por si se
+   necesita retomar en el futuro; ningún otro lugar del archivo depende de
+   su salida. */
 function pipelinePresupuestoHTML(p){
   const autorizadoBase = montoAutorizadoBase(p);
   if(!autorizadoBase){
@@ -780,33 +822,34 @@ function pipelinePresupuestoHTML(p){
   }
   const comprometido = totalComprometido(p);
   const solicitadoHacienda = totalSolicitadoHacienda(p);
+  const autorizadoHacienda = totalAutorizadoPorHacienda(p);
   const pagado = totalPagado(p);
   const disponible = Math.max(totalAutorizadoDisponible(p), 0);
   const comprometidoPendiente = totalComprometidoPendiente(p);
-  const haciendaPendiente = totalHaciendaPendiente(p);
+  // "Solicitado a Hacienda" (Estado Real): una vez que Hacienda ya autorizó
+  // parte (o todo) el monto de una solicitud, ese monto avanzó a la
+  // siguiente etapa del flujo y deja de contar como "todavía solicitado,
+  // en espera de que Hacienda lo apruebe" — si no, el mismo peso se vería
+  // simultáneamente como "Solicitado" y como "Aprobado por Hacienda" en la
+  // barra. El histórico completo (solicitadoHacienda) se sigue mostrando
+  // en el subtítulo del nodo y en la tabla de datos, sin perder el dato.
+  const solicitadoHaciendaPendiente = totalSolicitadoHaciendaPendiente(p);
+  const autorizadoHaciendaPendiente = totalAutorizadoHaciendaPendiente(p);
   const pctDisponible = autorizadoBase>0 ? (disponible/autorizadoBase*100) : 0;
+  const pctAutorizadoDeSolicitado = solicitadoHacienda>0 ? (autorizadoHacienda/solicitadoHacienda*100) : 0;
 
   const nodos = [
     { titulo:'Recurso Autorizado', sub:'Inicial', valor:autorizadoBase },
     { titulo:'Recurso Disponible', sub:`${pctDisponible.toFixed(1)}% del autorizado`, valor:disponible },
     { titulo:'Comprometido', sub:`Histórico: ${fmtMoney(comprometido)}`, valor:comprometidoPendiente },
-    { titulo:'Solicitado a Hacienda', sub:`Histórico: ${fmtMoney(solicitadoHacienda)}`, valor:haciendaPendiente },
+    { titulo:'Solicitado a Hacienda', sub:`Histórico: ${fmtMoney(solicitadoHacienda)}`, valor:solicitadoHaciendaPendiente },
+    { titulo:'Aprobado por Hacienda', sub:`${pctAutorizadoDeSolicitado.toFixed(1)}% de lo solicitado`, valor:autorizadoHaciendaPendiente },
     { titulo:'Dispersado', sub:`${(p.pagos||[]).length} dispersión(es)`, valor:pagado },
   ];
 
-  // Alerta de validación: la misma condición ya usada en generateInsightPrograma
-  // (montos reales, nada inventado) — si Hacienda o la dispersión exceden la
-  // etapa previa, se avisa; si no, se confirma que no hay inconsistencias.
-  const excedeHacienda = solicitadoHacienda > comprometido + 0.01;
-  const excedePago = pagado > solicitadoHacienda + 0.01 && solicitadoHacienda>0;
-  const hayAlerta = excedeHacienda || excedePago;
-  const alertaHtml = hayAlerta
-    ? `<div class="pipeline-alert pipeline-alert-warn">⚠ ${excedePago ? 'La dispersión excede lo solicitado a Hacienda.' : 'Lo solicitado a Hacienda excede el recurso comprometido.'} Revisa los registros.</div>`
-    : `<div class="pipeline-alert pipeline-alert-ok">✓ Sin inconsistencias entre comprometido, solicitado y dispersado.</div>`;
-
   const BAR_H = 170; // debe coincidir con --pipeline-bar-h en CSS
   const N = nodos.length;
-  const maxScale = Math.max(autorizadoBase, comprometido, solicitadoHacienda, pagado, 1);
+  const maxScale = Math.max(autorizadoBase, comprometido, solicitadoHacienda, autorizadoHacienda, pagado, 1);
   const heightFor = (v)=> v>0 ? Math.max((v/maxScale) * BAR_H, 5) : 0;
   const alturas = nodos.map(n=>heightFor(n.valor));
 
@@ -839,14 +882,14 @@ function pipelinePresupuestoHTML(p){
         </defs>
         ${ribbons}
       </svg>
-      <div class="pipeline-bar-grid">
+      <div class="pipeline-bar-grid" style="grid-template-columns:repeat(${N},1fr);">
         ${nodos.map((n,i)=>`
           <div class="pipeline-bar-col">
             <div class="pipeline-bar has-tooltip" data-tooltip="${n.titulo}: ${fmtMoney(n.valor)} · ${n.sub}" style="height:${alturas[i]}px;">${fmtMoney(n.valor)}</div>
           </div>`).join('')}
       </div>
     </div>
-    <div class="pipeline-label-grid">
+    <div class="pipeline-label-grid" style="grid-template-columns:repeat(${N},1fr);">
       ${nodos.map(n=>`
         <div class="pipeline-node-label">
           <div class="pipeline-node-title">${n.titulo}</div>
@@ -863,27 +906,10 @@ function pipelinePresupuestoHTML(p){
         <tr><td>Recurso Disponible</td><td>${fmtMoney(disponible)}</td></tr>
         <tr><td>Recurso Comprometido (histórico)</td><td>${fmtMoney(comprometido)}</td></tr>
         <tr><td>Solicitado a Hacienda (histórico)</td><td>${fmtMoney(solicitadoHacienda)}</td></tr>
+        <tr><td>Aprobado por Hacienda (histórico)</td><td>${fmtMoney(autorizadoHacienda)}</td></tr>
         <tr><td>Recurso Dispersado</td><td>${fmtMoney(pagado)}</td></tr>
       </tbody>
     </table>
-  </div>
-
-  <div class="pipeline-card pipeline-card-info">
-    <div class="pipeline-info-body">
-      <div class="pipeline-info-side">
-        <div class="pipeline-side-title">Situación Actual</div>
-        <div class="pipeline-side-box">
-          <div class="pipeline-side-label">Recurso Disponible Libre</div>
-          <div class="pipeline-side-value">${fmtMoney(disponible)}</div>
-          <div class="pipeline-side-sub">Histórico dispersado: ${fmtMoney(pagado)}</div>
-        </div>
-        ${alertaHtml}
-      </div>
-      <div class="pipeline-info-notifications">
-        <div class="pipeline-side-title">Notificaciones Recientes</div>
-        <div class="pipeline-notifications">${generateInsightPrograma(p)}</div>
-      </div>
-    </div>
   </div>`;
 }
 
@@ -904,7 +930,7 @@ function pagoRowHTML(p, g){
 }
 
 /* ---------- Solicitudes a Hacienda: estado (pendiente / autorizada / en revisión / incorrecta / lista / dispersada) ---------- */
-function haciendaItemHTML(h){
+function haciendaItemHTML(h, p){
   let badge;
   if(h.pagada){
     badge = { cls:'badge-pagada', mod:'is-pagada', label:'Dispersado' };
@@ -919,12 +945,18 @@ function haciendaItemHTML(h){
   } else {
     badge = { cls:'badge-pendiente', mod:'is-pendiente', label:'Pendiente de autorización' };
   }
+  // Etiqueta del dictamen vinculado (si lo hay), para que se vea a simple
+  // vista a qué dictamen corresponde el compromiso que se está tramitando.
+  const dictamenVinculado = h.dictamen_id!=null && p ? (p.dictamenes||[]).find(d=>Number(d.id)===Number(h.dictamen_id)) : null;
+  const dictamenLabel = dictamenVinculado
+    ? `Dictamen ${dictamenVinculado.numero!=null ? dictamenVinculado.numero : ''}`.trim()
+    : (h.dictamen_id!=null ? `Dictamen #${h.dictamen_id}` : null);
   return `
   <div class="hacienda-item ${badge.mod}">
     <div class="hacienda-item-head">
       <div class="hacienda-item-main">
         <div class="hacienda-item-title">Folio ${esc(h.folio)}</div>
-        <div class="lmeta">Solicitado: ${fmtDate(h.fecha)}
+        <div class="lmeta">Solicitado: ${fmtDate(h.fecha)}${dictamenLabel ? ` · Vinculado a ${esc(dictamenLabel)}` : ' · Sin vincular a un dictamen específico'}
           ${h.documento_url ? ` · <a class="doc-link" href="${h.documento_url}" target="_blank" rel="noopener">Ver Documento</a>` : ''}
         </div>
       </div>
@@ -1059,6 +1091,12 @@ function dictamenBlockHTML(p,d){
   const comprometido = personas * Number(p.monto_beneficiario);
   const titulo = d.numero!=null ? ('Dictamen '+d.numero) : 'Dictamen (nuevo, sin guardar)';
   const esNuevo = esTemporal(d.id);
+  // Dispersión real de ESTE dictamen (seguimiento inteligente): cuántas de
+  // sus propias personas ya quedaron cubiertas por Solicitudes a Hacienda
+  // vinculadas a él y ya dispersadas — ver dispersionPorDictamen(). No
+  // aplica a un dictamen recién agregado y aún no guardado (esNuevo=true),
+  // porque todavía no tiene un id real con el que vincular nada.
+  const disp = esNuevo ? null : dispersionPorDictamen(p, d.id);
   return `
   <div class="dictamen-block" data-dictamen-block="${d.id}">
     <div class="dictamen-head">
@@ -1092,6 +1130,12 @@ function dictamenBlockHTML(p,d){
       <div>Personas: <b>${fmtNum(personas)}</b></div>
       <div>Recurso comprometido: <b>${fmtMoney(comprometido)}</b></div>
     </div>
+    ${disp ? `
+    <div style="margin-top:10px;">
+      <span class="badge-pill ${disp.personasDispersadas>0 ? 'badge-autorizada' : 'badge-pendiente'}" title="Seguimiento interno: cuánto de este dictamen ya fue dispersado entre sus propias personas, usando las Solicitudes a Hacienda vinculadas a él">
+        Dispersión del dictamen: ${fmtNum(disp.personasDispersadas)} de ${fmtNum(personas)} persona${personas===1?'':'s'} (${fmtMoney(disp.montoDispersado)} de ${fmtMoney(comprometido)})
+      </span>
+    </div>` : ''}
   </div>`;
 }
 
@@ -1217,8 +1261,8 @@ async function saveDictamen(p, dicId, blockEl, btn){
      modificaciones), el guardado simplemente tronaba contra el servidor sin
      ninguna explicación clara. Ahora se calcula el nuevo total comprometido
      ANTES de enviar nada, usando los mismos valores reales que ya se
-     muestran en "Totales del Programa", y si excede el autorizado se avisa
-     con claridad y se pide confirmación explícita antes de continuar. */
+     muestran en el pipeline del programa, y si excede el autorizado se
+     avisa con claridad y se pide confirmación explícita antes de continuar. */
   const personasEsteDictamen = solRows.reduce((s,row)=>{
     const inp = row.querySelector('[data-sol-personas]');
     return s + (inp ? numValue(inp) : 0);
@@ -1732,12 +1776,27 @@ function openModalModificacion(pid){
 
 /* ---- Solicitud a Hacienda ---- */
 function openModalHacienda(pid){
+  const p = state.programs.find(x=>x.id===pid);
+  const dictamenes = (p && p.dictamenes) || [];
   openModal(`
     <div class="modal-header"><h3>Registrar Solicitud a Hacienda</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
     <div class="modal-body">
       <div class="form-grid single">
         <div class="field"><label>Folio</label><input type="text" id="h-folio" placeholder="Ej. SH-2026-0001"></div>
         <div class="field"><label>Monto Solicitado</label><input type="text" data-money id="h-monto" placeholder="$0.00"></div>
+        <div class="field">
+          <label>Dictamen relacionado (opcional)</label>
+          <select id="h-dictamen">
+            <option value="">— Sin vincular a un dictamen específico —</option>
+            ${dictamenes.filter(d=>!esTemporal(d.id)).map(d=>{
+              const personasD = (d.solicitudes||[]).reduce((s,so)=>s+Number(so.personas||0),0);
+              const comprometidoD = personasD * Number(p.monto_beneficiario||0);
+              const label = `Dictamen ${d.numero!=null?d.numero:d.id} del ${d.fecha_dictamen ? fmtDate(d.fecha_dictamen) : 'S/F'} — Comprometido: ${fmtMoney(comprometidoD)}`;
+              return `<option value="${d.id}">${esc(label)}</option>`;
+            }).join('')}
+          </select>
+          <div class="field-hint">Vincular esta solicitud a un dictamen permite dar seguimiento a cuánto de ESE dictamen ya fue dispersado entre sus propias personas.</div>
+        </div>
         ${dateTimeFieldGroupHTML('h-fecha','Solicitud de recurso a Hacienda')}
         ${fileDropZoneHTML('h-doc','Documento que avala la solicitud','.pdf,.jpg,.jpeg,.png,.doc,.docx')}
       </div>
@@ -1752,18 +1811,17 @@ function openModalHacienda(pid){
     const btn = e.currentTarget;
     const folio = document.getElementById('h-folio').value.trim();
     const monto = numValue(document.getElementById('h-monto'));
+    const dictamenId = document.getElementById('h-dictamen').value;
     const fecha = readDateTimeGroup('h-fecha');
     const archivo = document.getElementById('h-doc').files[0];
     if(!monto) return;
 
     /* Validación: no solicitar a Hacienda más de lo que sigue comprometido
-       y aún no se ha solicitado (mismo criterio que ya se muestra en
-       "Solicitado a Hacienda" de Totales del Programa). No se usa un modal
-       de confirmación aquí porque este formulario YA está dentro de un
-       modal (Registrar Solicitud a Hacienda) y solo hay un modal a la vez
-       en el sistema; en vez de tapar el formulario con otro, se avisa con
-       un toast y se deja el formulario abierto para corregir el monto. */
-    const p = state.programs.find(x=>x.id===pid);
+       y aún no se ha solicitado. No se usa un modal de confirmación aquí
+       porque este formulario YA está dentro de un modal (Registrar
+       Solicitud a Hacienda) y solo hay un modal a la vez en el sistema; en
+       vez de tapar el formulario con otro, se avisa con un toast y se deja
+       el formulario abierto para corregir el monto. */
     if(p){
       const disponibleParaSolicitar = Math.max(totalComprometido(p) - totalSolicitadoHacienda(p), 0);
       if(monto > disponibleParaSolicitar + 0.01){
@@ -1775,6 +1833,7 @@ function openModalHacienda(pid){
     const fd = new FormData();
     fd.append('folio', folio);
     fd.append('monto', monto);
+    if(dictamenId) fd.append('dictamen_id', dictamenId);
     if(fecha) fd.append('fecha', fecha);
     if(archivo) fd.append('documento', archivo);
     try{
