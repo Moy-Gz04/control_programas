@@ -362,6 +362,37 @@ textarea:focus-visible,
 .btn-outline .btn-spinner,.btn-ghost .btn-spinner{border-color:rgba(107,26,50,0.28);border-top-color:var(--maroon-800);}
 @keyframes btnspin{to{transform:rotate(360deg);}}
 
+/* ---------- BOTÓN "VER DOCUMENTO" ----------
+   Botón guinda outline pequeño y consistente para CUALQUIER enlace que abra
+   un documento cargado (Monto Autorizado, Modificación, Solicitud a
+   Hacienda, Autorización, Archivo de Asignación, Dispersión, Acta de
+   Dictamen, y la lista general de "Documentos"). Reemplaza los enlaces de
+   texto plano "Ver Documento" (antes .doc-link) que se insertaban en medio
+   de la oración de metadatos y se veían como texto suelto sin jerarquía.
+   Reutiliza los mismos tokens de radio/duración/curva que el resto de los
+   botones (--radius-pill, --dur-base, --ease-standard) para no introducir
+   una convención visual nueva. */
+.btn-ver-documento{
+  display:inline-flex;align-items:center;gap:6px;flex-shrink:0;white-space:nowrap;
+  padding:5px 14px;border-radius:var(--radius-pill);
+  border:1.5px solid var(--maroon-700);background:var(--surface-1);color:var(--maroon-800);
+  font-size:11px;font-weight:700;text-decoration:none;letter-spacing:0.1px;
+  transition:background var(--dur-base) var(--ease-standard), color var(--dur-base) var(--ease-standard), box-shadow var(--dur-base) var(--ease-standard), transform var(--dur-fast) var(--ease-standard);
+}
+.btn-ver-documento:hover{background:var(--maroon-700);color:#fff;box-shadow:0 2px 8px rgba(75,18,48,0.24);}
+.btn-ver-documento:active{transform:scale(0.97);}
+
+/* Envoltorios que separan el texto de metadatos del botón "Ver Documento":
+   .meta-with-doc cuando el texto es corto y cabe en la misma línea que el
+   botón (space-between); .doc-link-row cuando el botón va en su propia
+   línea, alineado a la derecha, debajo de un bloque de texto ya apilado
+   (p. ej. dentro de .log-row-main). Ambos envuelven con flex-wrap para que
+   en pantallas angostas el botón baje de línea con gracia. */
+.meta-with-doc{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
+.doc-link-row{display:flex;justify-content:flex-end;margin-top:6px;}
+.lmeta-doc-row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
+.lmeta-doc-row .lmeta{margin:0;}
+
 /* =========================================================================
    TOOLTIPS (hover sobre elementos de gráficas)
    Tooltip CSS puro (sin librerías): cualquier elemento con `has-tooltip` y
@@ -476,15 +507,26 @@ textarea:focus-visible,
 .log-row .lamount.pos{color:#0F7C57;}
 .empty-state{text-align:center;padding:30px 10px;color:var(--text-secondary);font-size:13px;}
 
-/* ===== DICTAMEN BLOCK ===== */
+/* ===== DICTAMEN BLOCK =====
+   .solicitud-row: rejilla de N columnas de campo + 1 columna final "auto"
+   para el botón de eliminar. El número de columnas de campo DEBE coincidir
+   con la cantidad de .sfield que arma solicitudRowHTML() en app.js
+   (Solicitud No. · Cantidad de Personas · Cantidad de Pagos · Fecha ·
+   Hora = 5), para que el desplegable "Cantidad de Pagos" quede como una
+   celda más de la rejilla y no se recorra a una fila aparte. */
 .dictamen-block{border:1px solid var(--border-hairline);border-radius:var(--radius-md);padding:17px 18px;margin-bottom:14px;background:var(--surface-2);}
 .dictamen-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:10px;flex-wrap:wrap;}
 .dictamen-head h4{margin:0;font-size:13.5px;font-weight:700;color:var(--text-primary);}
-.solicitud-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:10px;align-items:end;background:var(--surface-1);border:1px solid var(--border-hairline);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:8px;}
+.solicitud-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr auto;gap:10px;align-items:end;background:var(--surface-1);border:1px solid var(--border-hairline);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:8px;}
 @media (max-width:760px){.solicitud-row{grid-template-columns:1fr 1fr;}}
 @media (max-width:480px){.solicitud-row{grid-template-columns:1fr;}}
 .solicitud-row .sfield label{font-size:9.5px;color:var(--text-secondary);font-weight:600;text-transform:uppercase;}
-.solicitud-row .sfield input{width:100%;padding:7px 10px;border-radius:var(--radius-xs);border:1px solid var(--border-strong);font-size:13px;font-weight:500;}
+/* input y select comparten exactamente el mismo tratamiento visual (borde,
+   radio, padding, tamaño de fuente) para que el desplegable "Cantidad de
+   Pagos" se vea como un campo más de la fila, no como un <select> nativo
+   sin estilo suelto junto a su etiqueta. */
+.solicitud-row .sfield input,.solicitud-row .sfield select{width:100%;padding:7px 10px;border-radius:var(--radius-xs);border:1px solid var(--border-strong);font-size:13px;font-weight:500;color:var(--text-primary);background:var(--surface-1);}
+.solicitud-row .sfield select{cursor:pointer;}
 .icon-btn{background:none;border:none;color:var(--red);font-size:15px;padding:5px 9px;border-radius:var(--radius-xs);transition:background var(--dur-base) var(--ease-standard);}
 .icon-btn:hover{background:#FCEBEC;}
 .dictamen-total{display:flex;gap:22px;margin-top:10px;font-size:12px;color:var(--maroon-800);font-weight:600;}
@@ -494,12 +536,6 @@ textarea:focus-visible,
 .back-link:hover{opacity:0.7;}
 
 .chip{display:inline-block;padding:4px 11px;border-radius:var(--radius-pill);background:var(--cream-200);color:var(--maroon-800);font-size:10px;font-weight:700;letter-spacing:0.2px;}
-
-/* Enlaces "Ver Documento" en texto corrido: antes heredaban el color del
-   texto (a{color:inherit}) y se veían como texto plano, sin indicar que
-   eran clickeables. */
-.doc-link{color:var(--maroon-700);font-weight:700;text-decoration:none;border-bottom:1px solid rgba(107,26,50,0.35);transition:color var(--dur-base) var(--ease-standard), border-color var(--dur-base) var(--ease-standard);}
-.doc-link:hover{color:var(--maroon-900);border-color:var(--maroon-900);}
 
 footer.app-footer{
   margin-top:44px;padding:22px 5%;

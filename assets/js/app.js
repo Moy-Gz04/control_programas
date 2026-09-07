@@ -722,8 +722,9 @@ async function renderDetalle(id){
           <div>
             <div class="kpi-label">Monto Autorizado inicial</div>
             <div class="kpi-value">${fmtMoney(autorizadoBase)}</div>
-            <div class="kpi-sub">Referencia ${p.monto_autorizado_referencia} · ${fmtDate(p.monto_autorizado_fecha)}
-              ${p.monto_autorizado_documento_url ? ` · <a href="${p.monto_autorizado_documento_url}" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="padding:2px 10px;">Ver Documento</a>` : ''}
+            <div class="kpi-sub meta-with-doc">
+              <span>Referencia ${p.monto_autorizado_referencia} · ${fmtDate(p.monto_autorizado_fecha)}</span>
+              ${p.monto_autorizado_documento_url ? `<a class="btn-ver-documento" href="${p.monto_autorizado_documento_url}" target="_blank" rel="noopener">Ver Documento</a>` : ''}
             </div>
           </div>
           <button class="btn btn-outline btn-sm" id="btnAddModificacion">+ Registrar Modificación</button>
@@ -735,9 +736,8 @@ async function renderDetalle(id){
               <div class="log-row-icon ${m.tipo==='Ampliación'?'log-row-icon-pos':'log-row-icon-neg'}">${m.tipo==='Ampliación'?'+':'−'}</div>
               <div class="log-row-main">
                 <div class="log-row-title">${m.tipo}</div>
-                <div class="lmeta">${esc(m.motivo||'')} · ${fmtDate(m.created_at)}
-                  ${m.documento_url ? ` · <a class="doc-link" href="${m.documento_url}" target="_blank" rel="noopener">Ver Documento</a>` : ''}
-                </div>
+                <div class="lmeta">${esc(m.motivo||'')} · ${fmtDate(m.created_at)}</div>
+                ${m.documento_url ? `<div class="doc-link-row"><a class="btn-ver-documento" href="${m.documento_url}" target="_blank" rel="noopener">Ver Documento</a></div>` : ''}
               </div>
               <div class="lamount ${m.tipo==='Ampliación'?'pos':'neg'}">${m.tipo==='Ampliación'?'+':'−'} ${fmtMoney(m.monto)}</div>
             </div>`).join('') : `<div class="empty-state">Sin modificaciones registradas.</div>`}
@@ -952,9 +952,8 @@ function pagoRowHTML(p, g){
             <div class="log-row-icon log-row-icon-pos">$</div>
             <div class="log-row-main">
               <div class="log-row-title">Folio ${esc(g.folio)}</div>
-              <div class="lmeta">${fmtDate(g.fecha)}${hac? ` · Solicitud a Hacienda folio ${esc(hac.folio)}` : ''}
-                ${g.documento_url ? ` · <a class="doc-link" href="${g.documento_url}" target="_blank" rel="noopener">Ver Documento</a>` : ''}
-              </div>
+              <div class="lmeta">${fmtDate(g.fecha)}${hac? ` · Solicitud a Hacienda folio ${esc(hac.folio)}` : ''}</div>
+              ${g.documento_url ? `<div class="doc-link-row"><a class="btn-ver-documento" href="${g.documento_url}" target="_blank" rel="noopener">Ver Documento</a></div>` : ''}
             </div>
             <div class="lamount pos">${fmtMoney(g.monto)}</div>
           </div>`;
@@ -987,9 +986,8 @@ function haciendaItemHTML(h, p){
     <div class="hacienda-item-head">
       <div class="hacienda-item-main">
         <div class="hacienda-item-title">Folio ${esc(h.folio)}</div>
-        <div class="lmeta">Solicitado: ${fmtDate(h.fecha)}${dictamenLabel ? ` · Vinculado a ${esc(dictamenLabel)}` : ' · Sin vincular a un dictamen específico'}
-          ${h.documento_url ? ` · <a class="doc-link" href="${h.documento_url}" target="_blank" rel="noopener">Ver Documento</a>` : ''}
-        </div>
+        <div class="lmeta">Solicitado: ${fmtDate(h.fecha)}${dictamenLabel ? ` · Vinculado a ${esc(dictamenLabel)}` : ' · Sin vincular a un dictamen específico'}</div>
+        ${h.documento_url ? `<div class="doc-link-row"><a class="btn-ver-documento" href="${h.documento_url}" target="_blank" rel="noopener">Ver Documento</a></div>` : ''}
       </div>
       <div class="hacienda-item-amount">
         <div class="hacienda-item-monto">${fmtMoney(h.monto)}</div>
@@ -997,8 +995,9 @@ function haciendaItemHTML(h, p){
       </div>
     </div>
     ${h.autorizacion ? `
-      <div class="hacienda-sub">Autorizado por Hacienda: <b>${fmtMoney(h.autorizacion.monto_autorizado)}</b> · ${fmtDate(h.autorizacion.fecha_autorizacion)}
-        ${h.autorizacion.documento_url ? ` · <a class="doc-link" href="${h.autorizacion.documento_url}" target="_blank" rel="noopener">Ver Documento</a>` : ''}
+      <div class="hacienda-sub meta-with-doc">
+        <span>Autorizado por Hacienda: <b>${fmtMoney(h.autorizacion.monto_autorizado)}</b> · ${fmtDate(h.autorizacion.fecha_autorizacion)}</span>
+        ${h.autorizacion.documento_url ? `<a class="btn-ver-documento" href="${h.autorizacion.documento_url}" target="_blank" rel="noopener">Ver Documento</a>` : ''}
       </div>
     ` : `
       <div style="text-align:right;margin-top:8px;">
@@ -1030,7 +1029,7 @@ function asignacionBlockHTML(h){
       </div>
     </div>`;
   }
-  const cargaInfo = `<div class="lmeta">Cargado: ${fmtDate(a.fecha_carga)}${a.documento_url? ` · <a class="doc-link" href="${a.documento_url}" target="_blank" rel="noopener">Ver Documento</a>`:''}</div>`;
+  const cargaInfo = `<div class="lmeta-doc-row"><span class="lmeta">Cargado: ${fmtDate(a.fecha_carga)}</span>${a.documento_url? `<a class="btn-ver-documento" href="${a.documento_url}" target="_blank" rel="noopener">Ver Documento</a>`:''}</div>`;
 
   if(a.estatus==='revision'){
     return `
@@ -1104,7 +1103,7 @@ function documentosSectionBody(p){
     <div class="log-row log-row-doc">
       <div class="log-row-icon log-row-icon-doc">📄</div>
       <div class="log-row-main"><div class="log-row-title">${esc(r.tipo)}</div><div class="lmeta">${esc(r.ref)} · ${fmtDate(r.fecha)}</div></div>
-      <a class="btn btn-outline btn-sm" href="${r.url}" target="_blank" rel="noopener">Ver Documento</a>
+      <a class="btn-ver-documento" href="${r.url}" target="_blank" rel="noopener">Ver Documento</a>
     </div>`).join('')}</div>`;
 }
 
@@ -1136,7 +1135,7 @@ function dictamenBlockHTML(p,d){
         <div class="chip" data-dic-chip="${d.id}">${fmtMoney(d.monto_autorizado)} autorizados</div>
         <input type="file" id="acta-input-${d.id}" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" hidden>
         <button class="btn btn-outline btn-sm" data-upload-acta="${d.id}" ${esNuevo?'disabled title="Guarda el dictamen antes de cargar el acta"':''}>${d.acta_documento_url? 'Reemplazar Acta Firmada':'Cargar Acta Firmada de Dictamen'}</button>
-        ${d.acta_documento_url ? `<a class="btn btn-outline btn-sm" href="${d.acta_documento_url}" target="_blank" rel="noopener">Ver Acta</a>` : ''}
+        ${d.acta_documento_url ? `<a class="btn-ver-documento" href="${d.acta_documento_url}" target="_blank" rel="noopener">Ver Acta</a>` : ''}
         <button class="btn btn-danger btn-sm" data-del-dictamen="${d.id}">Eliminar Dictamen</button>
       </div>
     </div>
@@ -1148,7 +1147,7 @@ function dictamenBlockHTML(p,d){
       ${dateTimeInlineWrapper('dic', d.id, 'Registro del dictamen', d.fecha_dictamen)}
     </div>
     <div class="solicitudes-list">
-      ${(d.solicitudes||[]).map(s=>solicitudRowHTML(d.id,s)).join('')}
+      ${(d.solicitudes||[]).map(s=>solicitudRowHTML(p,d.id,s)).join('')}
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:8px;" data-dictamen-actions>
       <div class="field-hint" style="margin:0;">Agrega las solicitudes que necesites y llena los campos; nada se guarda hasta presionar “Guardar Dictamen”.</div>
@@ -1184,11 +1183,30 @@ function dateTimeInlineWrapper(dataAttr, key, label, value){
    cada una de las personas capturadas en ESTA fila (independiente del
    campo homónimo a nivel programa, usado para otro fin — ver comentario
    en dispersionPorDictamen). Se coloca ANTES del campo "Compromiso", tal
-   como lo pidió el usuario. Desplegable acotado (1 a 6 pagos) porque es
-   una elección pequeña y cerrada — más claro que un input libre aquí. */
-function cantidadPagosSolicitudSelectHTML(dicId, s){
-  const valorActual = Number(s.cantidad_pagos||1) >= 1 ? Math.floor(Number(s.cantidad_pagos||1)) : 1;
-  const opciones = [1,2,3,4,5,6].map(n=>{
+   como lo pidió el usuario.
+
+   ---- TOPE: la propia "Cantidad de Pagos por Beneficiario" del programa ----
+   El desplegable ya NO ofrece un rango fijo 1–6: las opciones van de 1
+   hasta el valor configurado en el programa (p.cantidad_pagos, capturado
+   en Registrar/Editar Programa), porque no tiene sentido dejar elegir más
+   pagos por beneficiario, en una solicitud individual, de los que el
+   programa en general tiene pactados. Si el programa está en 1 (el caso
+   por defecto, sin pagos múltiples) el desplegable simplemente muestra la
+   única opción "1 pago" — no se oculta el campo ni se hace un caso
+   especial, para mantener el mismo formulario en todos los casos.
+
+   Si un valor ya guardado (s.cantidad_pagos) queda por encima del máximo
+   actual del programa —por ejemplo, porque el programa bajó su
+   configuración después de haberse capturado la solicitud— la selección
+   visible se acota (clamp) al máximo vigente, pero eso es solo un ajuste
+   de lo que se ve seleccionado en el formulario: el valor guardado en la
+   base de datos no se toca aquí, solo cambia si el usuario vuelve a
+   guardar el dictamen. */
+function cantidadPagosSolicitudSelectHTML(p, dicId, s){
+  const maxPagos = Math.max(1, Number(p.cantidad_pagos||1));
+  const valorGuardado = Number(s.cantidad_pagos||1) >= 1 ? Math.floor(Number(s.cantidad_pagos||1)) : 1;
+  const valorActual = Math.min(valorGuardado, maxPagos);
+  const opciones = Array.from({length:maxPagos}, (_,i)=>i+1).map(n=>{
     const label = n===1 ? '1 pago' : `${n} pagos`;
     return `<option value="${n}" ${n===valorActual?'selected':''}>${label}</option>`;
   }).join('');
@@ -1196,13 +1214,13 @@ function cantidadPagosSolicitudSelectHTML(dicId, s){
         <div class="sfield"><label>Cantidad de Pagos</label><select data-sol-cantidad-pagos="${dicId}|${s.id}">${opciones}</select></div>`;
 }
 
-function solicitudRowHTML(dicId, s){
+function solicitudRowHTML(p, dicId, s){
   const esNueva = esTemporal(s.id);
   return `
       <div class="solicitud-row">
         <div class="sfield"><label>Solicitud No.</label><input value="${esNueva? 'Nueva' : s.numero}" disabled></div>
         <div class="sfield"><label>Cantidad de Personas</label><input type="text" data-int value="${fmtInputInt(s.personas||0)}" data-sol-personas="${dicId}|${s.id}"></div>
-        ${cantidadPagosSolicitudSelectHTML(dicId, s)}
+        ${cantidadPagosSolicitudSelectHTML(p, dicId, s)}
         ${dateTimeInlineHTML('sol', dicId+'|'+s.id, 'Compromiso', s.fecha_compromiso)}
         <button class="icon-btn" title="Eliminar solicitud" data-del-solicitud="${s.id}">✕</button>
       </div>`;
@@ -1280,7 +1298,7 @@ function addSolicitudLocal(block, p){
   const dicId = block.dataset.dictamenBlock;
   const draft = { id: tmpId(), numero: null, personas: 0 };
   const wrap = document.createElement('div');
-  wrap.innerHTML = solicitudRowHTML(dicId, draft).trim();
+  wrap.innerHTML = solicitudRowHTML(p, dicId, draft).trim();
   const row = wrap.firstElementChild;
 
   const actionsRow = block.querySelector('[data-dictamen-actions]');
