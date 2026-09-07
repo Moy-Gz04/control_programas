@@ -3,7 +3,7 @@
  * Si ya hay una sesión activa, redirige directo a la app.
  */
 (function(){
-  if (localStorage.getItem('pb_token')) {
+  if (sessionStorage.getItem('pb_token')) {
     window.location.href = 'app.html';
     return;
   }
@@ -25,8 +25,12 @@
 
     try {
       const data = await Api.post('/auth/login', { email, password });
-      localStorage.setItem('pb_token', data.token);
-      localStorage.setItem('pb_user', JSON.stringify(data.user));
+      // sessionStorage (no localStorage): la sesión vive solo mientras esta
+      // pestaña/ventana del navegador está abierta. Al cerrar el navegador
+      // se pierde por completo y hay que volver a iniciar sesión — no debe
+      // quedar "recordada" entre una visita y otra.
+      sessionStorage.setItem('pb_token', data.token);
+      sessionStorage.setItem('pb_user', JSON.stringify(data.user));
       window.location.href = 'app.html';
     } catch (err) {
       showError(err.message || 'No se pudo iniciar sesión.');

@@ -3,7 +3,7 @@
  * automáticamente si el backend responde 401.
  */
 const Api = (() => {
-  function token() { return localStorage.getItem('pb_token'); }
+  function token() { return sessionStorage.getItem('pb_token'); }
 
   async function request(method, path, body, isFormData) {
     const headers = {};
@@ -23,8 +23,8 @@ const Api = (() => {
     }
 
     if (res.status === 401) {
-      localStorage.removeItem('pb_token');
-      localStorage.removeItem('pb_user');
+      sessionStorage.removeItem('pb_token');
+      sessionStorage.removeItem('pb_user');
       if (!location.pathname.endsWith('index.html') && location.pathname !== '/') {
         location.href = 'index.html?expired=1';
       }

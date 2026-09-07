@@ -3,9 +3,12 @@
    Consume la API REST del backend (Neon vía Render). Requiere sesión activa.
    ========================================================================= */
 
-/* ---------- GUARD DE SESIÓN ---------- */
-const CURRENT_USER = JSON.parse(localStorage.getItem('pb_user') || 'null');
-if (!localStorage.getItem('pb_token') || !CURRENT_USER) {
+/* ---------- GUARD DE SESIÓN ----------
+   sessionStorage (no localStorage): la sesión se pierde al cerrar la
+   pestaña/ventana del navegador, así que cada vez que se abre de nuevo hay
+   que volver a iniciar sesión — no queda "recordada" entre visitas. */
+const CURRENT_USER = JSON.parse(sessionStorage.getItem('pb_user') || 'null');
+if (!sessionStorage.getItem('pb_token') || !CURRENT_USER) {
   window.location.href = 'index.html';
   throw new Error('No autenticado');
 }
@@ -338,8 +341,8 @@ async function init(){
   document.getElementById('navUserAvatar').textContent = (CURRENT_USER.nombre||'?').trim().charAt(0).toUpperCase();
 
   document.getElementById('btnLogout').addEventListener('click', ()=>{
-    localStorage.removeItem('pb_token');
-    localStorage.removeItem('pb_user');
+    sessionStorage.removeItem('pb_token');
+    sessionStorage.removeItem('pb_user');
     window.location.href = 'index.html';
   });
 

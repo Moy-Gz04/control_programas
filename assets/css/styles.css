@@ -442,12 +442,12 @@ footer.app-footer{text-align:center;padding:30px;color:var(--text-tertiary);font
 .section-title.collapsible-header{cursor:pointer;user-select:none;}
 .section-title.collapsible-header:hover h2{color:var(--maroon-700);}
 .section-toggle-btn{
-  background:var(--cream-100);border:1px solid var(--border-strong);color:var(--maroon-800);
+  background:linear-gradient(135deg,var(--maroon-700),var(--maroon-800));border:1px solid var(--maroon-800);color:#fff;
   width:26px;height:26px;border-radius:50%;font-size:11px;line-height:1;flex-shrink:0;
-  display:flex;align-items:center;justify-content:center;
-  transition:background var(--dur-base) var(--ease-standard), transform var(--dur-base) var(--ease-standard);
+  display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(75,18,48,0.3);
+  transition:filter var(--dur-base) var(--ease-standard), transform var(--dur-base) var(--ease-standard);
 }
-.section-toggle-btn:hover{background:var(--cream-200);}
+.section-toggle-btn:hover{filter:brightness(1.1);}
 .section-toggle-btn[aria-expanded="false"]{transform:rotate(-90deg);}
 .section-summary{font-size:var(--fs-xs);color:var(--text-secondary);}
 .section-body{transition:none;}
@@ -472,6 +472,12 @@ footer.app-footer{text-align:center;padding:30px;color:var(--text-tertiary);font
 .dropzone-icon svg{display:block;}
 .dropzone-title{font-size:13px;color:var(--text-primary);font-weight:700;}
 .dropzone-hint{font-size:10.5px;color:var(--text-tertiary);line-height:1.4;max-width:220px;}
+/* IMPORTANTE: un `display` puesto por una regla de autor (como los de
+   arriba) le gana al `[hidden]` del navegador, así que sin esto ambos
+   bloques (vacío y cargado) se quedaban visibles al mismo tiempo sin
+   importar el atributo `hidden` que pone bindDropZone() en JS. */
+.dropzone-empty[hidden],
+.dropzone-file[hidden]{display:none !important;}
 .dropzone-file{display:flex;align-items:center;gap:10px;text-align:left;}
 .dz-file-icon{font-size:20px;flex-shrink:0;}
 .dz-file-info{flex:1;min-width:0;}
