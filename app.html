@@ -13,28 +13,34 @@
 </head>
 <body>
 
-<nav class="navbar">
-  <div class="brand">
-    <img class="brand-logo" src="assets/img/logo.png" alt="Logo" onerror="this.style.display='none';document.getElementById('logoFallback').style.display='flex';">
-    <div id="logoFallback" class="brand-logo-fallback" style="display:none;">B</div>
-    <div class="brand-text">
-      <div class="t1">BIENESTAR</div>
-      <div class="t2">Sistema de Programas</div>
+<header class="navbar-wrap">
+  <div class="navbar-top">
+    <div class="brand">
+      <img class="brand-logo" src="assets/img/logo.png" alt="Logo" onerror="this.style.display='none';document.getElementById('logoFallback').style.display='flex';">
+      <div id="logoFallback" class="brand-logo-fallback" style="display:none;">B</div>
+      <div class="brand-text">
+        <div class="t0">— Gobierno del Estado de Hidalgo</div>
+        <div class="t1-full">Secretaría de Bienestar e Inclusión Social</div>
+      </div>
+    </div>
+    <div class="navbar-top-right">
+      <div class="navbar-date" id="navDate">—</div>
+      <div class="nav-user">
+        <div class="avatar" id="navUserAvatar">?</div>
+        <div class="who">
+          <div class="n" id="navUserName">—</div>
+          <div class="r" id="navUserRole">—</div>
+        </div>
+      </div>
+      <button class="nav-logout" id="btnLogout">↩ Cerrar sesión</button>
     </div>
   </div>
-  <div class="nav-links" id="navLinks">
+  <nav class="navbar-menu" id="navLinks">
+    <span class="navbar-menu-label">MENÚ</span>
     <a href="#" class="nav-link active" data-nav="programas">Programas</a>
     <button class="nav-cta" id="btnNuevoPrograma">+ Nuevo Programa</button>
-    <div class="nav-user">
-      <div class="who">
-        <div class="n" id="navUserName">—</div>
-        <div class="r" id="navUserRole">—</div>
-      </div>
-      <div class="avatar" id="navUserAvatar">?</div>
-      <button class="nav-logout" id="btnLogout">Salir</button>
-    </div>
-  </div>
-</nav>
+  </nav>
+</header>
 
 <div class="header-band" id="headerBand">
   <h1 id="headerTitle">SISTEMA DE PROGRAMAS SOCIALES</h1>

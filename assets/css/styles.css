@@ -141,52 +141,80 @@ textarea:focus-visible,
   }
 }
 
-/* ===== NAVBAR ===== */
-.navbar{
-  display:flex;align-items:center;justify-content:space-between;
+/* =========================================================================
+   NAVBAR (dos franjas, estilo portal institucional)
+   Franja superior: escudo/logo + "— Gobierno del Estado de Hidalgo" +
+   nombre de la dependencia, y a la derecha fecha / usuario / cerrar sesión.
+   Franja inferior (más angosta y oscura): menú de navegación con pestañas,
+   la activa resaltada en dorado. Antes todo iba en una sola fila; se separó
+   para que se lea como un encabezado institucional real.
+   ========================================================================= */
+.navbar-wrap{position:sticky;top:0;z-index:40;backdrop-filter:saturate(1.1);}
+.navbar-top{
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
   padding:14px 5%;
   background:linear-gradient(135deg,var(--maroon-900),var(--maroon-800) 55%,var(--maroon-700));
   border-bottom:1px solid rgba(201,168,78,0.55);
-  position:sticky;top:0;z-index:40;
-  backdrop-filter:saturate(1.1);
 }
 .brand{display:flex;align-items:center;gap:12px;}
-.brand-logo{width:38px;height:38px;object-fit:contain;flex-shrink:0;border-radius:9px;}
+.brand-logo{width:42px;height:42px;object-fit:contain;flex-shrink:0;border-radius:9px;}
 .brand-logo-fallback{
-  width:38px;height:38px;border-radius:11px;
+  width:42px;height:42px;border-radius:11px;
   background:radial-gradient(circle at 35% 30%, var(--gold-500), var(--gold-600) 65%, #8a6c14);
-  display:flex;align-items:center;justify-content:center;color:var(--maroon-900);font-weight:700;font-size:16px;
+  display:flex;align-items:center;justify-content:center;color:var(--maroon-900);font-weight:700;font-size:17px;
   flex-shrink:0;
 }
-.brand-text{line-height:1.2;}
+.brand-text{line-height:1.3;}
+.brand-text .t0{font-weight:700;font-size:10.5px;letter-spacing:0.8px;color:var(--gold-500);text-transform:uppercase;}
+.brand-text .t1-full{font-size:16.5px;font-weight:700;color:#fff;letter-spacing:-0.1px;margin-top:1px;}
+/* Compatibilidad: si algún lugar todavía usa .t1/.t2 (login, etc.) */
 .brand-text .t1{font-weight:700;font-size:14.5px;letter-spacing:1.2px;color:var(--gold-500);}
 .brand-text .t2{font-size:10.5px;letter-spacing:0.4px;color:var(--text-on-brand);opacity:0.82;font-weight:500;text-transform:uppercase;}
-.nav-links{display:flex;align-items:center;gap:4px;}
+
+.navbar-top-right{display:flex;align-items:center;gap:16px;}
+.navbar-date{font-size:12px;color:var(--text-on-brand);opacity:0.75;font-weight:500;white-space:nowrap;}
+.nav-user{
+  display:flex;align-items:center;gap:9px;
+  background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.14);
+  border-radius:var(--radius-pill);padding:5px 14px 5px 5px;
+}
+.nav-user .avatar{width:28px;height:28px;border-radius:50%;background:var(--gold-500);color:var(--maroon-900);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;}
+.nav-user .who{line-height:1.2;}
+.nav-user .who .n{font-size:12.5px;font-weight:700;color:#fff;}
+.nav-user .who .r{font-size:9.5px;color:var(--text-on-brand);opacity:0.7;text-transform:uppercase;letter-spacing:0.4px;}
+.nav-logout{
+  display:inline-flex;align-items:center;gap:6px;
+  background:linear-gradient(135deg,var(--maroon-700),var(--maroon-800));
+  border:1px solid rgba(255,255,255,0.16);color:#fff;padding:8px 16px;border-radius:var(--radius-pill);
+  font-size:12.5px;font-weight:700;white-space:nowrap;
+  transition:filter var(--dur-base) var(--ease-standard);
+}
+.nav-logout:hover{filter:brightness(1.15);}
+
+.navbar-menu{
+  display:flex;align-items:center;gap:6px;
+  padding:8px 5%;
+  background:var(--maroon-900);
+}
+.navbar-menu-label{font-size:10.5px;font-weight:700;letter-spacing:1px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-right:10px;}
 .nav-link{
   display:flex;align-items:center;gap:7px;
-  padding:9px 16px;border-radius:var(--radius-pill);color:var(--text-on-brand);
-  font-size:13.5px;font-weight:500;text-decoration:none;
+  padding:8px 18px;border-radius:var(--radius-pill);color:rgba(255,255,255,0.75);
+  font-size:12.5px;font-weight:700;text-decoration:none;text-transform:uppercase;letter-spacing:0.3px;
   background:transparent;border:1px solid transparent;
   transition:background var(--dur-base) var(--ease-standard), color var(--dur-base) var(--ease-standard);
 }
-.nav-link:hover{background:rgba(255,255,255,0.08);}
-.nav-link.active{background:rgba(255,255,255,0.14);color:#fff;font-weight:600;}
+.nav-link:hover{background:rgba(255,255,255,0.08);color:#fff;}
+.nav-link.active{background:linear-gradient(135deg,var(--gold-500),var(--gold-600));color:var(--maroon-900);}
 .nav-cta{
-  padding:9px 18px;border-radius:var(--radius-pill);
-  background:linear-gradient(135deg,var(--gold-500),var(--gold-600));
-  color:var(--maroon-900);font-weight:700;font-size:13px;border:none;
-  box-shadow:0 2px 10px rgba(0,0,0,0.22);
-  transition:filter var(--dur-base) var(--ease-standard), transform var(--dur-fast) var(--ease-standard);
+  margin-left:auto;
+  padding:8px 18px;border-radius:var(--radius-pill);
+  background:rgba(255,255,255,0.08);border:1px solid rgba(201,168,78,0.4);
+  color:var(--gold-500);font-weight:700;font-size:12.5px;
+  transition:background var(--dur-base) var(--ease-standard), transform var(--dur-fast) var(--ease-standard);
 }
-.nav-cta:hover{filter:brightness(1.06);}
+.nav-cta:hover{background:rgba(255,255,255,0.14);}
 .nav-cta:active{transform:scale(0.97);}
-.nav-user{display:flex;align-items:center;gap:11px;padding-left:14px;margin-left:8px;border-left:1px solid rgba(255,255,255,0.16);}
-.nav-user .who{text-align:right;line-height:1.25;}
-.nav-user .who .n{font-size:12.5px;font-weight:600;color:#fff;}
-.nav-user .who .r{font-size:10px;color:var(--text-on-brand);opacity:0.75;text-transform:uppercase;letter-spacing:0.5px;}
-.nav-user .avatar{width:30px;height:30px;border-radius:50%;background:var(--gold-500);color:var(--maroon-900);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12.5px;}
-.nav-logout{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.16);color:#fff;padding:7px 14px;border-radius:var(--radius-pill);font-size:12px;font-weight:600;transition:background var(--dur-base) var(--ease-standard);}
-.nav-logout:hover{background:rgba(255,255,255,0.18);}
 
 /* ===== HEADER BAND ===== */
 .header-band{

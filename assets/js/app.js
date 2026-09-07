@@ -405,6 +405,12 @@ async function init(){
   const footerYearEl = document.getElementById('footerYear');
   if(footerYearEl) footerYearEl.textContent = new Date().getFullYear();
 
+  const navDateEl = document.getElementById('navDate');
+  if(navDateEl){
+    const hoy = new Date().toLocaleDateString('es-MX', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+    navDateEl.textContent = hoy.charAt(0).toUpperCase() + hoy.slice(1);
+  }
+
   document.getElementById('view-programas').innerHTML = `<div class="loading-block"><span class="loading-spinner"></span> Cargando información…</div>`;
 
   try{
