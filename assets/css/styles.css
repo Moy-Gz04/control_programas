@@ -461,17 +461,17 @@ footer.app-footer{text-align:center;padding:30px;color:var(--text-tertiary);font
    ========================================================================= */
 .dropzone{
   position:relative;border:1.5px dashed var(--border-strong);border-radius:var(--radius-md);
-  background:var(--surface-2);padding:16px 14px;text-align:center;cursor:pointer;
+  background:var(--surface-1);padding:16px 14px;text-align:center;cursor:pointer;
   transition:border-color var(--dur-base) var(--ease-standard), background var(--dur-base) var(--ease-standard);
 }
 .dropzone:hover{border-color:var(--gold-600);background:var(--cream-50);}
 .dropzone.dragover{border-color:var(--maroon-600);background:#FBF3F6;box-shadow:var(--focus-ring);}
 .dropzone.has-file{border-style:solid;border-color:#9FDCC0;background:#F2FBF7;cursor:default;padding:10px 12px;}
-.dropzone-empty{display:flex;flex-direction:column;align-items:center;gap:4px;}
-.dropzone-icon{font-size:19px;color:var(--gold-600);line-height:1;}
-.dropzone-text{font-size:12.5px;color:var(--text-primary);font-weight:500;}
-.dropzone-text b{color:var(--maroon-700);font-weight:700;}
-.dropzone-hint{font-size:10.5px;color:var(--text-tertiary);}
+.dropzone-empty{display:flex;flex-direction:column;align-items:center;gap:5px;}
+.dropzone-icon{color:var(--maroon-600);line-height:1;display:flex;align-items:center;justify-content:center;}
+.dropzone-icon svg{display:block;}
+.dropzone-title{font-size:13px;color:var(--text-primary);font-weight:700;}
+.dropzone-hint{font-size:10.5px;color:var(--text-tertiary);line-height:1.4;max-width:220px;}
 .dropzone-file{display:flex;align-items:center;gap:10px;text-align:left;}
 .dz-file-icon{font-size:20px;flex-shrink:0;}
 .dz-file-info{flex:1;min-width:0;}

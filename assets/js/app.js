@@ -196,16 +196,17 @@ function bindCollapsibleSections(root){
    poder quitarlo o reemplazarlo. El <input type="file"> real se conserva
    (oculto) dentro de la zona, así que el resto del código que lee
    `document.getElementById(id).files[0]` sigue funcionando sin cambios. */
-function fileDropZoneHTML(id, label, accept, hint){
+const DROPZONE_UPLOAD_ICON_SVG = `<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2.5H7a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5z"/><path d="M14 2.5v6h6"/><path d="M12 18.5v-6.5"/><path d="M9.2 14.5 12 11.7l2.8 2.8"/></svg>`;
+function fileDropZoneHTML(id, label, accept, hint, titulo){
   return `
     <div class="field">
       <label>${label}</label>
       <div class="dropzone" data-dropzone="${id}" tabindex="0">
         <input type="file" id="${id}" accept="${accept||''}" hidden>
         <div class="dropzone-empty" data-dz-empty="${id}">
-          <div class="dropzone-icon">⬆</div>
-          <div class="dropzone-text"><b>Haz clic</b> o arrastra un archivo aquí</div>
-          <div class="dropzone-hint">${hint || 'PDF, JPG, PNG o Word · máx. 15 MB'}</div>
+          <div class="dropzone-icon">${DROPZONE_UPLOAD_ICON_SVG}</div>
+          <div class="dropzone-title">${titulo || 'Archivo'}</div>
+          <div class="dropzone-hint">${hint || 'Arrastra tu archivo aquí o haz clic para seleccionarlo'}</div>
         </div>
         <div class="dropzone-file" data-dz-file="${id}" hidden>
           <div class="dz-file-icon">📄</div>
