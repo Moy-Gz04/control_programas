@@ -461,9 +461,16 @@ router.post('/:id/dictamenes/:dicId/solicitudes', async (req, res) => {
     const { rows: countRows } = await db.query('SELECT COUNT(*)::int AS n FROM solicitudes WHERE dictamen_id = $1', [req.params.dicId]);
     const numero = countRows[0].n + 1;
     const fechaCompromiso = parseFechaManual(req.body?.fecha_compromiso);
+    // Cantidad de Pagos de ESTA solicitud (no confundir con el campo
+    // homónimo a nivel programa): cuántos pagos/dispersiones recibirá cada
+    // una de las personas capturadas en esta fila. Default 1 (retrocompatible).
+    const cantidadPagos = parseCantidadPagos(req.body?.cantidad_pagos);
+    if (cantidadPagos === null) {
+      return res.status(400).json({ error: 'La cantidad de pagos de la solicitud debe ser un entero mayor o igual a 1.' });
+    }
     await db.query(
-      'INSERT INTO solicitudes (dictamen_id, numero, personas, fecha_compromiso) VALUES ($1,$2,$3,COALESCE($4, now()))',
-      [req.params.dicId, numero, Number(req.body?.personas || 0), fechaCompromiso]
+      'INSERT INTO solicitudes (dictamen_id, numero, personas, fecha_compromiso, cantidad_pagos) VALUES ($1,$2,$3,COALESCE($4, now()),$5)',
+      [req.params.dicId, numero, Number(req.body?.personas || 0), fechaCompromiso, cantidadPagos]
     );
 
     res.status(201).json(await getProgramaCompleto(req.params.id));
@@ -480,10 +487,16 @@ router.patch('/:id/dictamenes/:dicId/solicitudes/:solId', async (req, res) => {
 
     const personas = Number(req.body?.personas || 0);
     const fechaCompromiso = parseFechaManual(req.body?.fecha_compromiso);
+    // Ver comentario en el POST de arriba: cantidad_pagos es propio de esta
+    // solicitud, independiente del campo cantidad_pagos a nivel programa.
+    const cantidadPagos = parseCantidadPagos(req.body?.cantidad_pagos);
+    if (cantidadPagos === null) {
+      return res.status(400).json({ error: 'La cantidad de pagos de la solicitud debe ser un entero mayor o igual a 1.' });
+    }
     await db.query(
-      `UPDATE solicitudes SET personas = $1, fecha_compromiso = COALESCE($2, fecha_compromiso)
-       WHERE id = $3 AND dictamen_id = $4`,
-      [personas, fechaCompromiso, req.params.solId, req.params.dicId]
+      `UPDATE solicitudes SET personas = $1, fecha_compromiso = COALESCE($2, fecha_compromiso), cantidad_pagos = $3
+       WHERE id = $4 AND dictamen_id = $5`,
+      [personas, fechaCompromiso, cantidadPagos, req.params.solId, req.params.dicId]
     );
     res.json(await getProgramaCompleto(req.params.id));
   } catch (err) {

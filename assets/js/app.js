@@ -451,13 +451,44 @@ function montoTotalBeneficiario(p){ return Number(p.monto_beneficiario||0) * can
 /* Dispersión real de UN dictamen: suma el monto de las Solicitudes a
    Hacienda vinculadas a ese dictamen (h.dictamen_id === dictamenId) que ya
    fueron dispersadas (h.pagada), y calcula cuántas personas de ese mismo
-   dictamen quedan cubiertas con ese monto. */
+   dictamen quedan cubiertas con ese monto.
+
+   ---- DENOMINADOR CORRECTO: propio del dictamen, no del programa ----
+   Antes se dividía entre montoTotalBeneficiario(p) (monto_beneficiario del
+   PROGRAMA × cantidad_pagos del PROGRAMA, un ajuste global de "cuántos
+   pagos recibe cada beneficiario en general"). Eso es incorrecto cuando la
+   cantidad de pagos realmente pactada para ESTE dictamen es distinta de la
+   del programa: por ejemplo, si el programa tiene cantidad_pagos=4 (usado
+   para otro fin, "Monto total por beneficiario" en la tarjeta del
+   programa) pero este dictamen comprometió a sus personas con 1 solo pago
+   cada una, dividir entre el monto con 4 pagos subestima gravemente cuánta
+   gente ya quedó cubierta.
+
+   Ahora cada fila de Solicitud (dentro del dictamen) trae su propia
+   cantidad_pagos (ver migración 005_solicitud_cantidad_pagos.sql y el
+   selector "Cantidad de Pagos" en solicitudRowHTML/saveDictamen), así que
+   se calcula un monto total por persona PROPIO de este dictamen: la suma,
+   sobre cada una de sus solicitudes, de (personas de la fila × monto por
+   beneficiario del programa × cantidad_pagos de ESA fila), dividida entre
+   el total de personas del dictamen. Si todas las filas del dictamen
+   comparten la misma cantidad_pagos esto da exactamente ese monto; si hay
+   filas con distinta cantidad_pagos, da el promedio ponderado por
+   personas — lo correcto para no perder precisión en ningún caso. */
 function dispersionPorDictamen(p, dictamenId){
-  const montoTotalPorBeneficiario = montoTotalBeneficiario(p);
+  const dictamen = (p.dictamenes||[]).find(d=>Number(d.id)===Number(dictamenId));
+  const montoBeneficiario = Number(p.monto_beneficiario||0);
+  const solicitudesDictamen = dictamen ? (dictamen.solicitudes||[]) : [];
+  const totalPersonasDictamen = solicitudesDictamen.reduce((s,so)=> s + Number(so.personas||0), 0);
+  const totalMontoTotalDictamen = solicitudesDictamen.reduce((s,so)=>{
+    const cantidadPagosFila = Number(so.cantidad_pagos||1) >= 1 ? Math.floor(Number(so.cantidad_pagos||1)) : 1;
+    return s + (Number(so.personas||0) * montoBeneficiario * cantidadPagosFila);
+  }, 0);
+  const montoTotalPorPersonaPromedio = totalPersonasDictamen>0 ? (totalMontoTotalDictamen / totalPersonasDictamen) : montoBeneficiario;
+
   const montoDispersado = (p.solicitudesHacienda||[])
     .filter(h => h.dictamen_id!=null && dictamenId!=null && Number(h.dictamen_id)===Number(dictamenId) && h.pagada)
     .reduce((s,h)=> s + Number(h.monto||0), 0);
-  const personasDispersadas = montoTotalPorBeneficiario>0 ? Math.floor(montoDispersado / montoTotalPorBeneficiario) : 0;
+  const personasDispersadas = montoTotalPorPersonaPromedio>0 ? Math.floor(montoDispersado / montoTotalPorPersonaPromedio) : 0;
   return { montoDispersado, personasDispersadas };
 }
 
@@ -1149,12 +1180,29 @@ function dateTimeInlineWrapper(dataAttr, key, label, value){
       <div class="field"><label>${label} (hora)</label><input type="time" value="${hora}" data-${dataAttr}-hora="${key}"></div>`;
 }
 
+/* Cantidad de Pagos de la solicitud: cuántos pagos/dispersiones recibirá
+   cada una de las personas capturadas en ESTA fila (independiente del
+   campo homónimo a nivel programa, usado para otro fin — ver comentario
+   en dispersionPorDictamen). Se coloca ANTES del campo "Compromiso", tal
+   como lo pidió el usuario. Desplegable acotado (1 a 6 pagos) porque es
+   una elección pequeña y cerrada — más claro que un input libre aquí. */
+function cantidadPagosSolicitudSelectHTML(dicId, s){
+  const valorActual = Number(s.cantidad_pagos||1) >= 1 ? Math.floor(Number(s.cantidad_pagos||1)) : 1;
+  const opciones = [1,2,3,4,5,6].map(n=>{
+    const label = n===1 ? '1 pago' : `${n} pagos`;
+    return `<option value="${n}" ${n===valorActual?'selected':''}>${label}</option>`;
+  }).join('');
+  return `
+        <div class="sfield"><label>Cantidad de Pagos</label><select data-sol-cantidad-pagos="${dicId}|${s.id}">${opciones}</select></div>`;
+}
+
 function solicitudRowHTML(dicId, s){
   const esNueva = esTemporal(s.id);
   return `
       <div class="solicitud-row">
         <div class="sfield"><label>Solicitud No.</label><input value="${esNueva? 'Nueva' : s.numero}" disabled></div>
         <div class="sfield"><label>Cantidad de Personas</label><input type="text" data-int value="${fmtInputInt(s.personas||0)}" data-sol-personas="${dicId}|${s.id}"></div>
+        ${cantidadPagosSolicitudSelectHTML(dicId, s)}
         ${dateTimeInlineHTML('sol', dicId+'|'+s.id, 'Compromiso', s.fecha_compromiso)}
         <button class="icon-btn" title="Eliminar solicitud" data-del-solicitud="${s.id}">✕</button>
       </div>`;
@@ -1298,10 +1346,12 @@ async function saveDictamen(p, dicId, blockEl, btn){
       const [, solId] = inp.dataset.solPersonas.split('|');
       const personas = numValue(inp);
       const fechaCompromiso = readDateTimeInline(row, 'sol', dicId+'|'+solId);
+      const cantidadPagosSel = row.querySelector('[data-sol-cantidad-pagos]');
+      const cantidadPagos = cantidadPagosSel ? (Number(cantidadPagosSel.value)||1) : 1;
       if(esTemporal(solId)){
-        await Api.post(`/programs/${pid}/dictamenes/${realDicId}/solicitudes`, {personas, fecha_compromiso: fechaCompromiso});
+        await Api.post(`/programs/${pid}/dictamenes/${realDicId}/solicitudes`, {personas, fecha_compromiso: fechaCompromiso, cantidad_pagos: cantidadPagos});
       } else {
-        await Api.patch(`/programs/${pid}/dictamenes/${realDicId}/solicitudes/${solId}`, {personas, fecha_compromiso: fechaCompromiso});
+        await Api.patch(`/programs/${pid}/dictamenes/${realDicId}/solicitudes/${solId}`, {personas, fecha_compromiso: fechaCompromiso, cantidad_pagos: cantidadPagos});
       }
     }
   }, 'Dictamen guardado correctamente.'), 'Guardando…');
