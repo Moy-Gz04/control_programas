@@ -1006,7 +1006,7 @@ function bindDictamenBlock(block, p){
 
   block.querySelector('[data-del-dictamen]').addEventListener('click', (e)=> handleDeleteDictamen(pid, block, dicId, e.currentTarget));
   block.querySelector('[data-add-solicitud]').addEventListener('click', ()=> addSolicitudLocal(block, p));
-  block.querySelector('[data-save-dictamen]').addEventListener('click', (e)=> saveDictamen(pid, dicId, block, e.currentTarget));
+  block.querySelector('[data-save-dictamen]').addEventListener('click', (e)=> saveDictamen(p, dicId, block, e.currentTarget));
   block.querySelectorAll('.solicitud-row').forEach(row=> bindSolicitudRow(row, block, p));
 }
 
@@ -1056,12 +1056,41 @@ function addSolicitudLocal(block, p){
    agregado localmente —el dictamen mismo y/o sus solicitudes nuevas— y
    actualiza (PATCH) lo que ya existía, leyendo los valores actuales del
    formulario. Solo aquí se llama a la API y se refresca la pantalla. */
-async function saveDictamen(pid, dicId, blockEl, btn){
+async function saveDictamen(p, dicId, blockEl, btn){
   if(!blockEl) return;
+  const pid = p.id;
   const montoInput = blockEl.querySelector('[data-dic-monto]');
   const montoValue = montoInput ? numValue(montoInput) : 0;
   const fechaDictamen = readDateTimeInline(blockEl, 'dic', dicId);
   const solRows = Array.from(blockEl.querySelectorAll('.solicitud-row'));
+
+  /* ---------- Validación: no comprometer más de lo autorizado ----------
+     Antes, si el dictamen comprometía más personas × monto por beneficiario
+     de lo que el programa tiene de Recurso Autorizado (neto de
+     modificaciones), el guardado simplemente tronaba contra el servidor sin
+     ninguna explicación clara. Ahora se calcula el nuevo total comprometido
+     ANTES de enviar nada, usando los mismos valores reales que ya se
+     muestran en "Totales del Programa", y si excede el autorizado se avisa
+     con claridad y se pide confirmación explícita antes de continuar. */
+  const personasEsteDictamen = solRows.reduce((s,row)=>{
+    const inp = row.querySelector('[data-sol-personas]');
+    return s + (inp ? numValue(inp) : 0);
+  }, 0);
+  const dictamenActual = (p.dictamenes||[]).find(d=>String(d.id)===String(dicId));
+  const personasOtrosDictamenes = totalPersonasDictaminadas(p) - (dictamenActual ? (dictamenActual.solicitudes||[]).reduce((s,so)=>s+Number(so.personas||0),0) : 0);
+  const montoBeneficiario = Number(p.monto_beneficiario||0);
+  const comprometidoNuevo = (personasOtrosDictamenes + personasEsteDictamen) * montoBeneficiario;
+  const autorizadoNeto = totalAutorizadoNeto(p);
+  if(comprometidoNuevo > autorizadoNeto + 0.01){
+    const excedente = comprometidoNuevo - autorizadoNeto;
+    const continuar = await confirmAction({
+      title: 'El recurso autorizado no alcanza',
+      message: `Con este dictamen el programa comprometería ${fmtMoney(comprometidoNuevo)} en total, pero solo tiene ${fmtMoney(autorizadoNeto)} de Recurso Autorizado (excede por ${fmtMoney(excedente)}). Puedes cancelar y registrar una Ampliación primero, o guardar de todas formas.`,
+      confirmText: 'Guardar de todas formas',
+      danger: false,
+    });
+    if(!continuar) return;
+  }
 
   await withLoading(btn, ()=>safeCall(async ()=>{
     let realDicId = dicId;
@@ -1551,6 +1580,23 @@ function openModalHacienda(pid){
     const fecha = readDateTimeGroup('h-fecha');
     const archivo = document.getElementById('h-doc').files[0];
     if(!monto) return;
+
+    /* Validación: no solicitar a Hacienda más de lo que sigue comprometido
+       y aún no se ha solicitado (mismo criterio que ya se muestra en
+       "Solicitado a Hacienda" de Totales del Programa). No se usa un modal
+       de confirmación aquí porque este formulario YA está dentro de un
+       modal (Registrar Solicitud a Hacienda) y solo hay un modal a la vez
+       en el sistema; en vez de tapar el formulario con otro, se avisa con
+       un toast y se deja el formulario abierto para corregir el monto. */
+    const p = state.programs.find(x=>x.id===pid);
+    if(p){
+      const disponibleParaSolicitar = Math.max(totalComprometido(p) - totalSolicitadoHacienda(p), 0);
+      if(monto > disponibleParaSolicitar + 0.01){
+        toast(`El monto (${fmtMoney(monto)}) supera el recurso comprometido pendiente de solicitar (${fmtMoney(disponibleParaSolicitar)}). Ajusta el monto o registra primero un dictamen/ampliación adicional.`, true);
+        return;
+      }
+    }
+
     const fd = new FormData();
     fd.append('folio', folio);
     fd.append('monto', monto);
@@ -1593,6 +1639,16 @@ function openModalAutorizacion(pid, hacId){
     const fecha = readDateTimeGroup('au-fecha');
     const archivo = document.getElementById('au-doc').files[0];
     if(!monto) return;
+
+    /* Validación: la autorización de Hacienda no debería exceder lo que
+       esa solicitud pidió originalmente (hac.monto). Toast, no modal de
+       confirmación, por la misma razón que en Solicitud a Hacienda: este
+       formulario ya está dentro del único modal del sistema. */
+    if(hac && monto > Number(hac.monto) + 0.01){
+      toast(`El monto autorizado (${fmtMoney(monto)}) supera lo que se solicitó en el folio ${hac.folio} (${fmtMoney(hac.monto)}). Verifica el monto antes de registrar.`, true);
+      return;
+    }
+
     const fd = new FormData();
     fd.append('monto_autorizado', monto);
     if(fecha) fd.append('fecha_autorizacion', fecha);
@@ -1664,6 +1720,15 @@ function openModalPago(p){
     const archivo = document.getElementById('g-doc').files[0];
     if(!haciendaId){ toast('Selecciona la solicitud a Hacienda que se pagó.', true); return; }
     if(!monto) return;
+
+    /* Validación: el pago no debería exceder lo que Hacienda autorizó para
+       esa solicitud (ya se precarga con ese monto, pero es editable). */
+    const hacSeleccionada = disponibles.find(h=>String(h.id)===haciendaId);
+    if(hacSeleccionada && monto > Number(hacSeleccionada.autorizacion.monto_autorizado) + 0.01){
+      toast(`El monto del pago (${fmtMoney(monto)}) supera lo que Hacienda autorizó para el folio ${hacSeleccionada.folio} (${fmtMoney(hacSeleccionada.autorizacion.monto_autorizado)}). Verifica el monto antes de registrar.`, true);
+      return;
+    }
+
     const fd = new FormData();
     fd.append('hacienda_id', haciendaId);
     fd.append('folio', folio);
