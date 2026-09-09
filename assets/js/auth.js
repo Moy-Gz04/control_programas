@@ -24,7 +24,14 @@
     btn.textContent = 'Entrando…';
 
     try {
-      const data = await Api.post('/auth/login', { email, password });
+      // postRetrying: si el backend está "despertando" (Render, plan
+      // gratuito) el primer intento puede fallar por un error transitorio
+      // (red, 502/503/504). En ese caso NO se muestra ningún error: se
+      // reintenta en silencio, con el botón siempre en "Entrando…", hasta
+      // que el servidor responda de verdad o pasen hasta 90 segundos. Un
+      // error real (correo/contraseña incorrectos, etc.) sí se muestra de
+      // inmediato, sin reintentar.
+      const data = await Api.postRetrying('/auth/login', { email, password });
       // sessionStorage (no localStorage): la sesión vive solo mientras esta
       // pestaña/ventana del navegador está abierta. Al cerrar el navegador
       // se pierde por completo y hay que volver a iniciar sesión — no debe

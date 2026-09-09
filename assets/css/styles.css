@@ -382,16 +382,41 @@ textarea:focus-visible,
 .btn-ver-documento:hover{background:var(--maroon-700);color:#fff;box-shadow:0 2px 8px rgba(75,18,48,0.24);}
 .btn-ver-documento:active{transform:scale(0.97);}
 
-/* Envoltorios que separan el texto de metadatos del botón "Ver Documento":
-   .meta-with-doc cuando el texto es corto y cabe en la misma línea que el
-   botón (space-between); .doc-link-row cuando el botón va en su propia
-   línea, alineado a la derecha, debajo de un bloque de texto ya apilado
-   (p. ej. dentro de .log-row-main). Ambos envuelven con flex-wrap para que
-   en pantallas angostas el botón baje de línea con gracia. */
-.meta-with-doc{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
+/* ---------- ALINEACIÓN DE "VER DOCUMENTO" ----------
+   Root cause del desalineamiento (varios botones "Ver Documento" en
+   distintas posiciones horizontales dentro de la misma tarjeta): cuando el
+   botón vive DENTRO de un contenedor angosto (una columna de texto que es
+   solo una parte de una fila flex más ancha — ej. el bloque de texto a la
+   izquierda de un monto, o "log-row-main" entre un ícono y un importe),
+   `justify-content:space-between`/`flex-end` solo lo empuja hasta el borde
+   de ESE contenedor angosto, no hasta el borde real de la tarjeta — por
+   eso cada botón terminaba en un x distinto según cuánto texto tuviera al
+   lado.
+
+   La corrección: SIEMPRE colocar el botón "Ver Documento" en su propia
+   fila (.doc-link-row), como hijo DIRECTO del mismo contenedor de ancho
+   completo que ya contiene el resto de las líneas de esa tarjeta/renglón
+   (.hacienda-item, .card, o el nuevo .log-row-body que envuelve el
+   contenido original de .log-row) — nunca anidado dentro de una columna de
+   texto angosta. Así, todos los botones de una misma tarjeta comparten
+   exactamente el mismo ancho de referencia y su borde derecho (flex-end)
+   cae siempre sobre la misma línea vertical, sin importar cuánto texto
+   tenga cada bloque de metadatos.
+
+   .doc-link-row: el botón en su propia línea, alineado a la derecha —
+   patrón por defecto para todo elemento que sea hijo directo de un
+   contenedor de ancho completo (hacienda-item, card, log-row-body). */
 .doc-link-row{display:flex;justify-content:flex-end;margin-top:6px;}
+/* .lmeta-doc-row: variante con el texto de metadatos y el botón en la
+   MISMA línea (space-between) — solo se usa cuando ese texto+botón ya son
+   hijos directos del contenedor de ancho completo (ej. dentro de
+   .asignacion-block, que no añade su propio padding), de modo que el
+   botón también cae sobre el mismo borde derecho que los demás. */
 .lmeta-doc-row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
 .lmeta-doc-row .lmeta{margin:0;}
+/* Clases retenidas por compatibilidad (ya no las usa app.js, pero no se
+   eliminan por si algún estilo inline externo las sigue referenciando). */
+.meta-with-doc{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
 
 /* =========================================================================
    TOOLTIPS (hover sobre elementos de gráficas)
@@ -482,7 +507,16 @@ textarea:focus-visible,
 
 /* ===== LOG LIST (movimientos: modificaciones, pagos, documentos) =====
    Cada movimiento es una pequeña tarjeta con un ícono circular a la
-   izquierda, en vez de una línea de texto plana separada por un borde. */
+   izquierda, en vez de una línea de texto plana separada por un borde.
+
+   .log-row-with-doc: modificador para cuando el renglón incluye un botón
+   "Ver Documento". En vez de anidar el botón dentro de .log-row-main (una
+   columna angosta entre el ícono y el importe — la causa del
+   desalineamiento, ver comentario en .doc-link-row más arriba), el
+   renglón pasa a apilarse en dos filas: `.log-row-body` (fila superior,
+   con el mismo layout horizontal ícono+texto+importe que tenía antes) y
+   `.doc-link-row` debajo, como hijo directo de `.log-row`, alineado al
+   mismo borde derecho real del renglón (donde cae el importe arriba). */
 .log-list{display:flex;flex-direction:column;gap:8px;}
 .log-row{
   display:flex;align-items:center;justify-content:space-between;gap:12px;
@@ -491,6 +525,9 @@ textarea:focus-visible,
   transition:background var(--dur-base) var(--ease-standard), box-shadow var(--dur-base) var(--ease-standard), transform var(--dur-base) var(--ease-standard);
 }
 .log-row:hover{background:var(--surface-1);box-shadow:var(--shadow-sm);transform:translateY(-1px);}
+.log-row-with-doc{flex-direction:column;align-items:stretch;justify-content:flex-start;gap:2px;}
+.log-row-with-doc .log-row-body{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;}
+.log-row-with-doc .doc-link-row{margin-top:8px;}
 .log-row-icon{
   width:30px;height:30px;border-radius:50%;flex-shrink:0;
   display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;

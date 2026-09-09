@@ -722,24 +722,26 @@ async function renderDetalle(id){
           <div>
             <div class="kpi-label">Monto Autorizado inicial</div>
             <div class="kpi-value">${fmtMoney(autorizadoBase)}</div>
-            <div class="kpi-sub meta-with-doc">
+            <div class="kpi-sub">
               <span>Referencia ${p.monto_autorizado_referencia} · ${fmtDate(p.monto_autorizado_fecha)}</span>
-              ${p.monto_autorizado_documento_url ? `<a class="btn-ver-documento" href="${p.monto_autorizado_documento_url}" target="_blank" rel="noopener">Ver Documento</a>` : ''}
             </div>
           </div>
           <button class="btn btn-outline btn-sm" id="btnAddModificacion">+ Registrar Modificación</button>
         </div>
+        ${p.monto_autorizado_documento_url ? `<div class="doc-link-row"><a class="btn-ver-documento" href="${p.monto_autorizado_documento_url}" target="_blank" rel="noopener">Ver Documento</a></div>` : ''}
         <hr class="divider">
         <div class="log-list">
           ${(p.modificaciones||[]).length ? p.modificaciones.map(m=>`
-            <div class="log-row">
-              <div class="log-row-icon ${m.tipo==='Ampliación'?'log-row-icon-pos':'log-row-icon-neg'}">${m.tipo==='Ampliación'?'+':'−'}</div>
-              <div class="log-row-main">
-                <div class="log-row-title">${m.tipo}</div>
-                <div class="lmeta">${esc(m.motivo||'')} · ${fmtDate(m.created_at)}</div>
-                ${m.documento_url ? `<div class="doc-link-row"><a class="btn-ver-documento" href="${m.documento_url}" target="_blank" rel="noopener">Ver Documento</a></div>` : ''}
+            <div class="log-row${m.documento_url ? ' log-row-with-doc' : ''}">
+              <div class="log-row-body">
+                <div class="log-row-icon ${m.tipo==='Ampliación'?'log-row-icon-pos':'log-row-icon-neg'}">${m.tipo==='Ampliación'?'+':'−'}</div>
+                <div class="log-row-main">
+                  <div class="log-row-title">${m.tipo}</div>
+                  <div class="lmeta">${esc(m.motivo||'')} · ${fmtDate(m.created_at)}</div>
+                </div>
+                <div class="lamount ${m.tipo==='Ampliación'?'pos':'neg'}">${m.tipo==='Ampliación'?'+':'−'} ${fmtMoney(m.monto)}</div>
               </div>
-              <div class="lamount ${m.tipo==='Ampliación'?'pos':'neg'}">${m.tipo==='Ampliación'?'+':'−'} ${fmtMoney(m.monto)}</div>
+              ${m.documento_url ? `<div class="doc-link-row"><a class="btn-ver-documento" href="${m.documento_url}" target="_blank" rel="noopener">Ver Documento</a></div>` : ''}
             </div>`).join('') : `<div class="empty-state">Sin modificaciones registradas.</div>`}
         </div>
       ` : `
@@ -948,14 +950,16 @@ function pipelinePresupuestoHTML(p){
 function pagoRowHTML(p, g){
   const hac = (p.solicitudesHacienda||[]).find(h=>h.id===g.hacienda_id);
   return `
-          <div class="log-row log-row-pago">
-            <div class="log-row-icon log-row-icon-pos">$</div>
-            <div class="log-row-main">
-              <div class="log-row-title">Folio ${esc(g.folio)}</div>
-              <div class="lmeta">${fmtDate(g.fecha)}${hac? ` · Solicitud a Hacienda folio ${esc(hac.folio)}` : ''}</div>
-              ${g.documento_url ? `<div class="doc-link-row"><a class="btn-ver-documento" href="${g.documento_url}" target="_blank" rel="noopener">Ver Documento</a></div>` : ''}
+          <div class="log-row log-row-pago${g.documento_url ? ' log-row-with-doc' : ''}">
+            <div class="log-row-body">
+              <div class="log-row-icon log-row-icon-pos">$</div>
+              <div class="log-row-main">
+                <div class="log-row-title">Folio ${esc(g.folio)}</div>
+                <div class="lmeta">${fmtDate(g.fecha)}${hac? ` · Solicitud a Hacienda folio ${esc(hac.folio)}` : ''}</div>
+              </div>
+              <div class="lamount pos">${fmtMoney(g.monto)}</div>
             </div>
-            <div class="lamount pos">${fmtMoney(g.monto)}</div>
+            ${g.documento_url ? `<div class="doc-link-row"><a class="btn-ver-documento" href="${g.documento_url}" target="_blank" rel="noopener">Ver Documento</a></div>` : ''}
           </div>`;
 }
 
@@ -987,18 +991,18 @@ function haciendaItemHTML(h, p){
       <div class="hacienda-item-main">
         <div class="hacienda-item-title">Folio ${esc(h.folio)}</div>
         <div class="lmeta">Solicitado: ${fmtDate(h.fecha)}${dictamenLabel ? ` · Vinculado a ${esc(dictamenLabel)}` : ' · Sin vincular a un dictamen específico'}</div>
-        ${h.documento_url ? `<div class="doc-link-row"><a class="btn-ver-documento" href="${h.documento_url}" target="_blank" rel="noopener">Ver Documento</a></div>` : ''}
       </div>
       <div class="hacienda-item-amount">
         <div class="hacienda-item-monto">${fmtMoney(h.monto)}</div>
         <span class="badge-pill ${badge.cls}">${badge.label}</span>
       </div>
     </div>
+    ${h.documento_url ? `<div class="doc-link-row"><a class="btn-ver-documento" href="${h.documento_url}" target="_blank" rel="noopener">Ver Documento</a></div>` : ''}
     ${h.autorizacion ? `
-      <div class="hacienda-sub meta-with-doc">
+      <div class="hacienda-sub">
         <span>Autorizado por Hacienda: <b>${fmtMoney(h.autorizacion.monto_autorizado)}</b> · ${fmtDate(h.autorizacion.fecha_autorizacion)}</span>
-        ${h.autorizacion.documento_url ? `<a class="btn-ver-documento" href="${h.autorizacion.documento_url}" target="_blank" rel="noopener">Ver Documento</a>` : ''}
       </div>
+      ${h.autorizacion.documento_url ? `<div class="doc-link-row"><a class="btn-ver-documento" href="${h.autorizacion.documento_url}" target="_blank" rel="noopener">Ver Documento</a></div>` : ''}
     ` : `
       <div style="text-align:right;margin-top:8px;">
         <button class="btn btn-gold btn-sm" data-autorizar-hacienda="${h.id}">+ Registrar Autorización</button>
