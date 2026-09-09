@@ -410,8 +410,8 @@ textarea:focus-visible,
 /* .lmeta-doc-row: variante con el texto de metadatos y el botón en la
    MISMA línea (space-between) — solo se usa cuando ese texto+botón ya son
    hijos directos del contenedor de ancho completo (ej. dentro de
-   .asignacion-block, que no añade su propio padding), de modo que el
-   botón también cae sobre el mismo borde derecho que los demás. */
+   .hacienda-stage, que no añade su propio padding externo adicional), de
+   modo que el botón también cae sobre el mismo borde derecho que los demás. */
 .lmeta-doc-row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
 .lmeta-doc-row .lmeta{margin:0;}
 /* Clases retenidas por compatibilidad (ya no las usa app.js, pero no se
@@ -498,6 +498,24 @@ textarea:focus-visible,
 .modal-body{padding:16px 20px;}
 .modal-body>*+*{margin-top:10px;}
 .modal-footer{padding:10px 20px 16px;display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;}
+
+/* ---------- MODAL DE CONFIRMACIÓN SIMPLE (confirmAction) ----------
+   Usado por TODAS las eliminaciones/confirmaciones del sistema (Eliminar
+   Programa, Eliminar Dictamen, Eliminar Solicitud, etc.): icono circular
+   + título + mensaje corto + botones, todo centrado, sin el encabezado
+   guinda ni el pie de un modal normal — deliberadamente más ligero que un
+   formulario, para que una confirmación puntual no se vea como un modal
+   de captura de datos. */
+.confirm-modal{padding:28px 26px 24px;text-align:center;display:flex;flex-direction:column;align-items:center;}
+.confirm-icon{
+  width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:16px;flex-shrink:0;
+}
+.confirm-icon.is-danger{background:#FCEBEC;color:var(--red);}
+.confirm-icon.is-neutral{background:var(--cream-200);color:var(--maroon-700);}
+.confirm-title{font-size:16px;font-weight:800;color:var(--text-primary);margin:0;letter-spacing:-0.1px;}
+.confirm-message{font-size:13px;line-height:1.55;color:var(--text-secondary);margin:10px 0 0;max-width:340px;}
+.confirm-actions{display:flex;justify-content:center;gap:10px;margin-top:22px;width:100%;}
+.confirm-actions .btn{flex:1;justify-content:center;max-width:170px;}
 
 /* ===== TABS / SUBTLE DIVIDER ===== */
 .divider{height:1px;background:var(--border-hairline);margin:18px 0;border:none;}
@@ -675,10 +693,21 @@ footer.app-footer{
 /* =========================================================================
    ESTADO DE SOLICITUDES A HACIENDA (Autorización / Archivo de Asignación /
    disponible para Dispersión)
+   La tarjeta se divide en franjas verticales claramente separadas:
+   1) encabezado (folio, fecha, dictamen vinculado, monto, estatus);
+   2) etapa "Autorizado por Hacienda" (.hacienda-stage);
+   3) etapa "Archivo de Asignación" (.hacienda-stage), anidada dentro de
+      la anterior en el flujo del programa.
+   Cada etapa vive en su propia caja con fondo, borde y una etiqueta en
+   mayúsculas (.hacienda-stage-label) para que, aun con varias solicitudes
+   una debajo de otra, se distinga de un vistazo dónde termina una franja
+   y empieza la siguiente — antes todo el texto (folio, montos, fechas,
+   botones "Ver Documento") vivía suelto dentro de la misma tarjeta sin
+   separación visual.
    ========================================================================= */
 .hacienda-item{
   border:1px solid var(--border-hairline);border-left:4px solid var(--status-registrado);
-  border-radius:var(--radius-md);padding:13px 16px;margin-bottom:10px;background:var(--surface-1);
+  border-radius:var(--radius-md);padding:16px 18px 18px;margin-bottom:14px;background:var(--surface-1);
   box-shadow:var(--shadow-xs);
   transition:box-shadow var(--dur-base) var(--ease-standard), transform var(--dur-base) var(--ease-standard);
 }
@@ -689,11 +718,34 @@ footer.app-footer{
 .hacienda-item.is-revision{border-left-color:var(--gold-600);}
 .hacienda-item.is-incorrecta{border-left-color:var(--red);}
 .hacienda-item.is-pagada{border-left-color:var(--maroon-700);}
-.hacienda-item-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;}
-.hacienda-item-title{font-weight:700;font-size:13.5px;color:var(--text-primary);}
-.hacienda-item-amount{display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
-.hacienda-item-monto{font-size:15.5px;font-weight:800;color:var(--maroon-800);letter-spacing:-0.2px;}
-.hacienda-sub{font-size:11px;color:var(--text-secondary);margin-top:8px;line-height:1.6;background:var(--surface-2);border-radius:var(--radius-xs);padding:7px 10px;}
+.hacienda-item-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;padding-bottom:12px;border-bottom:1px solid var(--border-hairline);}
+.hacienda-item-eyebrow{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-tertiary);margin-bottom:2px;}
+.hacienda-item-title{font-weight:800;font-size:15px;color:var(--text-primary);letter-spacing:-0.1px;}
+.hacienda-item-main .lmeta{margin-top:3px;}
+.hacienda-item-amount{display:flex;flex-direction:column;align-items:flex-end;gap:7px;flex-shrink:0;}
+.hacienda-item-monto{font-size:17px;font-weight:800;color:var(--maroon-800);letter-spacing:-0.2px;}
+.hacienda-item>.doc-link-row{margin-top:10px;}
+
+/* Cada etapa (Autorizado por Hacienda / Archivo de Asignación) es su
+   propia caja con fondo distinguible y separación vertical generosa,
+   en vez de texto corrido con un simple borde punteado arriba. */
+.hacienda-stage{
+  margin-top:12px;padding:12px 14px;border-radius:var(--radius-sm);
+  background:var(--surface-2);border:1px solid var(--border-hairline);
+}
+.hacienda-stage-empty{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:var(--surface-1);border-style:dashed;}
+.hacienda-stage-label{
+  font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--maroon-700);
+  display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;
+}
+.hacienda-stage-empty .hacienda-stage-label{margin-bottom:0;}
+.hacienda-stage-body{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+.hacienda-stage-amount{font-size:14px;font-weight:800;color:var(--text-primary);}
+.hacienda-stage .doc-link-row{margin-top:8px;}
+/* Cuando el Archivo de Asignación se anida dentro de la tarjeta (después
+   de la etapa de Autorización) se recorre un poco a la derecha, como una
+   sub-etapa del flujo, sin perder su propia caja. */
+.hacienda-stage + .hacienda-stage{margin-left:10px;border-left:2px solid var(--gold-500);}
 .badge-pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:var(--radius-pill);font-size:10px;font-weight:700;letter-spacing:0.2px;}
 .badge-pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0;}
 .badge-pendiente{background:#FBEFD8;color:#8A6512;}
@@ -702,15 +754,8 @@ footer.app-footer{
 .badge-revision{background:#FBEFD8;color:#8A6512;}
 .badge-incorrecta{background:#FCEBEC;color:var(--red);}
 
-/* ---------- Archivo de Asignación (dentro de cada hacienda-item) ---------- */
-.asignacion-block{
-  margin-top:10px;padding-top:10px;border-top:1px dashed var(--border-hairline);
-}
-.asignacion-block-title{
-  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:var(--maroon-700);
-  display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;
-}
-.asignacion-actions{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;justify-content:flex-end;}
+/* ---------- Acciones dentro de una etapa (Marcar Correcto/Incorrecto, etc.) ---------- */
+.asignacion-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;justify-content:flex-end;}
 
 /* =========================================================================
    PIPELINE DE FLUJO PRESUPUESTAL

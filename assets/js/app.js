@@ -138,23 +138,28 @@ async function withLoading(btn, fn, loadingText){
 }
 
 /* ---------- CONFIRMACIÓN DE ACCIONES DESTRUCTIVAS ----------
-   Modal de confirmación reutilizable (más consistente que window.confirm,
-   que se ve feo y no combina con el diseño). Devuelve una Promise<boolean>. */
+   Modal de confirmación reutilizable, simple y centrado (icono + título +
+   mensaje + acciones), más consistente que window.confirm y sin el ruido
+   visual de un modal-header/footer completo para algo tan puntual.
+   Devuelve una Promise<boolean>. */
+const CONFIRM_ICON_TRASH_SVG = `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`;
 function confirmAction({ title = '¿Estás seguro?', message = 'Esta acción no se puede deshacer.', confirmText = 'Sí, continuar', danger = true } = {}){
   return new Promise((resolve)=>{
     openModal(`
-      <div class="modal-header"><h3>${title}</h3><button class="modal-close" id="confirmClose">✕</button></div>
-      <div class="modal-body"><p style="margin:0;">${message}</p></div>
-      <div class="modal-footer">
-        <button class="btn btn-ghost" id="confirmCancel">Cancelar</button>
-        <button class="btn ${danger?'btn-danger':'btn-primary'}" id="confirmOk">${confirmText}</button>
+      <div class="confirm-modal">
+        <div class="confirm-icon ${danger?'is-danger':'is-neutral'}">${CONFIRM_ICON_TRASH_SVG}</div>
+        <h3 class="confirm-title">${title}</h3>
+        <p class="confirm-message">${message}</p>
+        <div class="confirm-actions">
+          <button class="btn btn-ghost" id="confirmCancel">Cancelar</button>
+          <button class="btn ${danger?'btn-danger':'btn-primary'}" id="confirmOk">${confirmText}</button>
+        </div>
       </div>
     `);
     const finish = (result)=>{
       closeModal();
       resolve(result);
     };
-    document.getElementById('confirmClose').addEventListener('click', ()=>finish(false));
     document.getElementById('confirmCancel').addEventListener('click', ()=>finish(false));
     document.getElementById('confirmOk').addEventListener('click', ()=>finish(true));
   });
@@ -963,7 +968,12 @@ function pagoRowHTML(p, g){
           </div>`;
 }
 
-/* ---------- Solicitudes a Hacienda: estado (pendiente / autorizada / en revisión / incorrecta / lista / dispersada) ---------- */
+/* ---------- Solicitudes a Hacienda: estado (pendiente / autorizada / en revisión / incorrecta / lista / dispersada) ----------
+   La tarjeta se organiza en tres franjas claramente separadas —
+   Solicitud → Autorizado por Hacienda → Archivo de Asignación— cada una
+   con su propia etiqueta (.hacienda-stage-label), en vez de un solo bloque
+   de texto corrido. Así, con varias solicitudes en pantalla, cada etapa se
+   distingue de un vistazo aunque tengan documento adjunto, monto y fecha. */
 function haciendaItemHTML(h, p){
   let badge;
   if(h.pagada){
@@ -989,7 +999,8 @@ function haciendaItemHTML(h, p){
   <div class="hacienda-item ${badge.mod}">
     <div class="hacienda-item-head">
       <div class="hacienda-item-main">
-        <div class="hacienda-item-title">Folio ${esc(h.folio)}</div>
+        <div class="hacienda-item-eyebrow">Folio</div>
+        <div class="hacienda-item-title">${esc(h.folio)}</div>
         <div class="lmeta">Solicitado: ${fmtDate(h.fecha)}${dictamenLabel ? ` · Vinculado a ${esc(dictamenLabel)}` : ' · Sin vincular a un dictamen específico'}</div>
       </div>
       <div class="hacienda-item-amount">
@@ -998,13 +1009,19 @@ function haciendaItemHTML(h, p){
       </div>
     </div>
     ${h.documento_url ? `<div class="doc-link-row"><a class="btn-ver-documento" href="${h.documento_url}" target="_blank" rel="noopener">Ver Documento</a></div>` : ''}
+
     ${h.autorizacion ? `
-      <div class="hacienda-sub">
-        <span>Autorizado por Hacienda: <b>${fmtMoney(h.autorizacion.monto_autorizado)}</b> · ${fmtDate(h.autorizacion.fecha_autorizacion)}</span>
+      <div class="hacienda-stage">
+        <div class="hacienda-stage-label">Autorizado por Hacienda</div>
+        <div class="hacienda-stage-body">
+          <div class="hacienda-stage-amount">${fmtMoney(h.autorizacion.monto_autorizado)}</div>
+          <div class="lmeta">${fmtDate(h.autorizacion.fecha_autorizacion)}</div>
+        </div>
+        ${h.autorizacion.documento_url ? `<div class="doc-link-row"><a class="btn-ver-documento" href="${h.autorizacion.documento_url}" target="_blank" rel="noopener">Ver Documento</a></div>` : ''}
       </div>
-      ${h.autorizacion.documento_url ? `<div class="doc-link-row"><a class="btn-ver-documento" href="${h.autorizacion.documento_url}" target="_blank" rel="noopener">Ver Documento</a></div>` : ''}
     ` : `
-      <div style="text-align:right;margin-top:8px;">
+      <div class="hacienda-stage hacienda-stage-empty">
+        <div class="hacienda-stage-label">Autorizado por Hacienda</div>
         <button class="btn btn-gold btn-sm" data-autorizar-hacienda="${h.id}">+ Registrar Autorización</button>
       </div>
     `}
@@ -1025,20 +1042,18 @@ function asignacionBlockHTML(h){
   const hid = h.id;
   if(!a){
     return `
-    <div class="asignacion-block">
-      <div class="asignacion-block-title">Archivo de Asignación</div>
+    <div class="hacienda-stage hacienda-stage-empty">
+      <div class="hacienda-stage-label">Archivo de Asignación</div>
       <input type="file" id="asig-input-${hid}" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" hidden>
-      <div class="asignacion-actions">
-        <button class="btn btn-outline btn-sm" data-asig-upload="${hid}">Cargar Archivo de Asignación</button>
-      </div>
+      <button class="btn btn-outline btn-sm" data-asig-upload="${hid}">Cargar Archivo de Asignación</button>
     </div>`;
   }
   const cargaInfo = `<div class="lmeta-doc-row"><span class="lmeta">Cargado: ${fmtDate(a.fecha_carga)}</span>${a.documento_url? `<a class="btn-ver-documento" href="${a.documento_url}" target="_blank" rel="noopener">Ver Documento</a>`:''}</div>`;
 
   if(a.estatus==='revision'){
     return `
-    <div class="asignacion-block">
-      <div class="asignacion-block-title">Archivo de Asignación <span class="badge-pill badge-revision">En Revisión</span></div>
+    <div class="hacienda-stage">
+      <div class="hacienda-stage-label">Archivo de Asignación <span class="badge-pill badge-revision">En Revisión</span></div>
       ${cargaInfo}
       <div class="asignacion-actions">
         <button class="btn btn-outline btn-sm" data-asig-correcto="${hid}">Marcar Correcto</button>
@@ -1048,8 +1063,8 @@ function asignacionBlockHTML(h){
   }
   if(a.estatus==='incorrecto'){
     return `
-    <div class="asignacion-block">
-      <div class="asignacion-block-title">Archivo de Asignación <span class="badge-pill badge-incorrecta">Incorrecto</span></div>
+    <div class="hacienda-stage">
+      <div class="hacienda-stage-label">Archivo de Asignación <span class="badge-pill badge-incorrecta">Incorrecto</span></div>
       ${cargaInfo}
       <div class="lmeta">Motivo: ${esc(a.motivo_rechazo||'')} · ${fmtDate(a.fecha_revision)}</div>
       <input type="file" id="asig-input-${hid}" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" hidden>
@@ -1060,8 +1075,8 @@ function asignacionBlockHTML(h){
   }
   // correcto
   return `
-    <div class="asignacion-block">
-      <div class="asignacion-block-title">Archivo de Asignación <span class="badge-pill badge-autorizada">Correcto</span></div>
+    <div class="hacienda-stage">
+      <div class="hacienda-stage-label">Archivo de Asignación <span class="badge-pill badge-autorizada">Correcto</span></div>
       ${cargaInfo}
       <div class="lmeta">Folio proporcionado: <b>${esc(a.folio||'')}</b> · ${fmtDate(a.fecha_revision)}</div>
     </div>`;
@@ -1739,35 +1754,27 @@ function openModalEditarPrograma(p){
   });
 }
 
-/* ---- Eliminar Programa ---- */
-function openModalEliminarPrograma(p){
-  openModal(`
-    <div class="modal-header"><h3>Eliminar Programa</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
-    <div class="modal-body">
-      <p style="font-size:13.5px;line-height:1.6;margin:0 0 10px;">
-        Estás a punto de eliminar permanentemente el programa <b>${esc(p.nombre)}</b> (${esc(p.clave)}).
-      </p>
-      <p style="font-size:13.5px;line-height:1.6;color:var(--red);font-weight:700;margin:0;">
-        Esto borra también todos sus movimientos: monto autorizado, modificaciones, dictámenes, solicitudes, trámites a Hacienda, autorizaciones, archivos de asignación y dispersiones. Esta acción no se puede deshacer.
-      </p>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
-      <button class="btn btn-danger" id="submitEliminarPrograma">Sí, Eliminar Definitivamente</button>
-    </div>
-  `);
-  document.getElementById('submitEliminarPrograma').addEventListener('click', async (e)=>{
-    const btn = e.currentTarget;
-    try{
-      await withLoading(btn, ()=>Api.del(`/programs/${p.id}`), 'Eliminando…');
-      closeModal();
-      toast('Programa eliminado.');
-      state.programs = state.programs.filter(x=>x.id!==p.id);
-      navigate({name:'programas'});
-    }catch(e){
-      toast(e.message || 'No se pudo eliminar el programa.', true);
-    }
+/* ---- Eliminar Programa ----
+   Usa el mismo modal de confirmación simple (confirmAction) que el resto
+   de las eliminaciones del sistema — icono + título + mensaje breve — en
+   vez de un modal a medida, para que "Eliminar" se vea y se sienta igual
+   en cualquier parte de la app. */
+async function openModalEliminarPrograma(p){
+  const btn = document.getElementById('btnEliminarPrograma');
+  const ok = await confirmAction({
+    title: 'Eliminar Programa',
+    message: `Se eliminará permanentemente “${esc(p.nombre)}” (${esc(p.clave)}) y todos sus movimientos: monto autorizado, modificaciones, dictámenes, solicitudes, trámites a Hacienda, autorizaciones, archivos de asignación y dispersiones. Esta acción no se puede deshacer.`,
+    confirmText: 'Eliminar',
   });
+  if(!ok) return;
+  try{
+    await withLoading(btn, ()=>Api.del(`/programs/${p.id}`), 'Eliminando…');
+    toast('Programa eliminado.');
+    state.programs = state.programs.filter(x=>x.id!==p.id);
+    navigate({name:'programas'});
+  }catch(e){
+    toast(e.message || 'No se pudo eliminar el programa.', true);
+  }
 }
 
 /* ---- Cargar Monto Autorizado ---- */
