@@ -738,6 +738,23 @@ footer.app-footer{
 .login-body .neu-input:focus-within{box-shadow:inset 4px 4px 8px var(--neu-dark), inset -4px -4px 8px var(--neu-light), 0 0 0 1.5px var(--neu-accent);}
 .login-body .neu-input:focus-within svg{color:var(--neu-accent);}
 
+/* Chrome/Edge pintan su propio fondo (azul/amarillo) encima del input
+   autocompletado, cuadrado, ignorando el pill de .neu-input. Se anula
+   con el truco del box-shadow interior gigante del mismo color de la
+   superficie, y una transition-delay larga para que no destelle. */
+.login-body .neu-input input:-webkit-autofill,
+.login-body .neu-input input:-webkit-autofill:hover,
+.login-body .neu-input input:-webkit-autofill:focus,
+.login-body .neu-input input:-webkit-autofill:active{
+  -webkit-text-fill-color:var(--neu-text);
+  caret-color:var(--neu-text);
+  -webkit-box-shadow:0 0 0 1000px var(--neu-surface) inset;
+  box-shadow:0 0 0 1000px var(--neu-surface) inset;
+  transition:background-color 5000s ease-in-out 0s;
+  border-radius:99px;
+}
+.login-body .neu-input input:autofill{background:var(--neu-surface);}
+
 .neu-row{display:flex;justify-content:space-between;align-items:center;margin:18px 2px 26px;}
 .neu-toggle{display:flex;align-items:center;gap:9px;cursor:pointer;user-select:none;}
 .neu-toggle input{position:absolute;opacity:0;width:0;height:0;}
