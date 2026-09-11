@@ -95,7 +95,18 @@
 *{box-sizing:border-box;}
 html{-webkit-text-size-adjust:100%;}
 html,body{margin:0;padding:0;}
+/* display:flex + flex-direction:column convierte a <body> en una columna de
+   altura mínima igual a la ventana. .container (ver LAYOUT más abajo) es el
+   único hijo con flex:1, así que crece para ocupar todo el espacio vertical
+   sobrante cuando el contenido de la página (ej. un solo programa
+   registrado) es más corto que la pantalla, empujando el <footer> hasta el
+   fondo real de la ventana en vez de dejarlo pegado justo debajo del
+   contenido con un hueco gris después. Cuando el contenido SÍ llena o
+   excede la pantalla, .container simplemente ocupa su alto natural y el
+   footer aparece justo después, como cualquier flujo normal. */
 body{
+  display:flex;
+  flex-direction:column;
   font-family:var(--font-sans);
   font-size:var(--fs-body);
   background:var(--surface-0);
@@ -161,10 +172,18 @@ textarea:focus-visible,
    para que la marca institucional siga presente aunque el fondo sea claro. */
 .navbar-top::after{content:"";position:absolute;left:0;right:0;bottom:-3px;height:3px;background:linear-gradient(90deg,var(--maroon-700),var(--gold-500));}
 .brand{display:flex;align-items:center;gap:12px;}
-.brand-logo{width:42px;height:42px;object-fit:contain;flex-shrink:0;border-radius:9px;}
+/* Logo en "moneda": círculo con borde dorado y sombra suave, en vez del
+   cuadrado plano anterior — mismo tratamiento que el escudo institucional
+   del sistema de Correspondencia. */
+.brand-logo{
+  width:42px;height:42px;object-fit:contain;flex-shrink:0;border-radius:50%;
+  border:2px solid var(--gold-500);background:var(--surface-1);padding:2px;
+  box-shadow:0 2px 6px rgba(75,18,48,0.18);
+}
 .brand-logo-fallback{
-  width:42px;height:42px;border-radius:11px;
+  width:42px;height:42px;border-radius:50%;
   background:radial-gradient(circle at 35% 30%, var(--gold-500), var(--gold-600) 65%, #8a6c14);
+  border:2px solid var(--gold-500);box-shadow:0 2px 6px rgba(75,18,48,0.18);
   display:flex;align-items:center;justify-content:center;color:var(--maroon-900);font-weight:700;font-size:17px;
   flex-shrink:0;
 }
@@ -197,41 +216,48 @@ textarea:focus-visible,
 .nav-logout:hover{filter:brightness(1.18);border-color:rgba(201,168,78,0.85);box-shadow:0 4px 14px rgba(0,0,0,0.34);transform:translateY(-1px);}
 .nav-logout:active{transform:translateY(0);}
 
+/* Menú como PESTAÑAS de texto con subrayado dorado en la activa, en vez de
+   botones sólidos en caja — mismo lenguaje visual que el menú "MENÚ ·
+   HISTORIAL · NUEVO REGISTRO" del sistema de Correspondencia: más ligero,
+   más editorial, sin bloques de color compitiendo entre sí. */
 .navbar-menu{
-  display:flex;align-items:center;gap:6px;
-  padding:8px 5%;
+  display:flex;align-items:center;gap:22px;
+  padding:0 5%;
   background:var(--maroon-900);
+  min-height:46px;
 }
-.navbar-menu-label{font-size:10.5px;font-weight:700;letter-spacing:1px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-right:10px;}
+.navbar-menu-label{font-size:10.5px;font-weight:700;letter-spacing:1px;color:var(--gold-500);text-transform:uppercase;margin-right:2px;}
 .nav-link{
-  display:flex;align-items:center;gap:7px;
-  padding:8px 18px;border-radius:var(--radius-pill);color:rgba(255,255,255,0.8);
-  font-size:12.5px;font-weight:700;text-decoration:none;text-transform:uppercase;letter-spacing:0.3px;
-  background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);
-  transition:background var(--dur-base) var(--ease-standard), color var(--dur-base) var(--ease-standard), border-color var(--dur-base) var(--ease-standard);
+  display:flex;align-items:center;gap:6px;
+  padding:14px 1px;border-radius:0;color:rgba(255,255,255,0.62);
+  font-size:12px;font-weight:700;text-decoration:none;text-transform:uppercase;letter-spacing:0.4px;
+  background:none;border:none;border-bottom:2.5px solid transparent;
+  transition:color var(--dur-base) var(--ease-standard), border-color var(--dur-base) var(--ease-standard);
 }
-.nav-link:hover{background:rgba(255,255,255,0.14);border-color:rgba(255,255,255,0.26);color:#fff;}
+.nav-link:hover{color:#fff;}
 .nav-link.active{
-  background:linear-gradient(135deg,var(--gold-500),var(--gold-600));border-color:transparent;color:var(--maroon-900);
-  box-shadow:0 2px 8px rgba(0,0,0,0.25);
+  background:none;border-color:var(--gold-500);color:var(--gold-500);
+  box-shadow:none;
 }
 .nav-cta{
   margin-left:auto;
   padding:8px 18px;border-radius:var(--radius-pill);
-  background:rgba(255,255,255,0.08);border:1px solid rgba(201,168,78,0.4);
-  color:var(--gold-500);font-weight:700;font-size:12.5px;
-  transition:background var(--dur-base) var(--ease-standard), transform var(--dur-fast) var(--ease-standard);
+  background:linear-gradient(135deg,var(--gold-500),var(--gold-600));border:none;
+  color:var(--maroon-900);font-weight:800;font-size:11.5px;letter-spacing:0.2px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.25);
+  transition:filter var(--dur-base) var(--ease-standard), transform var(--dur-fast) var(--ease-standard);
 }
-.nav-cta:hover{background:rgba(255,255,255,0.14);}
+.nav-cta:hover{filter:brightness(1.06);box-shadow:0 3px 12px rgba(0,0,0,0.3);}
 .nav-cta:active{transform:scale(0.97);}
 
 /* ===== HEADER BAND =====
-   Vuelve a fondo guinda (la franja blanca es la navbar de arriba, con el
-   nombre de la Secretaría) — solo se conserva el tamaño compacto que sí
-   funcionó, en vez del bloque alto que tenía originalmente. */
+   Bloque guinda sólido, centrado — vuelve al tratamiento de color completo
+   (no la variante clara tipo "eyebrow" que se probó antes), con la etiqueta,
+   el título y el subtítulo apilados y centrados como eje visual de cada
+   pantalla. */
 .header-band{
   background:linear-gradient(120deg,var(--maroon-800),var(--maroon-700) 60%,var(--maroon-800));
-  padding:20px 20px 18px;text-align:center;color:#fff;position:relative;
+  padding:22px 20px 20px;text-align:center;color:#fff;position:relative;
 }
 .header-band h1{
   margin:0;font-size:22px;letter-spacing:0.1px;font-weight:800;
@@ -240,8 +266,12 @@ textarea:focus-visible,
 .header-band .sub{font-size:11px;letter-spacing:0.8px;color:var(--text-on-brand);opacity:0.9;font-weight:700;text-transform:uppercase;margin-top:2px;}
 .header-band .sub2{font-size:11.5px;color:var(--text-on-brand);opacity:0.65;margin-top:3px;}
 
-/* ===== LAYOUT ===== */
-.container{width:90%;max-width:1600px;margin:0 auto;padding:32px 0 64px;}
+/* ===== LAYOUT =====
+   flex:1 0 auto — ver comentario en `body` arriba — es lo que hace que el
+   <footer> quede pegado al fondo de la ventana en pantallas con poco
+   contenido, y que se comporte como flujo normal (footer justo después del
+   contenido) en pantallas donde el contenido ya excede el alto visible. */
+.container{width:90%;max-width:1600px;margin:0 auto;padding:32px 0 64px;flex:1 0 auto;}
 .view{display:none;}
 .view.active{display:block;animation:fadein var(--dur-slow) var(--ease-out);}
 @keyframes fadein{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
@@ -618,13 +648,31 @@ footer.app-footer{
 .toast.show{opacity:1;transform:none;}
 .toast.error{background:var(--red);}
 
-/* ===== LOGIN PAGE ===== */
-.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:
-  radial-gradient(circle at 15% 20%, rgba(201,168,78,0.10), transparent 45%),
-  radial-gradient(circle at 85% 80%, rgba(140,51,88,0.10), transparent 45%),
-  var(--surface-0);
-  padding:24px;
+/* ===== LOGIN PAGE =====
+   Mismo fondo que el sistema de correspondencia: degradado guinda oscuro
+   con resplandor dorado + rejilla sutil, y la banda tricolor superior. */
+.banda-top{position:fixed;top:0;left:0;right:0;display:flex;height:5px;z-index:10;}
+.banda-top span{flex:1;}
+.banda-top .g1{background:var(--maroon-700);}
+.banda-top .g2{background:var(--gold-500);}
+.banda-top .g3{background:var(--maroon-900);}
+
+.fondo-patron{position:fixed;inset:0;z-index:0;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(201,168,78,0.13) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 80% at 100% 100%, rgba(140,51,88,0.45) 0%, transparent 60%),
+    linear-gradient(160deg, var(--maroon-900) 0%, #3a0818 45%, #1e0510 100%);
 }
+.fondo-patron::after{content:"";position:absolute;inset:0;
+  background-image:
+    linear-gradient(rgba(201,168,78,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(201,168,78,0.05) 1px, transparent 1px);
+  background-size:40px 40px;
+  mask-image:radial-gradient(ellipse 100% 100% at 50% 50%, black 0%, transparent 75%);
+  -webkit-mask-image:radial-gradient(ellipse 100% 100% at 50% 50%, black 0%, transparent 75%);
+}
+
+.login-wrap{position:relative;z-index:1;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
 .login-card{width:100%;max-width:420px;background:var(--surface-1);border-radius:var(--radius-xl);box-shadow:var(--shadow-modal);overflow:hidden;border:1px solid var(--border-hairline);animation:modalIn var(--dur-slow) var(--ease-spring);}
 .login-head{background:linear-gradient(135deg,var(--maroon-900),var(--maroon-800) 55%,var(--maroon-700));padding:38px 30px 28px;text-align:center;color:#fff;border-bottom:1px solid rgba(201,168,78,0.5);}
 .login-head .brand-logo{width:52px;height:52px;margin:0 auto 14px;display:block;border-radius:14px;}
@@ -635,6 +683,33 @@ footer.app-footer{
 .login-error{background:#FCECEE;color:var(--red);border:1px solid #F5C9CE;border-radius:var(--radius-sm);padding:11px 14px;font-size:12.5px;font-weight:600;margin-bottom:18px;display:none;}
 .login-error.show{display:block;animation:fadein var(--dur-base) var(--ease-out);}
 .login-footer-note{text-align:center;font-size:11px;color:var(--text-tertiary);margin-top:20px;line-height:1.6;}
+
+/* ── Overlay "despertando servidor" (cold-start de Render) ── */
+.wake-overlay{
+  position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;
+  padding:24px;background:rgba(30,5,16,0.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+}
+.wake-overlay.show{display:flex;animation:fadein var(--dur-base) var(--ease-out);}
+.wake-card{
+  width:100%;max-width:360px;background:var(--surface-1);border-radius:var(--radius-xl);
+  box-shadow:var(--shadow-modal);padding:34px 30px 28px;text-align:center;
+  border:1px solid var(--border-hairline);
+}
+.wake-spinner{
+  width:42px;height:42px;margin:0 auto 18px;border-radius:50%;
+  border:4px solid var(--cream-200);border-top-color:var(--maroon-700);
+  animation:wakeSpin 0.9s linear infinite;
+}
+@keyframes wakeSpin{to{transform:rotate(360deg);}}
+.wake-card h2{margin:0 0 8px;font-size:15px;font-weight:700;color:var(--maroon-800);}
+.wake-card p{margin:0 0 20px;font-size:12.5px;color:var(--text-muted);line-height:1.55;}
+.wake-bar-track{height:8px;border-radius:99px;background:var(--cream-200);overflow:hidden;margin-bottom:10px;}
+.wake-bar-fill{
+  height:100%;width:0%;border-radius:99px;
+  background:linear-gradient(90deg,var(--maroon-700),var(--gold-500));
+  transition:width 1s linear;
+}
+.wake-countdown{font-size:12px;font-weight:700;color:var(--maroon-700);letter-spacing:0.3px;}
 
 /* =========================================================================
    SECCIONES MINIMIZABLES
@@ -785,7 +860,19 @@ footer.app-footer{
      contenido (barras, listones SVG) sobresalga de las esquinas. */
 }
 .pipeline-card-chart{padding:22px 24px;}
-.pipeline-eyebrow{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--pipeline-gold);margin-bottom:16px;}
+.pipeline-eyebrow{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--pipeline-gold);margin-bottom:16px;}
+/* Aviso de "desliza" — solo visible en móvil (ver .pipeline-scroll más
+   abajo), para que quede claro que la gráfica se puede recorrer
+   horizontalmente en vez de parecer simplemente cortada. */
+.pipeline-scroll-hint{display:none;font-size:9.5px;font-weight:600;letter-spacing:0.3px;text-transform:none;color:rgba(255,255,255,0.55);white-space:nowrap;}
+/* .pipeline-scroll envuelve las barras y sus etiquetas para que ambas
+   franjas se desplacen juntas en pantallas angostas, en vez de que el
+   texto de los montos (ej. "$40,000,000.00" en la última barra) se
+   desborde fuera de la tarjeta y quede cortado — ver comentario extenso
+   en pipelinePresupuestoHTML (app.js) sobre por qué la tarjeta no usa
+   overflow:hidden. En escritorio, donde todo cabe, este contenedor no
+   activa el scroll y se comporta como antes. */
+.pipeline-scroll{width:100%;}
 .pipeline-bar-row{position:relative;}
 .pipeline-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}
 .pipeline-bar-grid{position:relative;z-index:1;display:grid;grid-template-columns:repeat(5,1fr);height:100%;column-gap:4px;}
@@ -841,3 +928,79 @@ footer.app-footer{
   padding:10px 12px;font-size:12px;color:var(--text-primary);line-height:1.6;
 }
 .hacienda-preview b{color:var(--maroon-800);}
+
+/* =========================================================================
+   RESPONSIVE — pantallas de teléfono (≈360px–480px de ancho, iPhone SE/XR/
+   Pro Max, Android típico)
+   El resto de la hoja ya trae varios breakpoints puntuales (kpi-grid,
+   chart-flex, form-grid, solicitud-row, pipeline...); esta sección cubre lo
+   que faltaba para que TODA la página (navbar de dos franjas, encabezado,
+   contenedor, tarjetas de programa) se vea correctamente en un teléfono, sin
+   depender de zoom ni de scroll horizontal.
+   ========================================================================= */
+@media (max-width:640px){
+  /* Navbar: la franja superior (logo + nombre + fecha + usuario + salir)
+     es la que más se apretaba — se permite que pase a dos líneas en vez de
+     comprimir todo en una sola fila ilegible. */
+  .navbar-top{flex-wrap:wrap;row-gap:10px;padding:10px 4%;}
+  .brand{min-width:0;}
+  .brand-text{min-width:0;}
+  .brand-text .t0{font-size:9px;}
+  .brand-text .t1-full{font-size:13px;white-space:normal;line-height:1.25;}
+  .navbar-top-right{width:100%;justify-content:space-between;gap:10px;}
+  .navbar-date{display:none;} /* ya se repite el día en el header-band de abajo */
+  .nav-user .who .r{display:none;}
+  .nav-logout{padding:8px 13px;font-size:11.5px;}
+  .nav-logout span,.nav-logout{white-space:nowrap;}
+
+  .navbar-menu{padding:10px 4%;flex-wrap:wrap;row-gap:10px;min-height:0;}
+  .navbar-menu-label{display:none;}
+  .nav-link{padding:6px 1px;}
+  .nav-cta{margin-left:auto;}
+
+  .header-band{padding:16px 5% 14px;}
+  .header-band h1{font-size:16.5px;letter-spacing:0;}
+  .header-band .sub{font-size:9.5px;}
+  .header-band .sub2{font-size:10.5px;}
+
+  .container{width:92%;padding:22px 0 40px;}
+  .card,.chart-card{padding:16px 16px;border-radius:var(--radius-lg);}
+  .info-grid{gap:14px;}
+
+  .section-title{margin:26px 0 12px;}
+  .section-title h2{font-size:14.5px;}
+
+  /* Una sola tarjeta de programa por fila; 300px de mínimo ya no cabe en
+     el ancho disponible de un teléfono angosto. */
+  .programs-grid{grid-template-columns:1fr;}
+
+  .hacienda-item{padding:14px 14px 16px;}
+  .hacienda-item-title{font-size:14px;}
+  .hacienda-item-monto{font-size:15.5px;}
+  .hacienda-stage + .hacienda-stage{margin-left:0;border-left:none;border-top:2px solid var(--gold-500);padding-top:12px;}
+
+  .dictamen-block{padding:14px 14px;}
+
+  /* ---------- Pipeline de flujo presupuestal: scroll horizontal ----------
+     Con 6 nodos (Autorizado, Disponible, Comprometido, Solicitado,
+     Aprobado, Dispersado) las columnas ya no caben legibles en ~340-400px
+     de ancho útil: en vez de encogerlas hasta que el texto de los montos
+     se desborde fuera de la tarjeta (lo que se veía cortado a la derecha),
+     se fija un ancho mínimo cómodo y se deja recorrer con el dedo. */
+  .pipeline-card-chart{padding:18px 16px;}
+  .pipeline-scroll-hint{display:block;}
+  .pipeline-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px;padding:0 16px;}
+  .pipeline-scroll .pipeline-bar-row{min-width:560px;}
+  .pipeline-scroll .pipeline-label-grid{min-width:560px;}
+  .pipeline-bar{font-size:10px;padding-top:6px;}
+  .pipeline-node-title{font-size:10px;}
+
+  .footer-inner{flex-direction:column;text-align:center;gap:12px;}
+  .toast{left:16px;right:16px;bottom:16px;max-width:none;}
+}
+
+@media (max-width:380px){
+  .header-band h1{font-size:15.5px;}
+  .btn{padding:9px 16px;font-size:12.5px;}
+  .confirm-actions .btn{max-width:none;}
+}

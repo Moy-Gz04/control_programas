@@ -909,30 +909,32 @@ function pipelinePresupuestoHTML(p){
 
   return `
   <div class="pipeline-card pipeline-card-chart">
-    <div class="pipeline-eyebrow">Flujo y Estado del Presupuesto</div>
-    <div class="pipeline-bar-row" style="height:${BAR_H}px;">
-      <svg class="pipeline-svg" viewBox="0 0 ${N*slotW} ${BAR_H}" preserveAspectRatio="none">
-        <defs>
-          <linearGradient id="${gradId}" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stop-color="var(--pipeline-guinda)"/>
-            <stop offset="100%" stop-color="var(--pipeline-gold)"/>
-          </linearGradient>
-        </defs>
-        ${ribbons}
-      </svg>
-      <div class="pipeline-bar-grid" style="grid-template-columns:repeat(${N},1fr);">
-        ${nodos.map((n,i)=>`
-          <div class="pipeline-bar-col">
-            <div class="pipeline-bar has-tooltip" data-tooltip="${n.titulo}: ${fmtMoney(n.valor)} · ${n.sub}" style="height:${alturas[i]}px;">${fmtMoney(n.valor)}</div>
+    <div class="pipeline-eyebrow">Flujo y Estado del Presupuesto<span class="pipeline-scroll-hint">Desliza para ver todo →</span></div>
+    <div class="pipeline-scroll">
+      <div class="pipeline-bar-row" style="height:${BAR_H}px;">
+        <svg class="pipeline-svg" viewBox="0 0 ${N*slotW} ${BAR_H}" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="${gradId}" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="var(--pipeline-guinda)"/>
+              <stop offset="100%" stop-color="var(--pipeline-gold)"/>
+            </linearGradient>
+          </defs>
+          ${ribbons}
+        </svg>
+        <div class="pipeline-bar-grid" style="grid-template-columns:repeat(${N},1fr);">
+          ${nodos.map((n,i)=>`
+            <div class="pipeline-bar-col">
+              <div class="pipeline-bar has-tooltip" data-tooltip="${n.titulo}: ${fmtMoney(n.valor)} · ${n.sub}" style="height:${alturas[i]}px;">${fmtMoney(n.valor)}</div>
+            </div>`).join('')}
+        </div>
+      </div>
+      <div class="pipeline-label-grid" style="grid-template-columns:repeat(${N},1fr);">
+        ${nodos.map(n=>`
+          <div class="pipeline-node-label">
+            <div class="pipeline-node-title">${n.titulo}</div>
+            <div class="pipeline-node-sub">${n.sub}</div>
           </div>`).join('')}
       </div>
-    </div>
-    <div class="pipeline-label-grid" style="grid-template-columns:repeat(${N},1fr);">
-      ${nodos.map(n=>`
-        <div class="pipeline-node-label">
-          <div class="pipeline-node-title">${n.titulo}</div>
-          <div class="pipeline-node-sub">${n.sub}</div>
-        </div>`).join('')}
     </div>
     <div style="text-align:right;margin-top:14px;">
       <button class="table-toggle" id="toggleTableProg">Ver tabla de datos</button>

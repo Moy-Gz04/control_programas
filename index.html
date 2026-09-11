@@ -12,6 +12,9 @@
 </head>
 <body>
 
+<div class="banda-top"><span class="g1"></span><span class="g2"></span><span class="g3"></span></div>
+<div class="fondo-patron"></div>
+
 <div class="login-wrap">
   <div class="login-card">
     <div class="login-head">
@@ -39,6 +42,18 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- Overlay "despertando servidor": visible mientras el backend en Render
+     (plan gratuito) sale de reposo. Lo controla assets/js/auth.js. -->
+<div class="wake-overlay" id="wakeOverlay" aria-hidden="true">
+  <div class="wake-card">
+    <div class="wake-spinner"></div>
+    <h2>Despertando servidor…</h2>
+    <p>El sistema estaba inactivo. Esto suele tardar unos <strong>40 segundos</strong>, por favor espera.</p>
+    <div class="wake-bar-track"><div class="wake-bar-fill" id="wakeBarFill"></div></div>
+    <div class="wake-countdown" id="wakeCountdown">40 s</div>
+  </div>
+</div>
 
 <script src="assets/js/config.js"></script>
 <script src="assets/js/api.js"></script>
