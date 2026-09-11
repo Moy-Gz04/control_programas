@@ -1,35 +1,36 @@
 /**
  * Efectos visuales del login: entrada con GSAP + fondo 3D con Three.js.
- * Basado en el Design DNA extraído en design/design-dna.json.
+ * Basado en el Design DNA de design/design-dna.json.
  *
- * Es "progressive enhancement" puro: si GSAP o Three.js no cargan (CDN
- * caído, red lenta), o el usuario prefiere menos movimiento, o la
- * pantalla es chica, el login se ve y funciona igual de bien gracias al
- * CSS base (fondo con patrón + @keyframes modalIn ya en styles.css).
+ * REGLA DE ORO: la tarjeta de login (.login-card) NUNCA debe quedar
+ * translúcida. Por eso esta animación solo mueve (translateY), nunca
+ * toca la opacidad del contenido — así, sin importar en qué instante
+ * caiga un screenshot o qué tan lento cargue el CDN, el texto y los
+ * campos del formulario siempre son 100% legibles. El fade de entrada
+ * ya lo cubre, de forma garantizada, el @keyframes modalIn de CSS.
+ *
+ * Todo esto es "progressive enhancement": si GSAP o Three.js no cargan
+ * (CDN caído, red lenta), o el usuario prefiere menos movimiento, o la
+ * pantalla es chica, el login se ve y funciona igual de bien.
  */
 (function () {
   "use strict";
 
   var prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  // ── GSAP: entrada escalonada de la tarjeta de login ──
+  // ── GSAP: pequeño deslizamiento de entrada, SIN tocar opacidad ──
   function animarEntrada() {
-    if (typeof gsap === "undefined") return;
-
-    var tl = gsap.timeline({ defaults: { ease: "power3.out" } });
-    tl.from(".login-card", { y: 24, opacity: 0, duration: 0.6 })
-      .from(
-        ".login-head .brand-logo, .login-head h1, .login-head p",
-        { y: 10, opacity: 0, duration: 0.4, stagger: 0.08 },
-        "-=0.35"
-      )
-      .from(
-        ".login-body .field",
-        { y: 12, opacity: 0, duration: 0.35, stagger: 0.08 },
-        "-=0.2"
-      )
-      .from(".login-body .btn-block", { y: 12, opacity: 0, duration: 0.35 }, "-=0.15")
-      .from(".login-footer-note", { opacity: 0, duration: 0.4 }, "-=0.1");
+    if (typeof gsap === "undefined" || prefersReduced) return;
+    try {
+      gsap.from(".login-card", {
+        y: 18,
+        duration: 0.5,
+        ease: "power3.out",
+        clearProps: "transform", // al terminar, no deja ningun estilo inline pegado
+      });
+    } catch (e) {
+      /* si algo falla, el CSS (@keyframes modalIn) ya resolvió la entrada */
+    }
   }
 
   // ── Three.js: nube de puntos dorados/guinda flotando de fondo ──
@@ -59,10 +60,10 @@
     );
     camera.position.z = 18;
 
-    var COUNT = 260;
+    var COUNT = 220;
     var positions = new Float32Array(COUNT * 3);
     var colors = new Float32Array(COUNT * 3);
-    var colorGold = new THREE.Color("#C9A84E");
+    var colorGold = new THREE.Color("#C8A951");
     var colorMaroon = new THREE.Color("#8C3358");
 
     for (var i = 0; i < COUNT; i++) {
@@ -80,10 +81,10 @@
     geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
 
     var mat = new THREE.PointsMaterial({
-      size: 0.18,
+      size: 0.16,
       vertexColors: true,
       transparent: true,
-      opacity: 0.55,
+      opacity: 0.45,
       depthWrite: false,
     });
 
@@ -98,7 +99,7 @@
     function tick() {
       requestAnimationFrame(tick);
       if (!visible) return;
-      puntos.rotation.y += 0.0007;
+      puntos.rotation.y += 0.0006;
       puntos.rotation.x += 0.0002;
       renderer.render(scene, camera);
     }

@@ -12,12 +12,14 @@
      referencia directamente en estilos inline (ej. --accent, var(--red)).
      Sólo se refinan los valores para una paleta más sobria y premium.
      --------------------------------------------------------------------- */
-  --maroon-900:#32091D;
-  --maroon-800:#4B1230;
-  --maroon-700:#611A3D;
+  /* Paleta alineada a la de correspondencia (guinda/dorado) para que
+     el sistema de programas comparta identidad visual con el resto. */
+  --maroon-900:#3A0818;
+  --maroon-800:#4A0A1D;
+  --maroon-700:#6B0F2B;
   --maroon-600:#8C3358;
-  --gold-600:#B08A2A;
-  --gold-500:#C9A84E;
+  --gold-600:#9A7D30;
+  --gold-500:#C8A951;
   --gold-chart:#C9862B;
   --aqua-chart:#159C6C;
   --cream-50:#FAF9F6;
@@ -75,7 +77,7 @@
   --dur-base:200ms;
   --dur-slow:340ms;
 
-  --font-sans:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  --font-sans:'Montserrat','Inter',-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,Helvetica,Arial,sans-serif;
 
   --fs-display:clamp(26px,3.2vw,36px);
   --fs-h1:20px;
@@ -160,7 +162,16 @@ textarea:focus-visible,
    la activa resaltada en dorado. Antes todo iba en una sola fila; se separó
    para que se lea como un encabezado institucional real.
    ========================================================================= */
-.navbar-wrap{position:sticky;top:0;z-index:40;backdrop-filter:saturate(1.1);}
+.navbar-wrap{position:relative;position:sticky;top:0;z-index:40;backdrop-filter:saturate(1.1);}
+/* Banda tricolor guinda/dorado/guinda-oscuro, igual que correspondencia,
+   siempre visible porque va pegada al navbar (que es sticky). */
+.navbar-wrap::before{
+  content:"";position:absolute;top:0;left:0;right:0;height:4px;z-index:1;
+  background:linear-gradient(90deg,
+    var(--maroon-700) 0%, var(--maroon-700) 33.33%,
+    var(--gold-500) 33.33%, var(--gold-500) 66.66%,
+    var(--maroon-900) 66.66%, var(--maroon-900) 100%);
+}
 .navbar-top{
   display:flex;align-items:center;justify-content:space-between;gap:16px;
   padding:12px 5%;
@@ -649,19 +660,38 @@ footer.app-footer{
 .toast.error{background:var(--red);}
 
 /* ===== LOGIN PAGE =====
-   Mismo fondo que el login de WEB-GOB (sistema de pliegos/oficios):
-   fondo "whitesmoke" con el patrón institucional en mosaico, y la
-   tarjeta con encabezado guinda + borde dorado grueso. */
+   Mismo lenguaje visual que correspondencia: degradado guinda oscuro con
+   resplandor dorado + rejilla sutil de fondo, banda tricolor superior, y
+   tarjeta blanca opaca con encabezado guinda + borde dorado grueso. */
+.banda-top{position:fixed;top:0;left:0;right:0;display:flex;height:5px;z-index:10;}
+.banda-top span{flex:1;}
+.banda-top .g1{background:var(--maroon-700);}
+.banda-top .g2{background:var(--gold-500);}
+.banda-top .g3{background:var(--maroon-900);}
+
 .bg3d{position:fixed;inset:0;z-index:0;pointer-events:none;}
 
 .login-wrap{
   position:relative;z-index:1;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
-  background-color:#f5f5f5;
-  background-image:url("../img/fondo-pattern.png");
-  background-repeat:repeat;
-  background-size:195px;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(200,169,81,0.13) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 80% at 100% 100%, rgba(107,15,43,0.5) 0%, transparent 60%),
+    linear-gradient(160deg, var(--maroon-800) 0%, #3a0818 40%, #1e0510 100%);
 }
-.login-card{width:100%;max-width:420px;background:var(--surface-1);border-radius:var(--radius-xl);box-shadow:var(--shadow-modal);overflow:hidden;border:1px solid var(--border-hairline);animation:modalIn var(--dur-slow) var(--ease-spring);}
+.login-wrap::before{
+  content:"";position:fixed;inset:0;z-index:-1;
+  background-image:
+    linear-gradient(rgba(200,169,81,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(200,169,81,0.05) 1px, transparent 1px);
+  background-size:40px 40px;
+  mask-image:radial-gradient(ellipse 100% 100% at 50% 50%, black 0%, transparent 75%);
+  -webkit-mask-image:radial-gradient(ellipse 100% 100% at 50% 50%, black 0%, transparent 75%);
+}
+
+/* La tarjeta es SIEMPRE 100% opaca (fondo sólido, sin transparencia ni
+   blend) para que nunca se vea "lavada" por el fondo oscuro de atrás,
+   pase lo que pase con las animaciones de entrada. */
+.login-card{width:100%;max-width:420px;background:#ffffff;opacity:1;border-radius:var(--radius-xl);box-shadow:var(--shadow-modal);overflow:hidden;border:1px solid var(--border-hairline);animation:modalIn var(--dur-slow) var(--ease-spring);}
 .login-head{background:linear-gradient(120deg,var(--maroon-900) 0%,var(--maroon-800) 45%,var(--maroon-700) 100%);padding:38px 30px 28px;text-align:center;color:#fff;border-bottom:4px solid var(--gold-500);}
 .login-head .brand-logo{width:52px;height:52px;margin:0 auto 14px;display:block;border-radius:14px;}
 .login-head .brand-logo-fallback{width:52px;height:52px;margin:0 auto 14px;font-size:20px;border-radius:14px;}
