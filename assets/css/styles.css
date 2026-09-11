@@ -691,13 +691,14 @@ footer.app-footer{
 /* Halo suave detrás de la tarjeta: el eco de la forma circular de la
    referencia, sin forzar un círculo real (se rompe en móvil). */
 .login-halo{
-  position:absolute;width:min(560px,90vw);height:min(560px,90vw);border-radius:50%;
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:min(560px,90vw);height:min(560px,90vw);border-radius:50%;z-index:0;
   background:radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(231,232,237,0) 70%);
   pointer-events:none;
 }
 
 .login-card{
-  position:relative;width:100%;max-width:400px;background:var(--neu-surface);
+  position:relative;z-index:1;width:100%;max-width:400px;background:var(--neu-surface);
   border-radius:36px;padding:44px 36px 36px;
   box-shadow:14px 14px 28px var(--neu-dark), -14px -14px 28px var(--neu-light);
   animation:modalIn var(--dur-slow) var(--ease-spring);
