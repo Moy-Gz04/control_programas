@@ -649,32 +649,18 @@ footer.app-footer{
 .toast.error{background:var(--red);}
 
 /* ===== LOGIN PAGE =====
-   Mismo fondo que el sistema de correspondencia: degradado guinda oscuro
-   con resplandor dorado + rejilla sutil, y la banda tricolor superior. */
-.banda-top{position:fixed;top:0;left:0;right:0;display:flex;height:5px;z-index:10;}
-.banda-top span{flex:1;}
-.banda-top .g1{background:var(--maroon-700);}
-.banda-top .g2{background:var(--gold-500);}
-.banda-top .g3{background:var(--maroon-900);}
-
-.fondo-patron{position:fixed;inset:0;z-index:0;
-  background:
-    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(201,168,78,0.13) 0%, transparent 70%),
-    radial-gradient(ellipse 60% 80% at 100% 100%, rgba(140,51,88,0.45) 0%, transparent 60%),
-    linear-gradient(160deg, var(--maroon-900) 0%, #3a0818 45%, #1e0510 100%);
+   Mismo fondo que el login de WEB-GOB (sistema de pliegos/oficios):
+   fondo "whitesmoke" con el patrón institucional en mosaico, y la
+   tarjeta con encabezado guinda + borde dorado grueso. */
+.login-wrap{
+  position:relative;z-index:1;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
+  background-color:#f5f5f5;
+  background-image:url("../img/fondo-pattern.png");
+  background-repeat:repeat;
+  background-size:195px;
 }
-.fondo-patron::after{content:"";position:absolute;inset:0;
-  background-image:
-    linear-gradient(rgba(201,168,78,0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(201,168,78,0.05) 1px, transparent 1px);
-  background-size:40px 40px;
-  mask-image:radial-gradient(ellipse 100% 100% at 50% 50%, black 0%, transparent 75%);
-  -webkit-mask-image:radial-gradient(ellipse 100% 100% at 50% 50%, black 0%, transparent 75%);
-}
-
-.login-wrap{position:relative;z-index:1;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
 .login-card{width:100%;max-width:420px;background:var(--surface-1);border-radius:var(--radius-xl);box-shadow:var(--shadow-modal);overflow:hidden;border:1px solid var(--border-hairline);animation:modalIn var(--dur-slow) var(--ease-spring);}
-.login-head{background:linear-gradient(135deg,var(--maroon-900),var(--maroon-800) 55%,var(--maroon-700));padding:38px 30px 28px;text-align:center;color:#fff;border-bottom:1px solid rgba(201,168,78,0.5);}
+.login-head{background:linear-gradient(120deg,var(--maroon-900) 0%,var(--maroon-800) 45%,var(--maroon-700) 100%);padding:38px 30px 28px;text-align:center;color:#fff;border-bottom:4px solid var(--gold-500);}
 .login-head .brand-logo{width:52px;height:52px;margin:0 auto 14px;display:block;border-radius:14px;}
 .login-head .brand-logo-fallback{width:52px;height:52px;margin:0 auto 14px;font-size:20px;border-radius:14px;}
 .login-head h1{margin:0;font-size:15px;letter-spacing:0.8px;font-weight:700;color:var(--gold-500);text-transform:uppercase;}
@@ -684,29 +670,36 @@ footer.app-footer{
 .login-error.show{display:block;animation:fadein var(--dur-base) var(--ease-out);}
 .login-footer-note{text-align:center;font-size:11px;color:var(--text-tertiary);margin-top:20px;line-height:1.6;}
 
-/* ── Overlay "despertando servidor" (cold-start de Render) ── */
+/* ── Overlay "despertando servidor" (cold-start de Render) ──
+   Mismo lenguaje visual que el sistema unificado de modales de WEB-GOB
+   (css/modales.css): overlay guinda translúcido con blur, tarjeta blanca
+   compacta de esquinas muy redondeadas y loader circular de 40px con el
+   mismo giro. Nombres de clase propios (wake-*) para no chocar con los
+   .modal / .modal-* que ya usa el resto de la app. */
 .wake-overlay{
-  position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;
-  padding:24px;background:rgba(30,5,16,0.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+  position:fixed;inset:0;z-index:3000;display:none;align-items:center;justify-content:center;
+  padding:18px;background:rgba(80,10,30,0.62);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
 }
-.wake-overlay.show{display:flex;animation:fadein var(--dur-base) var(--ease-out);}
+.wake-overlay.show{display:flex;}
 .wake-card{
-  width:100%;max-width:360px;background:var(--surface-1);border-radius:var(--radius-xl);
-  box-shadow:var(--shadow-modal);padding:34px 30px 28px;text-align:center;
-  border:1px solid var(--border-hairline);
+  width:340px;max-width:92%;background:#ffffff;border-radius:18px;
+  box-shadow:0 16px 35px rgba(0,0,0,0.14);padding:26px 22px 22px;text-align:center;
+  box-sizing:border-box;
+  animation:wakeCardIn 0.15s ease;
 }
+@keyframes wakeCardIn{from{opacity:0;transform:translateY(8px) scale(.985);}to{opacity:1;transform:translateY(0) scale(1);}}
 .wake-spinner{
-  width:42px;height:42px;margin:0 auto 18px;border-radius:50%;
-  border:4px solid var(--cream-200);border-top-color:var(--maroon-700);
-  animation:wakeSpin 0.9s linear infinite;
+  width:40px;height:40px;margin:0 auto 14px;border-radius:50%;
+  border:4px solid #e2e8f0;border-top:4px solid var(--maroon-800);
+  animation:wakeSpin 0.75s linear infinite;
 }
 @keyframes wakeSpin{to{transform:rotate(360deg);}}
-.wake-card h2{margin:0 0 8px;font-size:15px;font-weight:700;color:var(--maroon-800);}
-.wake-card p{margin:0 0 20px;font-size:12.5px;color:var(--text-muted);line-height:1.55;}
-.wake-bar-track{height:8px;border-radius:99px;background:var(--cream-200);overflow:hidden;margin-bottom:10px;}
+.wake-card h2{margin:0 0 8px;font-size:18px;font-weight:800;color:var(--maroon-800);}
+.wake-card p{margin:0 0 16px;font-size:12px;color:#64748b;line-height:1.5;}
+.wake-bar-track{height:8px;border-radius:99px;background:#e2e8f0;overflow:hidden;margin-bottom:10px;}
 .wake-bar-fill{
   height:100%;width:0%;border-radius:99px;
-  background:linear-gradient(90deg,var(--maroon-700),var(--gold-500));
+  background:var(--maroon-800);
   transition:width 1s linear;
 }
 .wake-countdown{font-size:12px;font-weight:700;color:var(--maroon-700);letter-spacing:0.3px;}
