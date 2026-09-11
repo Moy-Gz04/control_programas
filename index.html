@@ -12,6 +12,11 @@
 </head>
 <body>
 
+<!-- Fondo 3D sutil (nube de puntos dorados/guinda), ver assets/js/login-fx.js.
+     Progressive enhancement: si Three.js no carga o el dispositivo no
+     aplica, el fondo con patrón institucional (CSS) se ve igual de bien. -->
+<canvas id="bg3d" class="bg3d" aria-hidden="true"></canvas>
+
 <div class="login-wrap">
   <div class="login-card">
     <div class="login-head">
@@ -55,5 +60,12 @@
 <script src="assets/js/config.js"></script>
 <script src="assets/js/api.js"></script>
 <script src="assets/js/auth.js"></script>
+
+<!-- GSAP (entrada animada) y Three.js (fondo 3D) — carga diferida al final,
+     no bloquean el render ni el envío del formulario de login. Si alguno
+     falla, assets/js/login-fx.js lo detecta y no hace nada (ver ahí). -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" defer></script>
+<script src="assets/js/login-fx.js" defer></script>
 </body>
 </html>

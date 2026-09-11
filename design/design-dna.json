@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "name": "Sistema de Programas — Login DNA",
+    "description": "Design DNA extraído del login de WEB-GOB (sistema de pliegos/oficios, referencia de marca) y aplicado al login de Sistema de Programas Sociales.",
+    "source_references": [
+      "PROYECTOS EN DESARROLLO/WEB-GOB/index.html + css/login.css + css/fondo.css + css/modales.css",
+      "PROYECTOS EN DESARROLLO/PROGRAMAS/index.html + assets/css/styles.css (paleta ya existente, refinada)"
+    ],
+    "created_at": "2026-09-11"
+  },
+  "design_system": {
+    "color": {
+      "palette_type": "guinda institucional + acento dorado",
+      "primary": { "hex": "#4B1230", "role": "marca / header / superficies oscuras" },
+      "secondary": { "hex": "#611A3D", "role": "degradados y estados hover" },
+      "accent": { "hex": "#C9A84E", "role": "bordes, acentos, foco, detalles dorados" },
+      "neutral": { "scale": ["#FAF9F6", "#F5F3ED", "#ECE6D8", "#E6E1D3", "#6E665C", "#221B18"], "usage": "fondos de tarjeta, texto secundario, bordes" },
+      "semantic": { "success": "#159C6C", "warning": "#C99A2E", "error": "#D8394C", "info": "#611A3D" },
+      "surface": { "background": "#F5F5F5 (whitesmoke + patrón)", "card": "#FFFFFF", "elevated": "#FBFAF7" },
+      "contrast_strategy": "texto blanco sobre superficies guinda oscuras; texto oscuro (#221B18) sobre tarjeta blanca"
+    },
+    "typography": {
+      "font_families": { "heading": "Inter", "body": "Inter", "mono": "JetBrains Mono (heredado de correspondencia, no usado aquí)" },
+      "font_style_notes": "Pesos altos (700-800) para títulos institucionales en mayúsculas con letter-spacing; cuerpo entre 400-600."
+    },
+    "shape": {
+      "border_radius": { "small": "10px", "medium": "18px", "large": "22px", "pill": "999px" },
+      "border_usage": "borde inferior dorado grueso (4px) en headers; bordes 1px sutiles en tarjetas"
+    }
+  },
+  "design_style": {
+    "mood": "institucional, serio, cálido por el dorado; formal sin ser frío",
+    "composition_strategy": "tarjeta centrada flotando sobre un fondo texturizado, jerarquía clara header oscuro / cuerpo claro",
+    "motion_feel": "sutil y elegante, entradas suaves tipo 'power3.out', nunca juguetón ni brusco"
+  },
+  "visual_effects": {
+    "background_pattern": "mosaico repetido de textura institucional (fondo-pattern.png, 195px) sobre whitesmoke",
+    "particles_3d": {
+      "engine": "three.js",
+      "description": "Nube de puntos dorados/guinda flotando lentamente detrás de la tarjeta de login, rotación continua muy lenta (~0.0007 rad/frame)",
+      "count": 260,
+      "colors": ["#C9A84E", "#8C3358"],
+      "performance_guardrails": [
+        "desactivado si prefers-reduced-motion",
+        "desactivado en viewport < 720px",
+        "pausa el render loop cuando la pestaña no está visible",
+        "pixelRatio limitado a 1.5"
+      ]
+    },
+    "entrance_animation": {
+      "engine": "gsap",
+      "description": "Timeline escalonado: tarjeta sube+aparece, luego header (logo/título/subtítulo), luego campos del formulario, luego botón y nota final",
+      "easing": "power3.out",
+      "fallback": "si GSAP no carga o prefers-reduced-motion, la tarjeta usa solo el fade/scale ya definido en CSS (@keyframes modalIn)"
+    }
+  }
+}

@@ -652,6 +652,8 @@ footer.app-footer{
    Mismo fondo que el login de WEB-GOB (sistema de pliegos/oficios):
    fondo "whitesmoke" con el patrón institucional en mosaico, y la
    tarjeta con encabezado guinda + borde dorado grueso. */
+.bg3d{position:fixed;inset:0;z-index:0;pointer-events:none;}
+
 .login-wrap{
   position:relative;z-index:1;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
   background-color:#f5f5f5;
