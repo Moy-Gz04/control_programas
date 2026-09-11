@@ -36,6 +36,10 @@
           <div class="neu-input">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
             <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" required>
+            <button type="button" class="neu-eye" id="btnVerPassword" aria-label="Mostrar contraseña" aria-pressed="false">
+              <svg class="neu-eye-abierto" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="neu-eye-cerrado" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.6 21.6 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 7 11 7a21.6 21.6 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            </button>
           </div>
         </div>
         <div class="neu-row">
@@ -79,6 +83,22 @@
     document.getElementById('loginForm').addEventListener('submit', function(){
       if (chk.checked) localStorage.setItem('pb_correo_recordado', email.value.trim());
       else localStorage.removeItem('pb_correo_recordado');
+    });
+  })();
+
+  // "Ver contraseña": alterna type password/text y el ícono de ojo.
+  (function(){
+    var btn = document.getElementById('btnVerPassword');
+    var input = document.getElementById('password');
+    var ojoAbierto = btn.querySelector('.neu-eye-abierto');
+    var ojoCerrado = btn.querySelector('.neu-eye-cerrado');
+    btn.addEventListener('click', function(){
+      var mostrar = input.type === 'password';
+      input.type = mostrar ? 'text' : 'password';
+      ojoAbierto.style.display = mostrar ? 'none' : '';
+      ojoCerrado.style.display = mostrar ? '' : 'none';
+      btn.setAttribute('aria-pressed', String(mostrar));
+      btn.setAttribute('aria-label', mostrar ? 'Ocultar contraseña' : 'Mostrar contraseña');
     });
   })();
 </script>

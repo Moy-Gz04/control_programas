@@ -754,6 +754,27 @@ footer.app-footer{
 }
 .login-body .neu-input input:autofill{background:var(--neu-surface);}
 
+/* Edge/Chrome dibujan sus propios botones nativos dentro del input de
+   password (ojo de "revelar", icono de "administrar contraseñas") que
+   chocaban con el pill personalizado — de ahí las medialunas. Se
+   ocultan y se usa el botón propio (.neu-eye) de abajo. */
+.login-body .neu-input input[type="password"]::-ms-reveal,
+.login-body .neu-input input[type="password"]::-ms-clear{display:none;}
+.login-body .neu-input input::-webkit-textfield-decoration-container{display:none;}
+.login-body .neu-input input::-webkit-credentials-auto-fill-button{
+  visibility:hidden;display:none !important;pointer-events:none;position:absolute;right:0;
+}
+.login-body .neu-input input::-webkit-strong-password-auto-fill-button{
+  visibility:hidden;display:none !important;
+}
+
+.neu-eye{
+  flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  width:22px;height:22px;padding:0;border:none;background:transparent;cursor:pointer;
+  color:var(--neu-text-soft);transition:color .15s ease;
+}
+.neu-eye:hover{color:var(--neu-accent);}
+
 .neu-row{display:flex;justify-content:space-between;align-items:center;margin:18px 2px 26px;}
 .neu-toggle{display:flex;align-items:center;gap:9px;cursor:pointer;user-select:none;}
 .neu-toggle input{position:absolute;opacity:0;width:0;height:0;}
