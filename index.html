@@ -3,48 +3,51 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#3A0818">
+<meta name="theme-color" content="#E7E8ED">
 <title>Iniciar Sesión | Sistema de Programas — Bienestar</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/styles.css">
 </head>
-<body>
-
-<div class="banda-top"><span class="g1"></span><span class="g2"></span><span class="g3"></span></div>
-
-<!-- Fondo 3D sutil (nube de puntos dorados/guinda), ver assets/js/login-fx.js.
-     Progressive enhancement: si Three.js no carga o el dispositivo no
-     aplica, el fondo degradado guinda (CSS) se ve igual de bien. -->
-<canvas id="bg3d" class="bg3d" aria-hidden="true"></canvas>
-
-<!-- Lluvia de flores de cempasúchil: capa de fondo decorativa, igual que
-     correspondencia (mismas imagen y script). Ver assets/js/lluvia.js. -->
-<div class="lluvia-flores" id="lluvia-flores"></div>
+<body class="neu-body">
 
 <div class="login-wrap">
+  <div class="login-halo"></div>
   <div class="login-card">
     <div class="login-head">
       <img class="brand-logo" src="assets/img/logo.png" alt="Logo" onerror="this.style.display='none';document.getElementById('logoFallback').style.display='flex';">
       <div id="logoFallback" class="brand-logo-fallback" style="display:none;">B</div>
       <h1>Sistema de Programas</h1>
-      <p>Secretaría de Bienestar e Inclusión Social</p>
+      <p>Inicia sesión en tu cuenta</p>
     </div>
     <div class="login-body">
       <div class="login-error" id="loginError"></div>
       <form id="loginForm">
         <div class="field" style="margin-bottom:16px;">
           <label>Correo institucional</label>
-          <input type="email" id="email" placeholder="usuario@bienestar.gob.mx" autocomplete="username" required>
+          <div class="neu-input">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <input type="email" id="email" placeholder="usuario@bienestar.gob.mx" autocomplete="username" required>
+          </div>
         </div>
-        <div class="field" style="margin-bottom:22px;">
+        <div class="field" style="margin-bottom:14px;">
           <label>Contraseña</label>
-          <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" required>
+          <div class="neu-input">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+            <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" required>
+          </div>
         </div>
-        <button type="submit" class="btn btn-primary btn-block" id="btnLogin">Iniciar Sesión</button>
+        <div class="neu-row">
+          <label class="neu-toggle">
+            <input type="checkbox" id="recordarme">
+            <span class="neu-toggle-track"><span class="neu-toggle-thumb"></span></span>
+            <span class="neu-toggle-label">Recordarme</span>
+          </label>
+        </div>
+        <button type="submit" class="neu-btn" id="btnLogin">Iniciar Sesión</button>
       </form>
-      <div class="login-footer-note">Acceso exclusivo para personal autorizado.<br>Si olvidaste tu contraseña, contacta al administrador del sistema.</div>
+      <div class="login-footer-note">Acceso exclusivo para personal autorizado.<br>Si olvidaste tu contraseña, contacta al <span class="neu-link">administrador del sistema</span>.</div>
     </div>
   </div>
 </div>
@@ -66,13 +69,18 @@
 <script src="assets/js/config.js"></script>
 <script src="assets/js/api.js"></script>
 <script src="assets/js/auth.js"></script>
-<script src="assets/js/lluvia.js"></script>
-
-<!-- GSAP (entrada animada) y Three.js (fondo 3D) — carga diferida al final,
-     no bloquean el render ni el envío del formulario de login. Si alguno
-     falla, assets/js/login-fx.js lo detecta y no hace nada (ver ahí). -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" defer></script>
-<script src="assets/js/login-fx.js" defer></script>
+<script>
+  // "Recordarme": recuerda solo el correo (nunca la contraseña) en este navegador.
+  (function(){
+    var chk = document.getElementById('recordarme');
+    var email = document.getElementById('email');
+    var saved = localStorage.getItem('pb_correo_recordado');
+    if (saved) { email.value = saved; chk.checked = true; }
+    document.getElementById('loginForm').addEventListener('submit', function(){
+      if (chk.checked) localStorage.setItem('pb_correo_recordado', email.value.trim());
+      else localStorage.removeItem('pb_correo_recordado');
+    });
+  })();
+</script>
 </body>
 </html>

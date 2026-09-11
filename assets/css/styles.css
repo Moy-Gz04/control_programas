@@ -659,129 +659,142 @@ footer.app-footer{
 .toast.show{opacity:1;transform:none;}
 .toast.error{background:var(--red);}
 
-/* ===== LOGIN PAGE =====
-   Mismo lenguaje visual que correspondencia: degradado guinda oscuro con
-   resplandor dorado + rejilla sutil de fondo, banda tricolor superior, y
-   tarjeta blanca opaca con encabezado guinda + borde dorado grueso. */
-.banda-top{position:fixed;top:0;left:0;right:0;display:flex;height:5px;z-index:10;}
-.banda-top span{flex:1;}
-.banda-top .g1{background:var(--maroon-700);}
-.banda-top .g2{background:var(--gold-500);}
-.banda-top .g3{background:var(--maroon-900);}
+/* ===== LOGIN PAGE — Neumorfismo =====================================
+   DNA extraída de una referencia visual (estimación por ojo, sin
+   medición determinista — no había archivo de imagen para el script
+   de la skill design-dna). Documentado en
+   03 - Recursos/Design Tokens/programas-login-neumorfismo.md
+   Superficie gris cálida en relieve de doble sombra, inputs en pill
+   hundidos, acento vino en foco/enlaces, tipografía Poppins. Esto
+   reemplaza el lenguaje guinda/dorado SOLO en esta pantalla — el
+   resto de la app conserva su identidad de siempre. ================= */
 
-.bg3d{position:fixed;inset:0;z-index:0;pointer-events:none;}
+:root{
+  --neu-bg:#E7E8ED;
+  --neu-surface:#E7E8ED;
+  --neu-light:rgba(255,255,255,0.85);
+  --neu-dark:rgba(163,177,198,0.55);
+  --neu-accent:#A8324A;
+  --neu-accent-soft:#C97C8C;
+  --neu-text:#3A3A3E;
+  --neu-text-soft:#8A8D93;
+  --neu-font:'Poppins',var(--font-sans);
+}
 
-/* ══ LLUVIA DE FLORES DE CEMPASÚCHIL — igual que correspondencia ══
-   Misma capa (z-index:0) que el fondo/bg3d: cae detrás de la tarjeta
-   de login (.login-wrap, z-index:1), generada por assets/js/lluvia.js
-   con tamaño, posición y velocidad aleatorios. Cada flor es "tocable":
-   un click/toque la hace explotar en chispas tipo fuegos artificiales
-   (.chispa-fuego / .destello-fuego, también generadas por lluvia.js). */
-.lluvia-flores{position:fixed;inset:0;overflow:hidden;z-index:0;pointer-events:none;}
-.flor-lluvia{
-  position:absolute;top:-6%;
-  background-image:url("../img/lluvia.png");
-  background-size:contain;background-repeat:no-repeat;background-position:center;
-  opacity:0;animation-name:caerFlorCempasuchil;animation-timing-function:linear;
-  animation-iteration-count:infinite;will-change:transform,opacity;
-  pointer-events:auto;cursor:pointer;
-}
-@keyframes caerFlorCempasuchil{
-  0%{transform:translateY(0) translateX(0) rotate(0deg);opacity:0;}
-  8%{opacity:.8;}
-  90%{opacity:.7;}
-  100%{transform:translateY(112vh) translateX(var(--deriva,24px)) rotate(var(--giro-final,300deg));opacity:0;}
-}
-.chispa-fuego{
-  position:absolute;border-radius:50%;pointer-events:none;
-  transform:translate(-50%,-50%);box-shadow:0 0 4px currentColor;
-  animation:explotarChispa .6s cubic-bezier(.15,.8,.4,1) forwards;
-  will-change:transform,opacity;
-}
-@keyframes explotarChispa{
-  0%{transform:translate(-50%,-50%) scale(1);opacity:1;}
-  65%{opacity:1;}
-  100%{transform:translate(calc(-50% + var(--dx,0px)),calc(-50% + var(--dy,0px))) scale(.25);opacity:0;}
-}
-.destello-fuego{
-  position:absolute;width:5px;height:5px;border-radius:50%;
-  transform:translate(-50%,-50%);
-  background:radial-gradient(circle,#fff8dc 0%,rgba(255,193,79,.85) 45%,transparent 75%);
-  pointer-events:none;animation:destelloFuego .35s ease-out forwards;
-}
-@keyframes destelloFuego{
-  0%{transform:translate(-50%,-50%) scale(.3);opacity:1;}
-  100%{transform:translate(-50%,-50%) scale(5.5);opacity:0;}
-}
-@media (prefers-reduced-motion: reduce){
-  .flor-lluvia{animation:none;opacity:0;}
-  .chispa-fuego,.destello-fuego{animation:none;opacity:0;}
-}
+.neu-body{background:var(--neu-bg);font-family:var(--neu-font);}
 
 .login-wrap{
-  position:relative;z-index:1;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
-  background:
-    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(200,169,81,0.13) 0%, transparent 70%),
-    radial-gradient(ellipse 60% 80% at 100% 100%, rgba(107,15,43,0.5) 0%, transparent 60%),
-    linear-gradient(160deg, var(--maroon-800) 0%, #3a0818 40%, #1e0510 100%);
-}
-.login-wrap::before{
-  content:"";position:fixed;inset:0;z-index:-1;
-  background-image:
-    linear-gradient(rgba(200,169,81,0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(200,169,81,0.05) 1px, transparent 1px);
-  background-size:40px 40px;
-  mask-image:radial-gradient(ellipse 100% 100% at 50% 50%, black 0%, transparent 75%);
-  -webkit-mask-image:radial-gradient(ellipse 100% 100% at 50% 50%, black 0%, transparent 75%);
+  position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;
+  padding:24px;background:var(--neu-bg);
 }
 
-/* La tarjeta es SIEMPRE 100% opaca (fondo sólido, sin transparencia ni
-   blend) para que nunca se vea "lavada" por el fondo oscuro de atrás,
-   pase lo que pase con las animaciones de entrada. */
-.login-card{width:100%;max-width:420px;background:#ffffff;opacity:1;border-radius:var(--radius-xl);box-shadow:var(--shadow-modal);overflow:hidden;border:1px solid var(--border-hairline);animation:modalIn var(--dur-slow) var(--ease-spring);}
-.login-head{background:linear-gradient(120deg,var(--maroon-900) 0%,var(--maroon-800) 45%,var(--maroon-700) 100%);padding:38px 30px 28px;text-align:center;color:#fff;border-bottom:4px solid var(--gold-500);}
-.login-head .brand-logo{width:52px;height:52px;margin:0 auto 14px;display:block;border-radius:14px;}
-.login-head .brand-logo-fallback{width:52px;height:52px;margin:0 auto 14px;font-size:20px;border-radius:14px;}
-.login-head h1{margin:0;font-size:15px;letter-spacing:0.8px;font-weight:700;color:var(--gold-500);text-transform:uppercase;}
-.login-head p{margin:7px 0 0;font-size:12px;color:var(--text-on-brand);opacity:0.82;}
-.login-body{padding:32px 30px 36px;}
-.login-error{background:#FCECEE;color:var(--red);border:1px solid #F5C9CE;border-radius:var(--radius-sm);padding:11px 14px;font-size:12.5px;font-weight:600;margin-bottom:18px;display:none;}
+/* Halo suave detrás de la tarjeta: el eco de la forma circular de la
+   referencia, sin forzar un círculo real (se rompe en móvil). */
+.login-halo{
+  position:absolute;width:min(560px,90vw);height:min(560px,90vw);border-radius:50%;
+  background:radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(231,232,237,0) 70%);
+  pointer-events:none;
+}
+
+.login-card{
+  position:relative;width:100%;max-width:400px;background:var(--neu-surface);
+  border-radius:36px;padding:44px 36px 36px;
+  box-shadow:14px 14px 28px var(--neu-dark), -14px -14px 28px var(--neu-light);
+  animation:modalIn var(--dur-slow) var(--ease-spring);
+}
+.login-head{text-align:center;padding-bottom:6px;}
+.login-head .brand-logo{width:46px;height:46px;margin:0 auto 14px;display:block;border-radius:14px;}
+.login-head .brand-logo-fallback{
+  width:46px;height:46px;margin:0 auto 14px;font-size:18px;border-radius:14px;
+  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;
+  background:var(--neu-accent);
+}
+.login-head h1{margin:0;font-size:30px;font-weight:800;letter-spacing:-0.01em;color:var(--neu-text);}
+.login-head p{margin:8px 0 0;font-size:13px;color:var(--neu-text-soft);font-weight:500;}
+.login-body{padding-top:28px;}
+.login-error{background:#FBE7EA;color:var(--neu-accent);border-radius:14px;padding:11px 14px;font-size:12.5px;font-weight:600;margin-bottom:16px;display:none;}
 .login-error.show{display:block;animation:fadein var(--dur-base) var(--ease-out);}
-.login-footer-note{text-align:center;font-size:11px;color:var(--text-tertiary);margin-top:20px;line-height:1.6;}
+.login-footer-note{text-align:center;font-size:11.5px;color:var(--neu-text-soft);margin-top:24px;line-height:1.6;}
+.neu-link{color:var(--neu-accent);font-weight:600;}
+
+/* Campos: reglas scopeadas a .login-body, para no tocar los .field del
+   resto de la app (modales y formularios de captura usan otro estilo). */
+.login-body .field label{
+  font-size:11px;font-weight:600;letter-spacing:0.3px;text-transform:none;
+  color:var(--neu-text-soft);margin-bottom:8px;display:block;
+}
+.login-body .neu-input{
+  display:flex;align-items:center;gap:10px;
+  background:var(--neu-surface);border-radius:99px;padding:0 18px;height:50px;
+  box-shadow:inset 5px 5px 10px var(--neu-dark), inset -5px -5px 10px var(--neu-light);
+  transition:box-shadow .2s ease;
+}
+.login-body .neu-input svg{flex-shrink:0;color:var(--neu-text-soft);transition:color .2s ease;}
+.login-body .neu-input input{
+  flex:1;border:none;background:transparent;outline:none;
+  font-family:var(--neu-font);font-size:14px;color:var(--neu-text);height:100%;padding:0;
+}
+.login-body .neu-input input::placeholder{color:#AEB1B8;}
+.login-body .neu-input:focus-within{box-shadow:inset 4px 4px 8px var(--neu-dark), inset -4px -4px 8px var(--neu-light), 0 0 0 1.5px var(--neu-accent);}
+.login-body .neu-input:focus-within svg{color:var(--neu-accent);}
+
+.neu-row{display:flex;justify-content:space-between;align-items:center;margin:18px 2px 26px;}
+.neu-toggle{display:flex;align-items:center;gap:9px;cursor:pointer;user-select:none;}
+.neu-toggle input{position:absolute;opacity:0;width:0;height:0;}
+.neu-toggle-track{
+  width:34px;height:19px;border-radius:99px;background:var(--neu-surface);position:relative;flex-shrink:0;
+  box-shadow:inset 3px 3px 6px var(--neu-dark), inset -3px -3px 6px var(--neu-light);
+  transition:background .2s ease;
+}
+.neu-toggle-thumb{
+  position:absolute;top:2.5px;left:2.5px;width:14px;height:14px;border-radius:50%;
+  background:#fff;box-shadow:1px 1px 3px rgba(0,0,0,0.25);transition:transform .2s ease;
+}
+.neu-toggle input:checked + .neu-toggle-track{background:var(--neu-accent-soft);}
+.neu-toggle input:checked + .neu-toggle-track .neu-toggle-thumb{transform:translateX(15px);}
+.neu-toggle-label{font-size:12.5px;color:var(--neu-text-soft);font-weight:500;}
+
+.neu-btn{
+  width:100%;height:52px;border:none;border-radius:99px;cursor:pointer;
+  background:var(--neu-surface);color:var(--neu-text);font-family:var(--neu-font);
+  font-size:13px;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;
+  box-shadow:8px 8px 16px var(--neu-dark), -8px -8px 16px var(--neu-light);
+  transition:box-shadow .15s ease, transform .15s ease, color .15s ease;
+}
+.neu-btn:hover{color:var(--neu-accent);}
+.neu-btn:active{
+  box-shadow:inset 5px 5px 10px var(--neu-dark), inset -5px -5px 10px var(--neu-light);
+  transform:translateY(1px);
+}
+.neu-btn:disabled{opacity:.6;cursor:not-allowed;}
 
 /* ── Overlay "despertando servidor" (cold-start de Render) ──
-   Mismo lenguaje visual que el sistema unificado de modales de WEB-GOB
-   (css/modales.css): overlay guinda translúcido con blur, tarjeta blanca
-   compacta de esquinas muy redondeadas y loader circular de 40px con el
-   mismo giro. Nombres de clase propios (wake-*) para no chocar con los
-   .modal / .modal-* que ya usa el resto de la app. */
+   Mismo lenguaje neumórfico que el resto del login. Nombres de clase
+   propios (wake-*) para no chocar con .modal / .modal-* del resto de
+   la app. */
 .wake-overlay{
   position:fixed;inset:0;z-index:3000;display:none;align-items:center;justify-content:center;
-  padding:18px;background:rgba(80,10,30,0.62);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+  padding:18px;background:rgba(58,58,62,0.35);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
 }
 .wake-overlay.show{display:flex;}
 .wake-card{
-  width:340px;max-width:92%;background:#ffffff;border-radius:18px;
-  box-shadow:0 16px 35px rgba(0,0,0,0.14);padding:26px 22px 22px;text-align:center;
-  box-sizing:border-box;
-  animation:wakeCardIn 0.15s ease;
+  width:340px;max-width:92%;background:var(--neu-surface);border-radius:28px;
+  box-shadow:14px 14px 28px var(--neu-dark), -14px -14px 28px var(--neu-light);
+  padding:30px 26px 26px;text-align:center;box-sizing:border-box;
+  animation:wakeCardIn 0.15s ease;font-family:var(--neu-font);
 }
 @keyframes wakeCardIn{from{opacity:0;transform:translateY(8px) scale(.985);}to{opacity:1;transform:translateY(0) scale(1);}}
 .wake-spinner{
-  width:40px;height:40px;margin:0 auto 14px;border-radius:50%;
-  border:4px solid #e2e8f0;border-top:4px solid var(--maroon-800);
+  width:40px;height:40px;margin:0 auto 16px;border-radius:50%;
+  border:4px solid var(--neu-dark);border-top:4px solid var(--neu-accent);
   animation:wakeSpin 0.75s linear infinite;
 }
 @keyframes wakeSpin{to{transform:rotate(360deg);}}
-.wake-card h2{margin:0 0 8px;font-size:18px;font-weight:800;color:var(--maroon-800);}
-.wake-card p{margin:0 0 16px;font-size:12px;color:#64748b;line-height:1.5;}
-.wake-bar-track{height:8px;border-radius:99px;background:#e2e8f0;overflow:hidden;margin-bottom:10px;}
-.wake-bar-fill{
-  height:100%;width:0%;border-radius:99px;
-  background:var(--maroon-800);
-  transition:width 1s linear;
-}
-.wake-countdown{font-size:12px;font-weight:700;color:var(--maroon-700);letter-spacing:0.3px;}
+.wake-card h2{margin:0 0 8px;font-size:18px;font-weight:800;color:var(--neu-text);}
+.wake-card p{margin:0 0 18px;font-size:12px;color:var(--neu-text-soft);line-height:1.5;}
+.wake-bar-track{height:9px;border-radius:99px;background:var(--neu-surface);box-shadow:inset 3px 3px 6px var(--neu-dark), inset -3px -3px 6px var(--neu-light);overflow:hidden;margin-bottom:10px;}
+.wake-bar-fill{height:100%;width:0%;border-radius:99px;background:var(--neu-accent);transition:width 1s linear;}
+.wake-countdown{font-size:12px;font-weight:700;color:var(--neu-accent);letter-spacing:0.3px;}
 
 /* =========================================================================
    SECCIONES MINIMIZABLES
