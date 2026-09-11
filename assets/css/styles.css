@@ -751,7 +751,6 @@ footer.app-footer{
   -webkit-box-shadow:0 0 0 1000px var(--neu-surface) inset;
   box-shadow:0 0 0 1000px var(--neu-surface) inset;
   transition:background-color 5000s ease-in-out 0s;
-  border-radius:99px;
 }
 .login-body .neu-input input:autofill{background:var(--neu-surface);}
 
