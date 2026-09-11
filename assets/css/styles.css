@@ -659,25 +659,32 @@ footer.app-footer{
 .toast.show{opacity:1;transform:none;}
 .toast.error{background:var(--red);}
 
-/* ===== LOGIN PAGE — Neumorfismo =====================================
-   DNA extraída de una referencia visual (estimación por ojo, sin
-   medición determinista — no había archivo de imagen para el script
-   de la skill design-dna). Documentado en
-   03 - Recursos/Design Tokens/programas-login-neumorfismo.md
-   Superficie gris cálida en relieve de doble sombra, inputs en pill
-   hundidos, acento vino en foco/enlaces, tipografía Poppins. Esto
-   reemplaza el lenguaje guinda/dorado SOLO en esta pantalla — el
-   resto de la app conserva su identidad de siempre. ================= */
+/* ===== LOGIN PAGE — Neumorfismo guinda/dorado =========================
+   Paleta alineada a los tokens de marca ya existentes (--maroon-*,
+   --gold-*), en versión oscura, sobre la forma neumórfica. Documentado
+   en 03 - Recursos/Design Tokens/programas-login-neumorfismo.md
+   Tipografía Poppins. Reemplaza SOLO esta pantalla — el resto de la
+   app conserva su identidad de siempre. ================================
+
+   Nota sobre los sombreados hundidos (.neu-input, .wake-bar-track,
+   .neu-toggle-track): el offset del box-shadow va CASI vertical
+   (x≈0), no diagonal. Un offset diagonal (x e y iguales) concentra el
+   sombreado cerca de las esquinas y en un pill ancho deja el centro
+   plano — se ve "cortado en tres piezas". Con x≈0 el sombreado corre
+   parejo a lo largo de todo el borde superior/inferior, sin importar
+   qué tan ancho sea el campo. ========================================= */
 
 :root{
-  --neu-bg:#E7E8ED;
-  --neu-surface:#E7E8ED;
-  --neu-light:rgba(255,255,255,0.85);
-  --neu-dark:rgba(163,177,198,0.55);
-  --neu-accent:#A8324A;
-  --neu-accent-soft:#C97C8C;
-  --neu-text:#3A3A3E;
-  --neu-text-soft:#8A8D93;
+  --neu-bg:var(--maroon-800);
+  --neu-surface:var(--maroon-800);
+  --neu-light:rgba(140,51,88,0.55);
+  --neu-dark:rgba(8,1,4,0.6);
+  --neu-accent:var(--gold-500);
+  --neu-accent-soft:var(--gold-600);
+  --neu-heading:var(--gold-500);
+  --neu-text:#F3E2D9;
+  --neu-text-soft:#C89BA8;
+  --neu-btn-text:var(--maroon-900);
   --neu-font:'Poppins',var(--font-sans);
 }
 
@@ -685,7 +692,8 @@ footer.app-footer{
 
 .login-wrap{
   position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;
-  padding:24px;background:var(--neu-bg);
+  padding:24px;
+  background:radial-gradient(ellipse 70% 55% at 50% 32%, var(--maroon-700) 0%, var(--maroon-900) 72%);
 }
 
 /* Halo suave detrás de la tarjeta: el eco de la forma circular de la
@@ -693,7 +701,7 @@ footer.app-footer{
 .login-halo{
   position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
   width:min(560px,90vw);height:min(560px,90vw);border-radius:50%;z-index:0;
-  background:radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(231,232,237,0) 70%);
+  background:radial-gradient(circle, rgba(140,51,88,0.55) 0%, rgba(140,51,88,0) 70%);
   pointer-events:none;
 }
 
@@ -707,13 +715,13 @@ footer.app-footer{
 .login-head .brand-logo{width:46px;height:46px;margin:0 auto 14px;display:block;border-radius:14px;}
 .login-head .brand-logo-fallback{
   width:46px;height:46px;margin:0 auto 14px;font-size:18px;border-radius:14px;
-  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;
+  display:flex;align-items:center;justify-content:center;color:var(--neu-btn-text);font-weight:800;
   background:var(--neu-accent);
 }
-.login-head h1{margin:0;font-size:30px;font-weight:800;letter-spacing:-0.01em;color:var(--neu-text);}
+.login-head h1{margin:0;font-size:30px;font-weight:800;letter-spacing:-0.01em;color:var(--neu-heading);}
 .login-head p{margin:8px 0 0;font-size:13px;color:var(--neu-text-soft);font-weight:500;}
 .login-body{padding-top:28px;}
-.login-error{background:#FBE7EA;color:var(--neu-accent);border-radius:14px;padding:11px 14px;font-size:12.5px;font-weight:600;margin-bottom:16px;display:none;}
+.login-error{background:rgba(8,1,4,0.35);color:var(--neu-accent);border-radius:14px;padding:11px 14px;font-size:12.5px;font-weight:600;margin-bottom:16px;display:none;}
 .login-error.show{display:block;animation:fadein var(--dur-base) var(--ease-out);}
 .login-footer-note{text-align:center;font-size:11.5px;color:var(--neu-text-soft);margin-top:24px;line-height:1.6;}
 .neu-link{color:var(--neu-accent);font-weight:600;}
@@ -727,7 +735,7 @@ footer.app-footer{
 .login-body .neu-input{
   display:flex;align-items:center;gap:10px;
   background:var(--neu-surface);border-radius:99px;padding:0 18px;height:50px;
-  box-shadow:inset 5px 5px 10px var(--neu-dark), inset -5px -5px 10px var(--neu-light);
+  box-shadow:inset 0 3px 7px var(--neu-dark), inset 0 -3px 7px var(--neu-light);
   transition:box-shadow .2s ease;
 }
 .login-body .neu-input svg{flex-shrink:0;color:var(--neu-text-soft);transition:color .2s ease;}
@@ -735,8 +743,8 @@ footer.app-footer{
   flex:1;border:none;background:transparent;outline:none;
   font-family:var(--neu-font);font-size:14px;color:var(--neu-text);height:100%;padding:0;
 }
-.login-body .neu-input input::placeholder{color:#AEB1B8;}
-.login-body .neu-input:focus-within{box-shadow:inset 4px 4px 8px var(--neu-dark), inset -4px -4px 8px var(--neu-light), 0 0 0 1.5px var(--neu-accent);}
+.login-body .neu-input input::placeholder{color:rgba(243,226,217,0.4);}
+.login-body .neu-input:focus-within{box-shadow:inset 0 2px 5px var(--neu-dark), inset 0 -2px 5px var(--neu-light), 0 0 0 1.5px var(--neu-accent);}
 .login-body .neu-input:focus-within svg{color:var(--neu-accent);}
 
 /* Chrome/Edge pintan su propio fondo (azul/amarillo) encima del input
@@ -781,27 +789,27 @@ footer.app-footer{
 .neu-toggle input{position:absolute;opacity:0;width:0;height:0;}
 .neu-toggle-track{
   width:34px;height:19px;border-radius:99px;background:var(--neu-surface);position:relative;flex-shrink:0;
-  box-shadow:inset 3px 3px 6px var(--neu-dark), inset -3px -3px 6px var(--neu-light);
+  box-shadow:inset 0 2px 4px var(--neu-dark), inset 0 -2px 4px var(--neu-light);
   transition:background .2s ease;
 }
 .neu-toggle-thumb{
   position:absolute;top:2.5px;left:2.5px;width:14px;height:14px;border-radius:50%;
-  background:#fff;box-shadow:1px 1px 3px rgba(0,0,0,0.25);transition:transform .2s ease;
+  background:var(--neu-text);box-shadow:1px 1px 3px rgba(0,0,0,0.35);transition:transform .2s ease;
 }
 .neu-toggle input:checked + .neu-toggle-track{background:var(--neu-accent-soft);}
-.neu-toggle input:checked + .neu-toggle-track .neu-toggle-thumb{transform:translateX(15px);}
+.neu-toggle input:checked + .neu-toggle-track .neu-toggle-thumb{transform:translateX(15px);background:var(--neu-btn-text);}
 .neu-toggle-label{font-size:12.5px;color:var(--neu-text-soft);font-weight:500;}
 
 .neu-btn{
   width:100%;height:52px;border:none;border-radius:99px;cursor:pointer;
-  background:var(--neu-surface);color:var(--neu-text);font-family:var(--neu-font);
+  background:linear-gradient(135deg,var(--gold-500),var(--gold-600));color:var(--neu-btn-text);font-family:var(--neu-font);
   font-size:13px;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;
   box-shadow:8px 8px 16px var(--neu-dark), -8px -8px 16px var(--neu-light);
-  transition:box-shadow .15s ease, transform .15s ease, color .15s ease;
+  transition:box-shadow .15s ease, transform .15s ease, filter .15s ease;
 }
-.neu-btn:hover{color:var(--neu-accent);}
+.neu-btn:hover{filter:brightness(1.06);}
 .neu-btn:active{
-  box-shadow:inset 5px 5px 10px var(--neu-dark), inset -5px -5px 10px var(--neu-light);
+  box-shadow:inset 0 3px 6px rgba(0,0,0,0.35);
   transform:translateY(1px);
 }
 .neu-btn:disabled{opacity:.6;cursor:not-allowed;}
@@ -812,7 +820,7 @@ footer.app-footer{
    la app. */
 .wake-overlay{
   position:fixed;inset:0;z-index:3000;display:none;align-items:center;justify-content:center;
-  padding:18px;background:rgba(58,58,62,0.35);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+  padding:18px;background:rgba(8,1,4,0.5);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
 }
 .wake-overlay.show{display:flex;}
 .wake-card{
@@ -828,9 +836,9 @@ footer.app-footer{
   animation:wakeSpin 0.75s linear infinite;
 }
 @keyframes wakeSpin{to{transform:rotate(360deg);}}
-.wake-card h2{margin:0 0 8px;font-size:18px;font-weight:800;color:var(--neu-text);}
+.wake-card h2{margin:0 0 8px;font-size:18px;font-weight:800;color:var(--neu-heading);}
 .wake-card p{margin:0 0 18px;font-size:12px;color:var(--neu-text-soft);line-height:1.5;}
-.wake-bar-track{height:9px;border-radius:99px;background:var(--neu-surface);box-shadow:inset 3px 3px 6px var(--neu-dark), inset -3px -3px 6px var(--neu-light);overflow:hidden;margin-bottom:10px;}
+.wake-bar-track{height:9px;border-radius:99px;background:var(--neu-surface);box-shadow:inset 0 2px 4px var(--neu-dark), inset 0 -2px 4px var(--neu-light);overflow:hidden;margin-bottom:10px;}
 .wake-bar-fill{height:100%;width:0%;border-radius:99px;background:var(--neu-accent);transition:width 1s linear;}
 .wake-countdown{font-size:12px;font-weight:700;color:var(--neu-accent);letter-spacing:0.3px;}
 
