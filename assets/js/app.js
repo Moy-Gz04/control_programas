@@ -49,6 +49,44 @@ function esc(str){
     .replace(/'/g,'&#39;');
 }
 
+/* ---------- "VER DOCUMENTO" + "ELIMINAR DOCUMENTO" ----------
+   Cualquier documento cargado (Monto Autorizado, Modificación, Solicitud a
+   Hacienda, Autorización, Archivo de Asignación, Dispersión, Acta de
+   Dictamen) se muestra con este mismo par de botones: "Ver Documento" y un
+   botón de eliminar (icon-btn) al lado. `delPath` es la ruta completa que se
+   manda a Api.del() para limpiar SOLO ese documento (nunca borra el
+   registro al que pertenece — folio/monto/fecha/estatus quedan intactos).
+   Se resuelve con un único data-del-doc delegado en bindDocDeleteButtons(). */
+function docLinkRowHTML(url, delPath, label){
+  if(!url) return '';
+  return `<div class="doc-link-row">
+    <a class="btn-ver-documento" href="${url}" target="_blank" rel="noopener">${label || 'Ver Documento'}</a>
+    <button type="button" class="icon-btn" data-del-doc="${delPath}" title="Eliminar documento">✕</button>
+  </div>`;
+}
+
+async function handleEliminarDocumento(pid, path, btn){
+  const ok = await confirmAction({
+    title: 'Eliminar Documento',
+    message: '¿Eliminar este documento? Esta acción no se puede deshacer. El registro al que pertenece (folio, monto, fecha, etc.) no se ve afectado.',
+    confirmText: 'Sí, Eliminar',
+  });
+  if(!ok) return;
+  await withLoading(btn, ()=>safeCall(()=>Api.del(path), 'Documento eliminado.'), 'Eliminando…');
+  await refreshOneProgram(pid); renderDetalle(pid);
+}
+
+// Delegación única para todos los botones "Eliminar Documento" del detalle
+// del programa (monto autorizado, modificaciones, hacienda, autorización,
+// asignación, dispersión y acta de dictamen quedan cubiertos con esto,
+// porque data-del-doc se usa en todos por igual, sin importar en qué
+// bloque/sub-componente esté anidado el botón).
+function bindDocDeleteButtons(el, pid){
+  el.querySelectorAll('[data-del-doc]').forEach(btn=>{
+    btn.addEventListener('click', ()=> handleEliminarDocumento(pid, btn.dataset.delDoc, btn));
+  });
+}
+
 /* ---------- CAMPOS NUMÉRICOS CON SEPARADOR DE MILES EN VIVO ----------
    Un <input type="number"> nativo no admite comas, así que estos campos
    (montos y cantidades) se escriben como texto y se les agrega separador
@@ -730,7 +768,7 @@ async function renderDetalle(id){
             <span>Referencia ${p.monto_autorizado_referencia} · ${fmtDate(p.monto_autorizado_fecha)}</span>
           </div>
         </div>
-        ${p.monto_autorizado_documento_url ? `<div class="doc-link-row"><a class="btn-ver-documento" href="${p.monto_autorizado_documento_url}" target="_blank" rel="noopener">Ver Documento</a></div>` : ''}
+        ${docLinkRowHTML(p.monto_autorizado_documento_url, `/programs/${p.id}/monto-autorizado/documento`)}
         <hr class="divider">
         <div class="log-list">
           ${(p.modificaciones||[]).length ? p.modificaciones.map(m=>`
@@ -743,7 +781,7 @@ async function renderDetalle(id){
                 </div>
                 <div class="lamount ${m.tipo==='Ampliación'?'pos':'neg'}">${m.tipo==='Ampliación'?'+':'−'} ${fmtMoney(m.monto)}</div>
               </div>
-              ${m.documento_url ? `<div class="doc-link-row"><a class="btn-ver-documento" href="${m.documento_url}" target="_blank" rel="noopener">Ver Documento</a></div>` : ''}
+              ${docLinkRowHTML(m.documento_url, `/programs/${p.id}/modificaciones/${m.id}/documento`)}
             </div>`).join('') : `<div class="empty-state">Sin modificaciones registradas.</div>`}
         </div>
         <div style="text-align:center;margin-top:14px;">
@@ -799,6 +837,7 @@ async function renderDetalle(id){
 
   bindCollapsibleSections(el);
   bindNumberInputs(el);
+  bindDocDeleteButtons(el, p.id);
 
   el.querySelectorAll('[data-autorizar-hacienda]').forEach(btn=>{
     btn.addEventListener('click', ()=> openModalAutorizacion(p.id, btn.dataset.autorizarHacienda));
@@ -966,7 +1005,7 @@ function pagoRowHTML(p, g){
               </div>
               <div class="lamount pos">${fmtMoney(g.monto)}</div>
             </div>
-            ${g.documento_url ? `<div class="doc-link-row"><a class="btn-ver-documento" href="${g.documento_url}" target="_blank" rel="noopener">Ver Documento</a></div>` : ''}
+            ${docLinkRowHTML(g.documento_url, `/programs/${p.id}/pagos/${g.id}/documento`)}
           </div>`;
 }
 
@@ -1010,7 +1049,7 @@ function haciendaItemHTML(h, p){
         <span class="badge-pill ${badge.cls}">${badge.label}</span>
       </div>
     </div>
-    ${h.documento_url ? `<div class="doc-link-row"><a class="btn-ver-documento" href="${h.documento_url}" target="_blank" rel="noopener">Ver Documento</a></div>` : ''}
+    ${docLinkRowHTML(h.documento_url, `/programs/${p.id}/hacienda/${h.id}/documento`)}
 
     ${h.autorizacion ? `
       <div class="hacienda-stage">
@@ -1019,7 +1058,7 @@ function haciendaItemHTML(h, p){
           <div class="hacienda-stage-amount">${fmtMoney(h.autorizacion.monto_autorizado)}</div>
           <div class="lmeta">${fmtDate(h.autorizacion.fecha_autorizacion)}</div>
         </div>
-        ${h.autorizacion.documento_url ? `<div class="doc-link-row"><a class="btn-ver-documento" href="${h.autorizacion.documento_url}" target="_blank" rel="noopener">Ver Documento</a></div>` : ''}
+        ${docLinkRowHTML(h.autorizacion.documento_url, `/programs/${p.id}/hacienda/${h.id}/autorizacion/documento`)}
       </div>
     ` : `
       <div class="hacienda-stage hacienda-stage-empty">
@@ -1050,7 +1089,13 @@ function asignacionBlockHTML(h){
       <button class="btn btn-outline btn-sm" data-asig-upload="${hid}">Cargar Archivo de Asignación</button>
     </div>`;
   }
-  const cargaInfo = `<div class="lmeta-doc-row"><span class="lmeta">Cargado: ${fmtDate(a.fecha_carga)}</span>${a.documento_url? `<a class="btn-ver-documento" href="${a.documento_url}" target="_blank" rel="noopener">Ver Documento</a>`:''}</div>`;
+  const cargaInfo = `<div class="lmeta-doc-row">
+    <span class="lmeta">Cargado: ${fmtDate(a.fecha_carga)}</span>
+    ${a.documento_url ? `<span class="doc-link-inline">
+      <a class="btn-ver-documento" href="${a.documento_url}" target="_blank" rel="noopener">Ver Documento</a>
+      <button type="button" class="icon-btn" data-del-doc="/programs/${h.programa_id}/hacienda/${hid}/asignacion/documento" title="Eliminar documento">✕</button>
+    </span>` : ''}
+  </div>`;
 
   if(a.estatus==='revision'){
     return `
@@ -1156,7 +1201,8 @@ function dictamenBlockHTML(p,d){
         <div class="chip" data-dic-chip="${d.id}">${fmtMoney(d.monto_autorizado)} autorizados</div>
         <input type="file" id="acta-input-${d.id}" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" hidden>
         <button class="btn btn-outline btn-sm" data-upload-acta="${d.id}" ${esNuevo?'disabled title="Guarda el dictamen antes de cargar el acta"':''}>${d.acta_documento_url? 'Reemplazar Acta Firmada':'Cargar Acta Firmada de Dictamen'}</button>
-        ${d.acta_documento_url ? `<a class="btn-ver-documento" href="${d.acta_documento_url}" target="_blank" rel="noopener">Ver Acta</a>` : ''}
+        ${d.acta_documento_url ? `<a class="btn-ver-documento" href="${d.acta_documento_url}" target="_blank" rel="noopener">Ver Acta</a>
+        <button type="button" class="icon-btn" data-del-doc="/programs/${p.id}/dictamenes/${d.id}/acta" title="Eliminar Acta Firmada">✕</button>` : ''}
         <button class="btn btn-danger btn-sm" data-del-dictamen="${d.id}">Eliminar Dictamen</button>
       </div>
     </div>

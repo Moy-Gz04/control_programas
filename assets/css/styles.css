@@ -447,7 +447,7 @@ textarea:focus-visible,
    .doc-link-row: el botón en su propia línea, alineado a la derecha —
    patrón por defecto para todo elemento que sea hijo directo de un
    contenedor de ancho completo (hacienda-item, card, log-row-body). */
-.doc-link-row{display:flex;justify-content:flex-end;margin-top:6px;}
+.doc-link-row{display:flex;justify-content:flex-end;align-items:center;gap:6px;margin-top:6px;}
 /* .lmeta-doc-row: variante con el texto de metadatos y el botón en la
    MISMA línea (space-between) — solo se usa cuando ese texto+botón ya son
    hijos directos del contenedor de ancho completo (ej. dentro de
@@ -455,6 +455,11 @@ textarea:focus-visible,
    modo que el botón también cae sobre el mismo borde derecho que los demás. */
 .lmeta-doc-row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
 .lmeta-doc-row .lmeta{margin:0;}
+/* Agrupa "Ver Documento" + el botón de eliminar como un solo bloque dentro
+   de .lmeta-doc-row, para que space-between siga viendo solo 2 hijos
+   (el texto de metadatos y este grupo) en vez de desalinear el botón de
+   eliminar hacia una tercera posición. */
+.doc-link-inline{display:flex;align-items:center;gap:6px;}
 /* Clases retenidas por compatibilidad (ya no las usa app.js, pero no se
    eliminan por si algún estilo inline externo las sigue referenciando). */
 .meta-with-doc{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}

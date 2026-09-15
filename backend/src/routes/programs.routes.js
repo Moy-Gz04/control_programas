@@ -311,6 +311,27 @@ router.post('/:id/monto-autorizado', upload.single('documento'), async (req, res
   }
 });
 
+// Elimina (limpia) el documento del Monto Autorizado inicial, sin tocar el
+// monto/referencia/fecha ya capturados. No borra el archivo de Google Drive
+// (no se persiste el id de Drive, solo la URL) — únicamente limpia las
+// columnas para que el frontend deje de mostrar "Ver Documento".
+router.delete('/:id/monto-autorizado/documento', async (req, res) => {
+  try {
+    const programa = await getPrograma(req.params.id);
+    if (!programa) return res.status(404).json({ error: 'Programa no encontrado.' });
+
+    await db.query(
+      `UPDATE programas SET monto_autorizado_documento_url = NULL, monto_autorizado_documento_nombre = NULL
+       WHERE id = $1`,
+      [req.params.id]
+    );
+    res.json(await getProgramaCompleto(req.params.id));
+  } catch (err) {
+    console.error('[programs/monto-autorizado/documento/delete]', err);
+    res.status(500).json({ error: 'Error al eliminar el documento.' });
+  }
+});
+
 router.post('/:id/modificaciones', upload.single('documento'), async (req, res) => {
   const { tipo, monto, motivo } = req.body || {};
   if (!['Ampliación', 'Reducción'].includes(tipo) || !monto || Number(monto) <= 0) {
@@ -342,6 +363,27 @@ router.post('/:id/modificaciones', upload.single('documento'), async (req, res) 
   } catch (err) {
     console.error('[programs/modificaciones]', err);
     res.status(500).json({ error: 'Error al registrar la modificación.' });
+  }
+});
+
+// Elimina (limpia) el documento de una Modificación ya registrada, sin
+// borrar la modificación en sí (tipo/monto/motivo quedan intactos).
+router.delete('/:id/modificaciones/:modId/documento', async (req, res) => {
+  try {
+    const programa = await getPrograma(req.params.id);
+    if (!programa) return res.status(404).json({ error: 'Programa no encontrado.' });
+
+    const { rows } = await db.query(
+      `UPDATE modificaciones SET documento_url = NULL, documento_nombre = NULL
+       WHERE id = $1 AND programa_id = $2 RETURNING id`,
+      [req.params.modId, req.params.id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Modificación no encontrada.' });
+
+    res.json(await getProgramaCompleto(req.params.id));
+  } catch (err) {
+    console.error('[programs/modificaciones/documento/delete]', err);
+    res.status(500).json({ error: 'Error al eliminar el documento.' });
   }
 });
 
@@ -450,6 +492,26 @@ router.post('/:id/dictamenes/:dicId/acta', upload.single('documento'), async (re
   } catch (err) {
     console.error('[programs/dictamenes/acta]', err);
     res.status(500).json({ error: 'Error al cargar el Acta Firmada de Dictamen.' });
+  }
+});
+
+// Elimina (limpia) el Acta Firmada de Dictamen, sin borrar el dictamen.
+router.delete('/:id/dictamenes/:dicId/acta', async (req, res) => {
+  try {
+    const programa = await getPrograma(req.params.id);
+    if (!programa) return res.status(404).json({ error: 'Programa no encontrado.' });
+
+    const { rows } = await db.query(
+      `UPDATE dictamenes SET acta_documento_url = NULL, acta_documento_nombre = NULL, acta_fecha_carga = NULL
+       WHERE id = $1 AND programa_id = $2 RETURNING id`,
+      [req.params.dicId, req.params.id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Dictamen no encontrado.' });
+
+    res.json(await getProgramaCompleto(req.params.id));
+  } catch (err) {
+    console.error('[programs/dictamenes/acta/delete]', err);
+    res.status(500).json({ error: 'Error al eliminar el documento.' });
   }
 });
 
@@ -583,6 +645,27 @@ router.post('/:id/hacienda', upload.single('documento'), async (req, res) => {
   }
 });
 
+// Elimina (limpia) el documento de una Solicitud a Hacienda, sin borrar la
+// solicitud en sí (folio/monto/fecha quedan intactos).
+router.delete('/:id/hacienda/:hacId/documento', async (req, res) => {
+  try {
+    const programa = await getPrograma(req.params.id);
+    if (!programa) return res.status(404).json({ error: 'Programa no encontrado.' });
+
+    const { rows } = await db.query(
+      `UPDATE solicitudes_hacienda SET documento_url = NULL, documento_nombre = NULL
+       WHERE id = $1 AND programa_id = $2 RETURNING id`,
+      [req.params.hacId, req.params.id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Solicitud a Hacienda no encontrada.' });
+
+    res.json(await getProgramaCompleto(req.params.id));
+  } catch (err) {
+    console.error('[programs/hacienda/documento/delete]', err);
+    res.status(500).json({ error: 'Error al eliminar el documento.' });
+  }
+});
+
 // Autorizado por Hacienda (antes "Autorización de Hacienda"): registra que
 // una solicitud ya enviada fue autorizada (monto, fecha/hora y documento
 // propios). Relación 1 a 1 con solicitudes_hacienda — una vez autorizada, la
@@ -633,6 +716,33 @@ router.post('/:id/hacienda/:hacId/autorizacion', upload.single('documento'), asy
   } catch (err) {
     console.error('[programs/hacienda/autorizacion]', err);
     res.status(500).json({ error: 'Error al registrar la autorización de Hacienda.' });
+  }
+});
+
+// Elimina (limpia) el documento de la Autorización de Hacienda, sin borrar
+// el registro de autorización en sí (monto/fecha quedan intactos).
+router.delete('/:id/hacienda/:hacId/autorizacion/documento', async (req, res) => {
+  try {
+    const programa = await getPrograma(req.params.id);
+    if (!programa) return res.status(404).json({ error: 'Programa no encontrado.' });
+
+    const { rows: hacRows } = await db.query(
+      'SELECT id FROM solicitudes_hacienda WHERE id = $1 AND programa_id = $2',
+      [req.params.hacId, req.params.id]
+    );
+    if (!hacRows[0]) return res.status(404).json({ error: 'Solicitud a Hacienda no encontrada.' });
+
+    const { rows } = await db.query(
+      `UPDATE autorizaciones_hacienda SET documento_url = NULL, documento_nombre = NULL
+       WHERE hacienda_id = $1 RETURNING id`,
+      [req.params.hacId]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Esta solicitud aún no tiene Autorización de Hacienda registrada.' });
+
+    res.json(await getProgramaCompleto(req.params.id));
+  } catch (err) {
+    console.error('[programs/hacienda/autorizacion/documento/delete]', err);
+    res.status(500).json({ error: 'Error al eliminar el documento.' });
   }
 });
 
@@ -769,6 +879,33 @@ router.patch('/:id/hacienda/:hacId/asignacion/incorrecto', async (req, res) => {
   }
 });
 
+// Elimina (limpia) el Archivo de Asignación vigente, sin borrar el registro
+// (estatus/folio/motivo_rechazo quedan intactos, solo se quita el archivo).
+router.delete('/:id/hacienda/:hacId/asignacion/documento', async (req, res) => {
+  try {
+    const programa = await getPrograma(req.params.id);
+    if (!programa) return res.status(404).json({ error: 'Programa no encontrado.' });
+
+    const { rows: hacRows } = await db.query(
+      'SELECT id FROM solicitudes_hacienda WHERE id = $1 AND programa_id = $2',
+      [req.params.hacId, req.params.id]
+    );
+    if (!hacRows[0]) return res.status(404).json({ error: 'Solicitud a Hacienda no encontrada.' });
+
+    const { rows } = await db.query(
+      `UPDATE archivos_asignacion SET documento_url = NULL, documento_nombre = NULL, updated_at = now()
+       WHERE hacienda_id = $1 RETURNING id`,
+      [req.params.hacId]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Esta solicitud aún no tiene Archivo de Asignación cargado.' });
+
+    res.json(await getProgramaCompleto(req.params.id));
+  } catch (err) {
+    console.error('[programs/hacienda/asignacion/documento/delete]', err);
+    res.status(500).json({ error: 'Error al eliminar el documento.' });
+  }
+});
+
 router.post('/:id/pagos', upload.single('documento'), async (req, res) => {
   const { folio, monto, hacienda_id } = req.body || {};
   if (!monto || Number(monto) <= 0) return res.status(400).json({ error: 'El monto es obligatorio.' });
@@ -828,6 +965,27 @@ router.post('/:id/pagos', upload.single('documento'), async (req, res) => {
   } catch (err) {
     console.error('[programs/pagos]', err);
     res.status(500).json({ error: 'Error al registrar el pago.' });
+  }
+});
+
+// Elimina (limpia) el documento de un Pago/Dispersión, sin borrar el pago
+// en sí (folio/monto/fecha quedan intactos).
+router.delete('/:id/pagos/:pagoId/documento', async (req, res) => {
+  try {
+    const programa = await getPrograma(req.params.id);
+    if (!programa) return res.status(404).json({ error: 'Programa no encontrado.' });
+
+    const { rows } = await db.query(
+      `UPDATE pagos SET documento_url = NULL, documento_nombre = NULL
+       WHERE id = $1 AND programa_id = $2 RETURNING id`,
+      [req.params.pagoId, req.params.id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Pago no encontrado.' });
+
+    res.json(await getProgramaCompleto(req.params.id));
+  } catch (err) {
+    console.error('[programs/pagos/documento/delete]', err);
+    res.status(500).json({ error: 'Error al eliminar el documento.' });
   }
 });
 
