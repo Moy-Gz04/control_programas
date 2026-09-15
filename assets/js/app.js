@@ -721,17 +721,14 @@ async function renderDetalle(id){
     ${pipelinePresupuestoHTML(p)}
 
     <div class="section-title"><h2>Monto Autorizado y Modificaciones</h2></div>
-    <div class="card">
+    <div class="card accent" style="--accent:var(--gold-500)">
       ${p.monto_autorizado!==null ? `
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-          <div>
-            <div class="kpi-label">Monto Autorizado inicial</div>
-            <div class="kpi-value">${fmtMoney(autorizadoBase)}</div>
-            <div class="kpi-sub">
-              <span>Referencia ${p.monto_autorizado_referencia} · ${fmtDate(p.monto_autorizado_fecha)}</span>
-            </div>
+        <div>
+          <div class="kpi-label">Monto Autorizado inicial</div>
+          <div class="kpi-value">${fmtMoney(autorizadoBase)}</div>
+          <div class="kpi-sub">
+            <span>Referencia ${p.monto_autorizado_referencia} · ${fmtDate(p.monto_autorizado_fecha)}</span>
           </div>
-          <button class="btn btn-outline btn-sm" id="btnAddModificacion">+ Registrar Modificación</button>
         </div>
         ${p.monto_autorizado_documento_url ? `<div class="doc-link-row"><a class="btn-ver-documento" href="${p.monto_autorizado_documento_url}" target="_blank" rel="noopener">Ver Documento</a></div>` : ''}
         <hr class="divider">
@@ -748,6 +745,9 @@ async function renderDetalle(id){
               </div>
               ${m.documento_url ? `<div class="doc-link-row"><a class="btn-ver-documento" href="${m.documento_url}" target="_blank" rel="noopener">Ver Documento</a></div>` : ''}
             </div>`).join('') : `<div class="empty-state">Sin modificaciones registradas.</div>`}
+        </div>
+        <div style="text-align:center;margin-top:14px;">
+          <button class="btn btn-primary btn-sm" id="btnAddModificacion">+ Registrar Modificación</button>
         </div>
       ` : `
         <div class="empty-state" style="padding:10px 10px 16px;">Este programa aún no tiene Monto Autorizado cargado.</div>
