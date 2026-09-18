@@ -856,8 +856,8 @@ router.post('/:id/hacienda/:hacId/asignacion', upload.single('documento'), async
       [req.params.hacId]
     );
     const existente = asigRows[0] || null;
-    if (existente && existente.estatus !== 'incorrecto') {
-      return res.status(409).json({ error: 'Ya existe un Archivo de Asignación para esta solicitud. Solo puede reemplazarse cuando está marcado como incorrecto.' });
+    if (existente && existente.estatus === 'correcto') {
+      return res.status(409).json({ error: 'Esta solicitud ya tiene un folio de asignación registrado. Elimina el documento actual antes de cargar uno nuevo.' });
     }
 
     let documentoUrl, documentoNombre;
@@ -893,8 +893,11 @@ router.post('/:id/hacienda/:hacId/asignacion', upload.single('documento'), async
   }
 });
 
-// Marca el Archivo de Asignación vigente como correcto: registra el folio
-// proporcionado que avala que ya fue aceptado.
+// Registrar Folio: guarda el folio que avala que la asignación ya fue
+// aceptada, y marca el Archivo de Asignación vigente como correcto. Ya no
+// existe un flujo de "marcar incorrecto" — para reemplazar el documento
+// mientras no tenga folio, se usa el mismo POST de arriba ("Nuevo
+// documento" en el frontend).
 router.patch('/:id/hacienda/:hacId/asignacion/correcto', async (req, res) => {
   const folio = (req.body?.folio || '').toString().trim();
   if (!folio) return res.status(400).json({ error: 'El folio proporcionado es obligatorio.' });
@@ -926,42 +929,10 @@ router.patch('/:id/hacienda/:hacId/asignacion/correcto', async (req, res) => {
   }
 });
 
-// Marca el Archivo de Asignación vigente como incorrecto: registra el
-// motivo del rechazo. Queda a la espera de que se cargue un nuevo
-// documento (POST .../asignacion), lo que regresa el estatus a 'revision'.
-router.patch('/:id/hacienda/:hacId/asignacion/incorrecto', async (req, res) => {
-  const motivo = (req.body?.motivo || '').toString().trim();
-  if (!motivo) return res.status(400).json({ error: 'El motivo es obligatorio.' });
-  try {
-    const programa = await getPrograma(req.params.id);
-    if (!programa) return res.status(404).json({ error: 'Programa no encontrado.' });
-
-    const { rows: hacRows } = await db.query(
-      'SELECT id FROM solicitudes_hacienda WHERE id = $1 AND programa_id = $2',
-      [req.params.hacId, req.params.id]
-    );
-    if (!hacRows[0]) return res.status(404).json({ error: 'Solicitud a Hacienda no encontrada.' });
-
-    const { rows: asigRows } = await db.query('SELECT * FROM archivos_asignacion WHERE hacienda_id = $1', [req.params.hacId]);
-    if (!asigRows[0]) return res.status(404).json({ error: 'Esta solicitud aún no tiene Archivo de Asignación cargado.' });
-    if (asigRows[0].estatus !== 'revision') {
-      return res.status(409).json({ error: 'El Archivo de Asignación ya fue revisado.' });
-    }
-
-    await db.query(
-      `UPDATE archivos_asignacion SET estatus = 'incorrecto', motivo_rechazo = $1, fecha_revision = now(), updated_at = now()
-       WHERE id = $2`,
-      [motivo, asigRows[0].id]
-    );
-    res.json(await getProgramaCompleto(req.params.id));
-  } catch (err) {
-    console.error('[programs/hacienda/asignacion/incorrecto]', err);
-    res.status(500).json({ error: 'Error al marcar el Archivo de Asignación como incorrecto.' });
-  }
-});
-
-// Elimina (limpia) el Archivo de Asignación vigente, sin borrar el registro
-// (estatus/folio/motivo_rechazo quedan intactos, solo se quita el archivo).
+// Elimina el Archivo de Asignación vigente COMPLETO (documento, estatus y
+// folio, si lo tenía) — se borra el registro entero, no solo el archivo,
+// porque un folio sin documento que lo respalde no tiene sentido. Esto
+// regresa la columna a su estado vacío ("Cargar Archivo de Asignación").
 router.delete('/:id/hacienda/:hacId/asignacion/documento', async (req, res) => {
   try {
     const programa = await getPrograma(req.params.id);
@@ -974,8 +945,7 @@ router.delete('/:id/hacienda/:hacId/asignacion/documento', async (req, res) => {
     if (!hacRows[0]) return res.status(404).json({ error: 'Solicitud a Hacienda no encontrada.' });
 
     const { rows } = await db.query(
-      `UPDATE archivos_asignacion SET documento_url = NULL, documento_nombre = NULL, updated_at = now()
-       WHERE hacienda_id = $1 RETURNING id`,
+      'DELETE FROM archivos_asignacion WHERE hacienda_id = $1 RETURNING id',
       [req.params.hacId]
     );
     if (!rows[0]) return res.status(404).json({ error: 'Esta solicitud aún no tiene Archivo de Asignación cargado.' });

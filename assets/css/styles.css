@@ -945,32 +945,51 @@ footer.app-footer{
 .hacienda-columns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;align-items:start;}
 @media (max-width:900px){.hacienda-columns{grid-template-columns:1fr;}}
 
-.hacienda-item-eyebrow{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-tertiary);margin-bottom:2px;}
-.hacienda-item-title{font-weight:800;font-size:15px;color:var(--text-primary);letter-spacing:-0.1px;}
+.hacienda-item-eyebrow{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-on-brand);opacity:0.7;margin-bottom:2px;}
+.hacienda-item-title{font-weight:800;font-size:15px;color:#fff;letter-spacing:-0.1px;}
 .hacienda-item-amount{display:flex;flex-direction:column;align-items:flex-start;gap:7px;margin-top:10px;}
-.hacienda-item-monto{font-size:17px;font-weight:800;color:var(--maroon-800);letter-spacing:-0.2px;}
+.hacienda-item-monto{font-size:17px;font-weight:800;color:#fff;letter-spacing:-0.2px;}
 .hacienda-item-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
 
-/* Cada columna vive en su propia caja con fondo distinguible, en vez de
-   texto corrido con un simple borde punteado arriba. */
+/* Cada columna es su propia caja con fondo guinda sólido (mismo
+   tratamiento que .dictamen-block / .kpi-card-brand), en vez de una caja
+   clara — un Dictamen o un trámite de Hacienda son igual de "de marca". */
 .hacienda-stage{
   padding:14px 14px 16px;border-radius:var(--radius-sm);
-  background:var(--surface-2);border:1px solid var(--border-hairline);
+  background:linear-gradient(150deg,var(--maroon-700),var(--maroon-900));
+  border:1px solid rgba(255,255,255,0.08);color:var(--text-on-brand);
   display:flex;flex-direction:column;height:100%;
 }
-.hacienda-stage-empty{background:var(--surface-1);border-style:dashed;align-items:flex-start;}
-.hacienda-stage-blocked{opacity:0.6;}
+.hacienda-stage-empty{border-style:dashed;border-color:rgba(255,255,255,0.3);align-items:flex-start;}
+.hacienda-stage-blocked{opacity:0.55;}
 .hacienda-stage-label{
-  font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--maroon-700);
+  font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--gold-500);
   display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;
 }
 /* Frase corta bajo la etiqueta de una columna vacía/bloqueada, para que
    quede claro qué hace falta o qué pasa al presionar el botón — en vez de
    dejar solo un botón suelto sin ningún contexto. */
-.hacienda-stage-hint{font-size:12px;color:var(--text-secondary);line-height:1.5;margin-bottom:10px;}
+.hacienda-stage-hint{font-size:12px;color:var(--text-on-brand);opacity:0.75;line-height:1.5;margin-bottom:10px;}
 .hacienda-stage-body{display:flex;flex-direction:column;align-items:flex-start;gap:4px;}
-.hacienda-stage-amount{font-size:14px;font-weight:800;color:var(--text-primary);}
+.hacienda-stage-amount{font-size:14px;font-weight:800;color:#fff;}
+.hacienda-stage .lmeta{color:var(--text-on-brand);opacity:0.75;}
 .hacienda-stage .doc-link-row{margin-top:8px;}
+.hacienda-stage .btn-outline{background:transparent;border-color:rgba(255,255,255,0.4);color:#fff;}
+.hacienda-stage .btn-outline:hover{background:rgba(255,255,255,0.12);}
+
+/* Chip de "ver documento": ícono de archivo (abre en pestaña nueva) + ✕
+   para eliminarlo, en vez de un botón de texto "Ver Documento". */
+.doc-chip{display:inline-flex;align-items:center;gap:8px;}
+.doc-chip-icon{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:32px;height:32px;border-radius:var(--radius-sm);
+  background:rgba(255,255,255,0.14);color:#fff;
+  transition:background var(--dur-base) var(--ease-standard), transform var(--dur-fast) var(--ease-standard);
+}
+.doc-chip-icon:hover{background:rgba(255,255,255,0.24);}
+.doc-chip-icon:active{transform:scale(0.94);}
+.hacienda-stage .icon-btn{color:#ffb4bd;}
+.hacienda-stage .icon-btn:hover{background:rgba(255,255,255,0.14);}
 .badge-pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:var(--radius-pill);font-size:10px;font-weight:700;letter-spacing:0.2px;}
 .badge-pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0;}
 .badge-pendiente{background:#FBEFD8;color:#8A6512;}

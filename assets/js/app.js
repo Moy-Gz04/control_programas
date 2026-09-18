@@ -80,9 +80,16 @@ function docLinkRowHTML(url, delPath, label){
 }
 
 async function handleEliminarDocumento(pid, path, btn){
+  // El Archivo de Asignación es el único caso donde eliminar el documento
+  // también borra el folio registrado (no tiene sentido un folio sin el
+  // documento que lo respalda) — el resto de los documentos del sistema
+  // no afectan ningún otro dato al eliminarse.
+  const esAsignacion = path.includes('/asignacion/documento');
   const ok = await confirmAction({
     title: 'Eliminar Documento',
-    message: '¿Eliminar este documento? Esta acción no se puede deshacer. El registro al que pertenece (folio, monto, fecha, etc.) no se ve afectado.',
+    message: esAsignacion
+      ? '¿Eliminar este Archivo de Asignación? Esta acción no se puede deshacer. Si ya tenía un folio registrado, también se eliminará.'
+      : '¿Eliminar este documento? Esta acción no se puede deshacer. El registro al que pertenece (folio, monto, fecha, etc.) no se ve afectado.',
     confirmText: 'Sí, Eliminar',
   });
   if(!ok) return;
@@ -313,6 +320,22 @@ function bindCollapsibleSections(root){
    (oculto) dentro de la zona, así que el resto del código que lee
    `document.getElementById(id).files[0]` sigue funcionando sin cambios. */
 const DROPZONE_UPLOAD_ICON_SVG = `<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2.5H7a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5z"/><path d="M14 2.5v6h6"/><path d="M12 18.5v-6.5"/><path d="M9.2 14.5 12 11.7l2.8 2.8"/></svg>`;
+/* Mismo contorno de archivo que DROPZONE_UPLOAD_ICON_SVG, pero con líneas
+   de texto en vez de la flecha de subida — se lee como "ver documento"
+   en vez de "cargar archivo". Usado en docChipHTML. */
+const DOC_VIEW_ICON_SVG = `<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2.5H7a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5z"/><path d="M14 2.5v6h6"/><path d="M8.3 13h7.4"/><path d="M8.3 16.5h7.4"/></svg>`;
+/* Chip compacto para "ver documento + eliminar", más intuitivo que un
+   botón de texto "Ver Documento": un ícono de archivo (abre el documento
+   en una pestaña nueva) junto a la ✕ que lo elimina. Eliminar el
+   documento también quita cualquier folio que dependiera de él (el
+   backend borra el registro completo, no solo el archivo). */
+function docChipHTML(url, delPath, nombre){
+  if(!url) return '';
+  return `<div class="doc-chip">
+    <a class="doc-chip-icon" href="${url}" target="_blank" rel="noopener" title="${nombre ? esc(nombre) : 'Ver documento'}">${DOC_VIEW_ICON_SVG}</a>
+    <button type="button" class="icon-btn" data-del-doc="${delPath}" title="Eliminar documento (también elimina el folio registrado)">✕</button>
+  </div>`;
+}
 function fileDropZoneHTML(id, label, accept, hint, titulo){
   return `
     <div class="field">
@@ -854,9 +877,6 @@ async function renderDetalle(id){
   el.querySelectorAll('[data-asig-correcto]').forEach(btn=>{
     btn.addEventListener('click', ()=> openModalAsignacionCorrecto(p.id, btn.dataset.asigCorrecto));
   });
-  el.querySelectorAll('[data-asig-incorrecto]').forEach(btn=>{
-    btn.addEventListener('click', ()=> openModalAsignacionIncorrecto(p.id, btn.dataset.asigIncorrecto));
-  });
 
   // Cada dictamen y cada solicitud se crean/eliminan directo contra la API
   // (una ventana por acción, igual que el resto del sistema) — ya no hay
@@ -1074,7 +1094,7 @@ function haciendaItemHTML(h, p){
   </div>`;
 }
 
-/* ---------- Archivo de Asignación: bloque de carga / revisión por solicitud a Hacienda ----------
+/* ---------- Archivo de Asignación: bloque de carga / registro de folio ----------
    Siempre se dibuja (como la 3ª columna del flujo), aunque todavía no se
    pueda usar: si la solicitud ni siquiera tiene su Autorización de
    Hacienda registrada, se muestra "bloqueado" en vez de desaparecer, para
@@ -1083,10 +1103,14 @@ function haciendaItemHTML(h, p){
    Estados:
      bloqueado      -> sin Autorización todavía, nada que hacer aquí aún.
      sin registro   -> botón para cargar el archivo.
-     'revision'     -> botones Marcar Correcto / Marcar Incorrecto.
-     'incorrecto'   -> motivo + fecha de revisión, botón para cargar un
-                       nuevo documento (regresa a 'revision').
-     'correcto'     -> folio + fecha de revisión (listo para dispersión). */
+     'revision'     -> ya se cargó el archivo, falta el folio. Se puede
+                       "Registrar Folio" (marca 'correcto') o subir un
+                       "Nuevo documento" que reemplaza al actual (sigue en
+                       'revision'). Ya no existe un flujo de "incorrecto":
+                       reemplazar el documento es la única corrección.
+     'correcto'     -> folio + fecha de revisión (listo para dispersión).
+                       Eliminar el documento aquí borra el folio también
+                       (ver handleEliminarDocumento / DELETE .../documento). */
 function asignacionBlockHTML(h){
   const a = h.asignacion;
   const hid = h.id;
@@ -1108,10 +1132,7 @@ function asignacionBlockHTML(h){
   }
   const cargaInfo = `<div class="lmeta-doc-row">
     <span class="lmeta">Cargado: ${fmtDateOnly(a.fecha_carga)}</span>
-    ${a.documento_url ? `<span class="doc-link-inline">
-      <a class="btn-ver-documento" href="${a.documento_url}" target="_blank" rel="noopener">Ver Documento</a>
-      <button type="button" class="icon-btn" data-del-doc="/programs/${h.programa_id}/hacienda/${hid}/asignacion/documento" title="Eliminar documento">✕</button>
-    </span>` : ''}
+    ${docChipHTML(a.documento_url, `/programs/${h.programa_id}/hacienda/${hid}/asignacion/documento`, a.documento_nombre)}
   </div>`;
 
   if(a.estatus==='revision'){
@@ -1119,21 +1140,10 @@ function asignacionBlockHTML(h){
     <div class="hacienda-stage">
       <div class="hacienda-stage-label">3 · Archivo de Asignación <span class="badge-pill badge-revision">En Revisión</span></div>
       ${cargaInfo}
-      <div class="asignacion-actions">
-        <button class="btn btn-outline btn-sm" data-asig-correcto="${hid}">Marcar Correcto</button>
-        <button class="btn btn-danger btn-sm" data-asig-incorrecto="${hid}">Marcar Incorrecto</button>
-      </div>
-    </div>`;
-  }
-  if(a.estatus==='incorrecto'){
-    return `
-    <div class="hacienda-stage">
-      <div class="hacienda-stage-label">3 · Archivo de Asignación <span class="badge-pill badge-incorrecta">Incorrecto</span></div>
-      ${cargaInfo}
-      <div class="lmeta">Motivo: ${esc(a.motivo_rechazo||'')} · ${fmtDateOnly(a.fecha_revision)}</div>
       <input type="file" id="asig-input-${hid}" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" hidden>
       <div class="asignacion-actions">
-        <button class="btn btn-outline btn-sm" data-asig-upload="${hid}">Cargar Nuevo Documento</button>
+        <button class="btn btn-gold btn-sm" data-asig-correcto="${hid}">Registrar Folio</button>
+        <button class="btn btn-outline btn-sm" data-asig-upload="${hid}">Nuevo documento</button>
       </div>
     </div>`;
   }
@@ -2033,10 +2043,14 @@ async function uploadAsignacion(pid, hacId, fileInput, btn){
   finally{ fileInput.value = ''; }
 }
 
-/* ---- Archivo de Asignación: Marcar Correcto (folio proporcionado) ---- */
+/* ---- Archivo de Asignación: Registrar Folio ----
+   Guarda el folio que avala que la asignación ya fue aceptada y marca el
+   Archivo de Asignación como correcto. Ya no existe "Marcar Incorrecto":
+   mientras no tenga folio, "Nuevo documento" (botón junto a este) permite
+   reemplazar el archivo directamente. */
 function openModalAsignacionCorrecto(pid, hacId){
   openModal(`
-    <div class="modal-header"><h3>Marcar Archivo de Asignación Correcto</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-header"><h3>Registrar Folio de Asignación</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
     <div class="modal-body">
       <div class="form-grid single">
         <div class="field"><label>Folio proporcionado</label><input type="text" id="asigc-folio" placeholder="Ej. AS-2026-0001"></div>
@@ -2053,33 +2067,7 @@ function openModalAsignacionCorrecto(pid, hacId){
     const folio = document.getElementById('asigc-folio').value.trim();
     if(!folio){ toast('El folio es obligatorio.', true); return; }
     try{
-      await withLoading(btn, ()=>safeCall(()=>Api.patch(`/programs/${pid}/hacienda/${hacId}/asignacion/correcto`, {folio}), 'Archivo de Asignación marcado como correcto.'), 'Guardando…');
-      closeModal();
-      await refreshOneProgram(pid); renderDetalle(pid);
-    }catch(e){ /* el error ya se mostró vía safeCall */ }
-  });
-}
-
-/* ---- Archivo de Asignación: Marcar Incorrecto (motivo) ---- */
-function openModalAsignacionIncorrecto(pid, hacId){
-  openModal(`
-    <div class="modal-header"><h3>Marcar Archivo de Asignación Incorrecto</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
-    <div class="modal-body">
-      <div class="form-grid single">
-        <div class="field"><label>Motivo</label><textarea id="asigi-motivo" rows="2" placeholder="Describe el motivo del rechazo…"></textarea></div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
-      <button class="btn btn-danger" id="submitAsigIncorrecto">Marcar Incorrecto</button>
-    </div>
-  `);
-  document.getElementById('submitAsigIncorrecto').addEventListener('click', async (e)=>{
-    const btn = e.currentTarget;
-    const motivo = document.getElementById('asigi-motivo').value.trim();
-    if(!motivo){ toast('El motivo es obligatorio.', true); return; }
-    try{
-      await withLoading(btn, ()=>safeCall(()=>Api.patch(`/programs/${pid}/hacienda/${hacId}/asignacion/incorrecto`, {motivo}), 'Archivo de Asignación marcado como incorrecto.'), 'Guardando…');
+      await withLoading(btn, ()=>safeCall(()=>Api.patch(`/programs/${pid}/hacienda/${hacId}/asignacion/correcto`, {folio}), 'Folio de Asignación registrado.'), 'Guardando…');
       closeModal();
       await refreshOneProgram(pid); renderDetalle(pid);
     }catch(e){ /* el error ya se mostró vía safeCall */ }
