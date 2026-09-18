@@ -660,6 +660,72 @@ router.post('/:id/hacienda', upload.single('documento'), async (req, res) => {
   }
 });
 
+// Editar una Solicitud a Hacienda ya registrada: folio, monto, fecha y el
+// dictamen vinculado. El documento no se toca aquí (se reemplaza/elimina
+// por separado, ver /documento).
+router.patch('/:id/hacienda/:hacId', async (req, res) => {
+  const { folio, monto } = req.body || {};
+  if (!monto || Number(monto) <= 0) return res.status(400).json({ error: 'El monto es obligatorio.' });
+
+  const dictamenIdInput = parseDictamenIdInput(req.body?.dictamen_id);
+  if (dictamenIdInput.provided && Number.isNaN(dictamenIdInput.value)) {
+    return res.status(400).json({ error: 'El dictamen relacionado no es válido.' });
+  }
+
+  try {
+    const programa = await getPrograma(req.params.id);
+    if (!programa) return res.status(404).json({ error: 'Programa no encontrado.' });
+
+    let dictamenId = null;
+    if (dictamenIdInput.provided) {
+      const { rows: dicRows } = await db.query(
+        'SELECT id FROM dictamenes WHERE id = $1 AND programa_id = $2',
+        [dictamenIdInput.value, req.params.id]
+      );
+      if (!dicRows[0]) {
+        return res.status(400).json({ error: 'El dictamen relacionado no pertenece a este programa.' });
+      }
+      dictamenId = dicRows[0].id;
+    }
+
+    const fecha = parseFechaManual(req.body?.fecha);
+    const { rows } = await db.query(
+      `UPDATE solicitudes_hacienda SET folio = $1, monto = $2, fecha = COALESCE($3, fecha), dictamen_id = $4
+       WHERE id = $5 AND programa_id = $6 RETURNING id`,
+      [folio || 'S/F', monto, fecha, dictamenId, req.params.hacId, req.params.id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Solicitud a Hacienda no encontrada.' });
+
+    res.json(await getProgramaCompleto(req.params.id));
+  } catch (err) {
+    console.error('[programs/hacienda/update]', err);
+    res.status(500).json({ error: 'Error al actualizar la solicitud a Hacienda.' });
+  }
+});
+
+// Eliminar una Solicitud a Hacienda. Su Autorización y su Archivo de
+// Asignación se eliminan en cascada (FK ON DELETE CASCADE); si ya tenía
+// una Dispersión (pago) vinculada, el pago NO se borra — solo se
+// desvincula (FK ON DELETE SET NULL), porque el pago ya es dinero
+// realmente entregado y borrarlo escondería un movimiento real.
+router.delete('/:id/hacienda/:hacId', async (req, res) => {
+  try {
+    const programa = await getPrograma(req.params.id);
+    if (!programa) return res.status(404).json({ error: 'Programa no encontrado.' });
+
+    const { rows } = await db.query(
+      'DELETE FROM solicitudes_hacienda WHERE id = $1 AND programa_id = $2 RETURNING id',
+      [req.params.hacId, req.params.id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Solicitud a Hacienda no encontrada.' });
+
+    res.json(await getProgramaCompleto(req.params.id));
+  } catch (err) {
+    console.error('[programs/hacienda/delete]', err);
+    res.status(500).json({ error: 'Error al eliminar la solicitud a Hacienda.' });
+  }
+});
+
 // Elimina (limpia) el documento de una Solicitud a Hacienda, sin borrar la
 // solicitud en sí (folio/monto/fecha quedan intactos).
 router.delete('/:id/hacienda/:hacId/documento', async (req, res) => {

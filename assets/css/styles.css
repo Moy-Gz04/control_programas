@@ -453,7 +453,7 @@ textarea:focus-visible,
    hijos directos del contenedor de ancho completo (ej. dentro de
    .hacienda-stage, que no añade su propio padding externo adicional), de
    modo que el botón también cae sobre el mismo borde derecho que los demás. */
-.lmeta-doc-row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
+.lmeta-doc-row{display:flex;flex-direction:column;align-items:flex-start;gap:6px;}
 .lmeta-doc-row .lmeta{margin:0;}
 /* Agrupa "Ver Documento" + el botón de eliminar como un solo bloque dentro
    de .lmeta-doc-row, para que space-between siga viendo solo 2 hijos
@@ -945,13 +945,14 @@ footer.app-footer{
 .hacienda-item.is-revision{border-left-color:var(--gold-600);}
 .hacienda-item.is-incorrecta{border-left-color:var(--red);}
 .hacienda-item.is-pagada{border-left-color:var(--maroon-700);}
-.hacienda-item-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;padding-bottom:12px;border-bottom:1px solid var(--border-hairline);}
+.hacienda-item-head{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding-bottom:12px;border-bottom:1px solid var(--border-hairline);}
 .hacienda-item-eyebrow{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-tertiary);margin-bottom:2px;}
 .hacienda-item-title{font-weight:800;font-size:15px;color:var(--text-primary);letter-spacing:-0.1px;}
 .hacienda-item-main .lmeta{margin-top:3px;}
-.hacienda-item-amount{display:flex;flex-direction:column;align-items:flex-end;gap:7px;flex-shrink:0;}
+.hacienda-item-amount{display:flex;flex-direction:column;align-items:flex-start;gap:7px;}
 .hacienda-item-monto{font-size:17px;font-weight:800;color:var(--maroon-800);letter-spacing:-0.2px;}
 .hacienda-item>.doc-link-row{margin-top:10px;}
+.hacienda-item-actions{display:flex;gap:8px;flex-wrap:wrap;}
 
 /* Cada etapa (Autorizado por Hacienda / Archivo de Asignación) es su
    propia caja con fondo distinguible y separación vertical generosa,
@@ -966,7 +967,7 @@ footer.app-footer{
   display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;
 }
 .hacienda-stage-empty .hacienda-stage-label{margin-bottom:0;}
-.hacienda-stage-body{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+.hacienda-stage-body{display:flex;flex-direction:column;align-items:flex-start;gap:4px;}
 .hacienda-stage-amount{font-size:14px;font-weight:800;color:var(--text-primary);}
 .hacienda-stage .doc-link-row{margin-top:8px;}
 /* Cuando el Archivo de Asignación se anida dentro de la tarjeta (después

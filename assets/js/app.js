@@ -840,6 +840,12 @@ async function renderDetalle(id){
   el.querySelectorAll('[data-autorizar-hacienda]').forEach(btn=>{
     btn.addEventListener('click', ()=> openModalAutorizacion(p.id, btn.dataset.autorizarHacienda));
   });
+  el.querySelectorAll('[data-editar-hacienda]').forEach(btn=>{
+    btn.addEventListener('click', ()=> openModalEditarHacienda(p.id, btn.dataset.editarHacienda));
+  });
+  el.querySelectorAll('[data-del-hacienda]').forEach(btn=>{
+    btn.addEventListener('click', (e)=> handleDeleteHacienda(p.id, btn.dataset.delHacienda, e.currentTarget));
+  });
 
   // Archivo de Asignación: cargar, marcar correcto / incorrecto.
   el.querySelectorAll('[data-asig-upload]').forEach(btn=>{
@@ -1031,16 +1037,20 @@ function haciendaItemHTML(h, p){
     ? `Dictamen ${dictamenVinculado.numero!=null ? dictamenVinculado.numero : ''}`.trim()
     : (h.dictamen_id!=null ? `Dictamen #${h.dictamen_id}` : null);
   return `
-  <div class="hacienda-item ${badge.mod}">
+  <div class="hacienda-item ${badge.mod}" data-hacienda-item="${h.id}">
     <div class="hacienda-item-head">
       <div class="hacienda-item-main">
         <div class="hacienda-item-eyebrow">Folio</div>
         <div class="hacienda-item-title">${esc(h.folio)}</div>
-        <div class="lmeta">Solicitado: ${fmtDate(h.fecha)}${dictamenLabel ? ` · Vinculado a ${esc(dictamenLabel)}` : ' · Sin vincular a un dictamen específico'}</div>
+        <div class="lmeta">Solicitado: ${fmtDateOnly(h.fecha)}${dictamenLabel ? ` · Vinculado a ${esc(dictamenLabel)}` : ' · Sin vincular a un dictamen específico'}</div>
       </div>
       <div class="hacienda-item-amount">
         <div class="hacienda-item-monto">${fmtMoney(h.monto)}</div>
         <span class="badge-pill ${badge.cls}">${badge.label}</span>
+      </div>
+      <div class="hacienda-item-actions">
+        <button class="btn btn-outline btn-sm" data-editar-hacienda="${h.id}">Editar</button>
+        <button class="btn btn-danger btn-sm" data-del-hacienda="${h.id}">Eliminar</button>
       </div>
     </div>
     ${docLinkRowHTML(h.documento_url, `/programs/${p.id}/hacienda/${h.id}/documento`)}
@@ -1050,7 +1060,7 @@ function haciendaItemHTML(h, p){
         <div class="hacienda-stage-label">Autorizado por Hacienda</div>
         <div class="hacienda-stage-body">
           <div class="hacienda-stage-amount">${fmtMoney(h.autorizacion.monto_autorizado)}</div>
-          <div class="lmeta">${fmtDate(h.autorizacion.fecha_autorizacion)}</div>
+          <div class="lmeta">${fmtDateOnly(h.autorizacion.fecha_autorizacion)}</div>
         </div>
         ${docLinkRowHTML(h.autorizacion.documento_url, `/programs/${p.id}/hacienda/${h.id}/autorizacion/documento`)}
       </div>
@@ -1084,7 +1094,7 @@ function asignacionBlockHTML(h){
     </div>`;
   }
   const cargaInfo = `<div class="lmeta-doc-row">
-    <span class="lmeta">Cargado: ${fmtDate(a.fecha_carga)}</span>
+    <span class="lmeta">Cargado: ${fmtDateOnly(a.fecha_carga)}</span>
     ${a.documento_url ? `<span class="doc-link-inline">
       <a class="btn-ver-documento" href="${a.documento_url}" target="_blank" rel="noopener">Ver Documento</a>
       <button type="button" class="icon-btn" data-del-doc="/programs/${h.programa_id}/hacienda/${hid}/asignacion/documento" title="Eliminar documento">✕</button>
@@ -1107,7 +1117,7 @@ function asignacionBlockHTML(h){
     <div class="hacienda-stage">
       <div class="hacienda-stage-label">Archivo de Asignación <span class="badge-pill badge-incorrecta">Incorrecto</span></div>
       ${cargaInfo}
-      <div class="lmeta">Motivo: ${esc(a.motivo_rechazo||'')} · ${fmtDate(a.fecha_revision)}</div>
+      <div class="lmeta">Motivo: ${esc(a.motivo_rechazo||'')} · ${fmtDateOnly(a.fecha_revision)}</div>
       <input type="file" id="asig-input-${hid}" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" hidden>
       <div class="asignacion-actions">
         <button class="btn btn-outline btn-sm" data-asig-upload="${hid}">Cargar Nuevo Documento</button>
@@ -1119,7 +1129,7 @@ function asignacionBlockHTML(h){
     <div class="hacienda-stage">
       <div class="hacienda-stage-label">Archivo de Asignación <span class="badge-pill badge-autorizada">Correcto</span></div>
       ${cargaInfo}
-      <div class="lmeta">Folio proporcionado: <b>${esc(a.folio||'')}</b> · ${fmtDate(a.fecha_revision)}</div>
+      <div class="lmeta">Folio proporcionado: <b>${esc(a.folio||'')}</b> · ${fmtDateOnly(a.fecha_revision)}</div>
     </div>`;
 }
 
@@ -1822,13 +1832,13 @@ function openModalHacienda(pid){
             ${dictamenes.filter(d=>!esTemporal(d.id)).map(d=>{
               const personasD = (d.solicitudes||[]).reduce((s,so)=>s+Number(so.personas||0),0);
               const comprometidoD = personasD * Number(p.monto_beneficiario||0);
-              const label = `Dictamen ${d.numero!=null?d.numero:d.id} del ${d.fecha_dictamen ? fmtDate(d.fecha_dictamen) : 'S/F'} — Comprometido: ${fmtMoney(comprometidoD)}`;
+              const label = `Dictamen ${d.numero!=null?d.numero:d.id} del ${d.fecha_dictamen ? fmtDateOnly(d.fecha_dictamen) : 'S/F'} — Comprometido: ${fmtMoney(comprometidoD)}`;
               return `<option value="${d.id}">${esc(label)}</option>`;
             }).join('')}
           </select>
           <div class="field-hint">Vincular esta solicitud a un dictamen permite dar seguimiento a cuánto de ESE dictamen ya fue dispersado entre sus propias personas.</div>
         </div>
-        ${dateTimeFieldGroupHTML('h-fecha','Solicitud de recurso a Hacienda')}
+        <div class="field"><label>Solicitud de recurso a Hacienda</label><input type="date" id="h-fecha"></div>
         ${fileDropZoneHTML('h-doc','Documento que avala la solicitud','.pdf,.jpg,.jpeg,.png,.doc,.docx')}
       </div>
     </div>
@@ -1843,7 +1853,7 @@ function openModalHacienda(pid){
     const folio = document.getElementById('h-folio').value.trim();
     const monto = numValue(document.getElementById('h-monto'));
     const dictamenId = document.getElementById('h-dictamen').value;
-    const fecha = readDateTimeGroup('h-fecha');
+    const fecha = document.getElementById('h-fecha').value || null;
     const archivo = document.getElementById('h-doc').files[0];
     if(!monto) return;
 
@@ -1875,6 +1885,77 @@ function openModalHacienda(pid){
   });
 }
 
+/* ---- Editar Solicitud a Hacienda ----
+   Folio, monto, fecha y el dictamen vinculado — no toca el documento, que
+   se reemplaza/elimina aparte con el botón "Ver Documento"/✕ ya existente. */
+function openModalEditarHacienda(pid, hacId){
+  const p = state.programs.find(x=>x.id===pid);
+  const hac = p && (p.solicitudesHacienda||[]).find(h=>String(h.id)===String(hacId));
+  if(!hac) return;
+  const dictamenes = (p && p.dictamenes) || [];
+  openModal(`
+    <div class="modal-header"><h3>Editar Solicitud a Hacienda</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="form-grid single">
+        <div class="field"><label>Folio</label><input type="text" id="eh-folio" value="${esc(hac.folio||'')}"></div>
+        <div class="field"><label>Monto Solicitado</label><input type="text" data-money id="eh-monto" value="${fmtInputMoney(hac.monto)}"></div>
+        <div class="field">
+          <label>Dictamen relacionado (opcional)</label>
+          <select id="eh-dictamen">
+            <option value="">— Sin vincular a un dictamen específico —</option>
+            ${dictamenes.filter(d=>!esTemporal(d.id)).map(d=>{
+              const personasD = (d.solicitudes||[]).reduce((s,so)=>s+Number(so.personas||0),0);
+              const comprometidoD = personasD * Number(p.monto_beneficiario||0);
+              const label = `Dictamen ${d.numero!=null?d.numero:d.id} del ${d.fecha_dictamen ? fmtDateOnly(d.fecha_dictamen) : 'S/F'} — Comprometido: ${fmtMoney(comprometidoD)}`;
+              const selected = hac.dictamen_id!=null && Number(hac.dictamen_id)===Number(d.id) ? 'selected' : '';
+              return `<option value="${d.id}" ${selected}>${esc(label)}</option>`;
+            }).join('')}
+          </select>
+        </div>
+        <div class="field"><label>Solicitud de recurso a Hacienda</label><input type="date" id="eh-fecha" value="${hac.fecha ? String(hac.fecha).slice(0,10) : ''}"></div>
+      </div>
+      <div id="eh-error" style="color:var(--red);font-size:12.5px;font-weight:700;display:none;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" id="submitEditarHacienda">Guardar Cambios</button>
+    </div>
+  `);
+  document.getElementById('submitEditarHacienda').addEventListener('click', async (e)=>{
+    const btn = e.currentTarget;
+    const folio = document.getElementById('eh-folio').value.trim();
+    const monto = numValue(document.getElementById('eh-monto'));
+    const dictamenId = document.getElementById('eh-dictamen').value;
+    const fecha = document.getElementById('eh-fecha').value || null;
+    const err = document.getElementById('eh-error');
+    if(!monto){
+      err.textContent = 'El monto es obligatorio.';
+      err.style.display = 'block';
+      return;
+    }
+    try{
+      await withLoading(btn, ()=>Api.patch(`/programs/${pid}/hacienda/${hacId}`, { folio, monto, dictamen_id: dictamenId || null, fecha }), 'Guardando…');
+      closeModal();
+      toast('Solicitud a Hacienda actualizada.');
+      await refreshOneProgram(pid); renderDetalle(pid);
+    }catch(e){
+      err.textContent = e.message || 'No se pudo actualizar la solicitud a Hacienda.';
+      err.style.display = 'block';
+    }
+  });
+}
+
+async function handleDeleteHacienda(pid, hacId, btn){
+  const ok = await confirmAction({
+    title: 'Eliminar Solicitud a Hacienda',
+    message: 'Se eliminará esta solicitud junto con su Autorización y su Archivo de Asignación, si los tiene. Si ya tenía una Dispersión registrada, el pago no se borra, solo se desvincula. Esta acción no se puede deshacer.',
+    confirmText: 'Eliminar',
+  });
+  if(!ok) return;
+  await withLoading(btn, ()=>safeCall(()=>Api.del(`/programs/${pid}/hacienda/${hacId}`), 'Solicitud a Hacienda eliminada.'), 'Eliminando…');
+  await refreshOneProgram(pid); renderDetalle(pid);
+}
+
 /* ---- Autorizado por Hacienda ----
    Registra que una solicitud ya enviada a Hacienda fue autorizada: monto
    autorizado, fecha/hora propia y su documento. A partir de ahí la
@@ -1885,10 +1966,10 @@ function openModalAutorizacion(pid, hacId){
   openModal(`
     <div class="modal-header"><h3>Registrar Autorizado por Hacienda</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
     <div class="modal-body">
-      ${hac ? `<div class="hacienda-preview">Solicitud <b>Folio ${esc(hac.folio)}</b> · Monto solicitado <b>${fmtMoney(hac.monto)}</b> · ${fmtDate(hac.fecha)}</div>` : ''}
+      ${hac ? `<div class="hacienda-preview">Solicitud <b>Folio ${esc(hac.folio)}</b> · Monto solicitado <b>${fmtMoney(hac.monto)}</b> · ${fmtDateOnly(hac.fecha)}</div>` : ''}
       <div class="form-grid single">
         <div class="field"><label>Monto Autorizado por Hacienda</label><input type="text" data-money id="au-monto" placeholder="$0.00" value="${hac? fmtInputMoney(hac.monto) : ''}"></div>
-        ${dateTimeFieldGroupHTML('au-fecha','Autorización de Hacienda')}
+        <div class="field"><label>Autorización de Hacienda</label><input type="date" id="au-fecha"></div>
         ${fileDropZoneHTML('au-doc','Documento de autorización','.pdf,.jpg,.jpeg,.png,.doc,.docx')}
       </div>
     </div>
@@ -1901,7 +1982,7 @@ function openModalAutorizacion(pid, hacId){
   document.getElementById('submitAutorizacion').addEventListener('click', async (e)=>{
     const btn = e.currentTarget;
     const monto = numValue(document.getElementById('au-monto'));
-    const fecha = readDateTimeGroup('au-fecha');
+    const fecha = document.getElementById('au-fecha').value || null;
     const archivo = document.getElementById('au-doc').files[0];
     if(!monto) return;
 
@@ -2037,7 +2118,7 @@ function openModalPago(p){
     const hac = disponibles.find(h=>String(h.id)===selHacienda.value);
     if(!hac){ preview.innerHTML=''; return; }
     preview.innerHTML = `<div class="hacienda-preview">
-      Solicitado: <b>${fmtMoney(hac.monto)}</b> · ${fmtDate(hac.fecha)}<br>
+      Solicitado: <b>${fmtMoney(hac.monto)}</b> · ${fmtDateOnly(hac.fecha)}<br>
       Autorizado por Hacienda: <b>${fmtMoney(hac.autorizacion.monto_autorizado)}</b> · ${fmtDate(hac.autorizacion.fecha_autorizacion)}<br>
       Archivo de Asignación: <b>Correcto</b>${hac.asignacion && hac.asignacion.folio ? ` · Folio ${esc(hac.asignacion.folio)}` : ''}
     </div>`;
