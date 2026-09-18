@@ -29,6 +29,20 @@ const fmtMoney = (n)=> '$' + Number(n||0).toLocaleString('es-MX',{minimumFractio
 const fmtMoneyCompact = (n)=> new Intl.NumberFormat('es-MX',{notation:'compact',compactDisplay:'short',style:'currency',currency:'MXN',maximumFractionDigits:1}).format(n||0);
 const fmtNum = (n)=> Number(n||0).toLocaleString('es-MX');
 const fmtDate = (iso)=> { if(!iso) return '—'; const d=new Date(iso); return d.toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'}) + ' · ' + d.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}); };
+// Solo fecha, sin hora — para "Registro del dictamen", que ya no captura hora.
+// Lee el año-mes-día directo del string ISO (los primeros 10 caracteres,
+// "YYYY-MM-DD") en vez de construir un Date y formatearlo en la zona
+// horaria del navegador: esto último resta horas a una fecha guardada en
+// UTC medianoche y puede mostrar el día anterior (ej. "2026-09-15" se veía
+// como "14 sep" en un navegador en UTC-6).
+const MESES_CORTOS = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const fmtDateOnly = (iso)=> {
+  if(!iso) return 'S/F';
+  const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(!m) return 'S/F';
+  const [, y, mo, d] = m;
+  return `${d} ${MESES_CORTOS[Number(mo)-1]} ${y}`;
+};
 const fmtFileSize = (bytes)=>{
   if(!bytes && bytes!==0) return '';
   if(bytes < 1024) return bytes+' B';
@@ -253,20 +267,6 @@ function readDateTimeGroup(idPrefix){
   if(!fechaEl || !fechaEl.value) return null;
   return combineFechaHoraISO(fechaEl.value, horaEl ? horaEl.value : '00:00');
 }
-/* Variante compacta (dos inputs sueltos, sin tarjeta) para usarse dentro de
-   filas ya existentes, como la fila de una solicitud dentro de un dictamen. */
-function dateTimeInlineHTML(dataAttr, key, label, value){
-  const { fecha, hora } = splitFechaHora(value);
-  return `
-      <div class="sfield"><label>${label}</label><input type="date" value="${fecha}" data-${dataAttr}-fecha="${key}"></div>
-      <div class="sfield"><label>Hora</label><input type="time" value="${hora}" data-${dataAttr}-hora="${key}"></div>`;
-}
-function readDateTimeInline(root, dataAttr, key){
-  const fechaEl = root.querySelector(`[data-${dataAttr}-fecha="${key}"]`);
-  const horaEl = root.querySelector(`[data-${dataAttr}-hora="${key}"]`);
-  if(!fechaEl || !fechaEl.value) return null;
-  return combineFechaHoraISO(fechaEl.value, horaEl ? horaEl.value : '00:00');
-}
 
 /* ---------- SECCIONES MINIMIZABLES ----------
    Envuelve un bloque grande del detalle de programa en un encabezado
@@ -277,13 +277,14 @@ const __sectionState = {};
 function isSectionOpen(id, defaultOpen){
   return __sectionState.hasOwnProperty(id) ? __sectionState[id] : defaultOpen;
 }
-function collapsibleSection(id, title, hint, bodyHtml, defaultOpen){
+function collapsibleSection(id, title, hint, bodyHtml, defaultOpen, extraHeaderHTML){
   const open = isSectionOpen(id, defaultOpen !== false);
   return `
     <div class="section-title collapsible-header" data-toggle-section="${id}">
       <h2>${title}</h2>
       <div style="display:flex;align-items:center;gap:10px;">
         <span class="hint section-summary">${hint||''}</span>
+        ${extraHeaderHTML ? `<span onclick="event.stopPropagation()">${extraHeaderHTML}</span>` : ''}
         <button type="button" class="section-toggle-btn" data-section-toggle-btn aria-expanded="${open}" title="${open?'Minimizar':'Expandir'}">▾</button>
       </div>
     </div>
@@ -509,7 +510,7 @@ function montoTotalBeneficiario(p){ return Number(p.monto_beneficiario||0) * can
 
    Ahora cada fila de Solicitud (dentro del dictamen) trae su propia
    cantidad_pagos (ver migración 005_solicitud_cantidad_pagos.sql y el
-   selector "Cantidad de Pagos" en solicitudRowHTML/saveDictamen), así que
+   selector "Cantidad de Pagos" en openModalNuevaSolicitud), así que
    se calcula un monto total por persona PROPIO de este dictamen: la suma,
    sobre cada una de sus solicitudes, de (personas de la fila × monto por
    beneficiario del programa × cantidad_pagos de ESA fila), dividida entre
@@ -795,10 +796,7 @@ async function renderDetalle(id){
 
     ${collapsibleSection('dictaminacion','Dictaminación', `${(p.dictamenes||[]).length} dictamen(es) · ${fmtNum(personas)} personas`, `
       ${(p.dictamenes||[]).map(d=>dictamenBlockHTML(p,d)).join('') || `<div class="empty-state">Sin dictámenes registrados.</div>`}
-      <div style="text-align:center;margin-top:8px;" id="dictamenAddWrap">
-        <button class="btn btn-primary btn-sm" id="btnAddDictamen">+ Agregar Otro Dictamen</button>
-      </div>
-    `)}
+    `, true, `<button class="btn btn-primary btn-sm" id="btnAddDictamen">+ Agregar Dictamen</button>`)}
 
     ${collapsibleSection('hacienda','Solicitudes a Hacienda', `${(p.solicitudesHacienda||[]).length} trámite(s)`, `
       ${(p.solicitudesHacienda||[]).length? p.solicitudesHacienda.map(h=>haciendaItemHTML(h,p)).join('') : `<div class="empty-state">Sin trámites enviados a Hacienda.</div>`}
@@ -830,7 +828,7 @@ async function renderDetalle(id){
   if(btnCargar) btnCargar.addEventListener('click', ()=>openModalCargarMonto(p.id));
   const btnMod = document.getElementById('btnAddModificacion');
   if(btnMod) btnMod.addEventListener('click', ()=>openModalModificacion(p.id));
-  document.getElementById('btnAddDictamen').addEventListener('click', ()=> addDictamenLocal(p));
+  document.getElementById('btnAddDictamen').addEventListener('click', ()=> openModalNuevoDictamen(p.id));
   document.getElementById('btnAddHacienda').addEventListener('click', ()=>openModalHacienda(p.id));
   const btnPago = document.getElementById('btnAddPago');
   if(btnPago) btnPago.addEventListener('click', ()=>openModalPago(p));
@@ -857,13 +855,9 @@ async function renderDetalle(id){
     btn.addEventListener('click', ()=> openModalAsignacionIncorrecto(p.id, btn.dataset.asigIncorrecto));
   });
 
-  // Nada de lo que pasa dentro de un dictamen (agregar el dictamen, llenar
-  // el monto, agregar solicitudes, llenar personas) toca el servidor ni
-  // vuelve a dibujar la pantalla. Todo se arma en el DOM y solo se envía a
-  // la API —en un solo paso— al presionar "Guardar Dictamen" (ver
-  // saveDictamen). Eliminar un dictamen/solicitud ya guardado sí llama a la
-  // API (con confirmación), pero uno agregado localmente y aún no guardado
-  // simplemente se quita del formulario.
+  // Cada dictamen y cada solicitud se crean/eliminan directo contra la API
+  // (una ventana por acción, igual que el resto del sistema) — ya no hay
+  // edición en línea ni un botón "Guardar" que agrupe varios cambios.
   el.querySelectorAll('.dictamen-block').forEach(block=> bindDictamenBlock(block, p));
 }
 
@@ -1173,55 +1167,51 @@ function documentosSectionBody(p){
     </div>`).join('')}</div>`;
 }
 
-/* ---------- Dictaminación: alta/edición local + guardado en un solo paso ----------
-   Un dictamen o una solicitud recién agregados en el formulario (todavía no
-   guardados en el servidor) se identifican con un id temporal "tmp-...".
-   saveDictamen() decide, por cada uno, si debe crearlo (POST) o actualizarlo
-   (PATCH) según tenga o no un id real. ---------- */
+/* ---------- Dictaminación: cada Dictamen y cada Solicitud se crean y
+   eliminan directo contra la API, uno por uno y con su propia ventana —
+   igual que "Cargar Monto Autorizado" o "Registrar Modificación". Ya no
+   hay edición en línea ni un botón que agrupe varios cambios en un solo
+   guardado (ver openModalNuevoDictamen / openModalNuevaSolicitud). Los
+   ids "tmp-..." de una capa de borrador anterior ya no existen: todo lo
+   que aparece en pantalla ya está guardado en el servidor. ---------- */
 let __tmpSeq = 0;
 function tmpId(){ return 'tmp-' + (++__tmpSeq) + '-' + Date.now(); }
 function esTemporal(id){ return String(id).startsWith('tmp-'); }
 
 function dictamenBlockHTML(p,d){
   const personas = (d.solicitudes||[]).reduce((s,so)=>s+Number(so.personas||0),0);
-  const comprometido = personas * Number(p.monto_beneficiario);
-  const titulo = d.numero!=null ? ('Dictamen '+d.numero) : 'Dictamen (nuevo, sin guardar)';
-  const esNuevo = esTemporal(d.id);
+  const montoBeneficiario = Number(p.monto_beneficiario||0);
+  // Recurso comprometido: Personas × (Pagos × Monto por Beneficiario),
+  // sumado por cada solicitud del dictamen — no solo Personas × Monto, para
+  // que una solicitud con varios pagos por persona cuente lo que realmente
+  // compromete.
+  const comprometido = (d.solicitudes||[]).reduce((s,so)=> s + Number(so.personas||0)*Number(so.cantidad_pagos||1)*montoBeneficiario, 0);
+  const titulo = 'Dictamen ' + d.numero;
   // Dispersión real de ESTE dictamen (seguimiento inteligente): cuántas de
   // sus propias personas ya quedaron cubiertas por Solicitudes a Hacienda
-  // vinculadas a él y ya dispersadas — ver dispersionPorDictamen(). No
-  // aplica a un dictamen recién agregado y aún no guardado (esNuevo=true),
-  // porque todavía no tiene un id real con el que vincular nada.
-  const disp = esNuevo ? null : dispersionPorDictamen(p, d.id);
+  // vinculadas a él y ya dispersadas — ver dispersionPorDictamen().
+  const disp = dispersionPorDictamen(p, d.id);
   return `
   <div class="dictamen-block" data-dictamen-block="${d.id}">
     <div class="dictamen-head">
       <h4>${titulo}</h4>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-        <div class="chip" data-dic-chip="${d.id}">${fmtMoney(d.monto_autorizado)} autorizados</div>
+        <div class="chip">${fmtMoney(d.monto_autorizado)} autorizados</div>
         <input type="file" id="acta-input-${d.id}" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" hidden>
-        <button class="btn btn-outline btn-sm" data-upload-acta="${d.id}" ${esNuevo?'disabled title="Guarda el dictamen antes de cargar el acta"':''}>${d.acta_documento_url? 'Reemplazar Acta Firmada':'Cargar Acta Firmada de Dictamen'}</button>
+        <button class="btn btn-outline btn-sm" data-upload-acta="${d.id}">${d.acta_documento_url? 'Reemplazar Acta Firmada':'Cargar Acta Firmada de Dictamen'}</button>
         ${d.acta_documento_url ? `<a class="btn-ver-documento" href="${d.acta_documento_url}" target="_blank" rel="noopener">Ver Acta</a>
         <button type="button" class="icon-btn" data-del-doc="/programs/${p.id}/dictamenes/${d.id}/acta" title="Eliminar Acta Firmada">✕</button>` : ''}
         <button class="btn btn-danger btn-sm" data-del-dictamen="${d.id}">Eliminar Dictamen</button>
       </div>
     </div>
-    <div class="form-grid cols-3" style="margin-bottom:12px;">
-      <div class="field">
-        <label>Monto Autorizado del Dictamen</label>
-        <input type="text" data-money value="${fmtInputMoney(d.monto_autorizado)}" data-dic-monto="${d.id}">
-      </div>
-      ${dateTimeInlineWrapper('dic', d.id, 'Registro del dictamen', d.fecha_dictamen)}
+    <div class="dictamen-meta">
+      <div>Registro del dictamen: <b>${fmtDateOnly(d.fecha_dictamen)}</b></div>
     </div>
     <div class="solicitudes-list">
-      ${(d.solicitudes||[]).map(s=>solicitudRowHTML(p,d.id,s)).join('')}
+      ${(d.solicitudes||[]).map(s=>solicitudRowHTML(p,d.id,s)).join('') || `<div class="field-hint" style="margin:0 0 10px;color:var(--text-on-brand);opacity:0.75;">Este dictamen todavía no tiene solicitudes.</div>`}
     </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:8px;" data-dictamen-actions>
-      <div class="field-hint" style="margin:0;">Agrega las solicitudes que necesites y llena los campos; nada se guarda hasta presionar “Guardar Dictamen”.</div>
-      <div style="display:flex;gap:8px;">
-        <button class="btn btn-ghost btn-sm" data-add-solicitud>+ Agregar otra solicitud</button>
-        <button class="btn btn-gold btn-sm" data-save-dictamen>Guardar Dictamen</button>
-      </div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:6px;">
+      <button class="btn btn-ghost btn-sm" data-add-solicitud>+ Agregar Solicitud</button>
     </div>
     <div class="dictamen-total">
       <div>Personas: <b>${fmtNum(personas)}</b></div>
@@ -1236,239 +1226,153 @@ function dictamenBlockHTML(p,d){
   </div>`;
 }
 
-/* Envuelve dateTimeInlineHTML como dos <div class="field"> sueltos, para que
-   quepan en el mismo form-grid.cols-3 que el monto del dictamen (en vez del
-   .field-group de tarjeta, pensado para modales). */
-function dateTimeInlineWrapper(dataAttr, key, label, value){
-  const { fecha, hora } = splitFechaHora(value);
-  return `
-      <div class="field"><label>${label} (fecha)</label><input type="date" value="${fecha}" data-${dataAttr}-fecha="${key}"></div>
-      <div class="field"><label>${label} (hora)</label><input type="time" value="${hora}" data-${dataAttr}-hora="${key}"></div>`;
-}
-
-/* Cantidad de Pagos de la solicitud: cuántos pagos/dispersiones recibirá
-   cada una de las personas capturadas en ESTA fila (independiente del
-   campo homónimo a nivel programa, usado para otro fin — ver comentario
-   en dispersionPorDictamen). Se coloca ANTES del campo "Compromiso", tal
-   como lo pidió el usuario.
-
-   ---- TOPE: la propia "Cantidad de Pagos por Beneficiario" del programa ----
-   El desplegable ya NO ofrece un rango fijo 1–6: las opciones van de 1
-   hasta el valor configurado en el programa (p.cantidad_pagos, capturado
-   en Registrar/Editar Programa), porque no tiene sentido dejar elegir más
-   pagos por beneficiario, en una solicitud individual, de los que el
-   programa en general tiene pactados. Si el programa está en 1 (el caso
-   por defecto, sin pagos múltiples) el desplegable simplemente muestra la
-   única opción "1 pago" — no se oculta el campo ni se hace un caso
-   especial, para mantener el mismo formulario en todos los casos.
-
-   Si un valor ya guardado (s.cantidad_pagos) queda por encima del máximo
-   actual del programa —por ejemplo, porque el programa bajó su
-   configuración después de haberse capturado la solicitud— la selección
-   visible se acota (clamp) al máximo vigente, pero eso es solo un ajuste
-   de lo que se ve seleccionado en el formulario: el valor guardado en la
-   base de datos no se toca aquí, solo cambia si el usuario vuelve a
-   guardar el dictamen. */
-function cantidadPagosSolicitudSelectHTML(p, dicId, s){
-  const maxPagos = Math.max(1, Number(p.cantidad_pagos||1));
-  const valorGuardado = Number(s.cantidad_pagos||1) >= 1 ? Math.floor(Number(s.cantidad_pagos||1)) : 1;
-  const valorActual = Math.min(valorGuardado, maxPagos);
-  const opciones = Array.from({length:maxPagos}, (_,i)=>i+1).map(n=>{
-    const label = n===1 ? '1 pago' : `${n} pagos`;
-    return `<option value="${n}" ${n===valorActual?'selected':''}>${label}</option>`;
-  }).join('');
-  return `
-        <div class="sfield"><label>Cantidad de Pagos</label><select data-sol-cantidad-pagos="${dicId}|${s.id}">${opciones}</select></div>`;
-}
-
+/* Fila de solo lectura: la Solicitud se crea/elimina vía modal
+   (openModalNuevaSolicitud), ya no se edita en línea. */
 function solicitudRowHTML(p, dicId, s){
-  const esNueva = esTemporal(s.id);
+  const montoSolicitud = Number(s.personas||0) * Number(s.cantidad_pagos||1) * Number(p.monto_beneficiario||0);
   return `
-      <div class="solicitud-row">
-        <div class="sfield"><label>Solicitud No.</label><input value="${esNueva? 'Nueva' : s.numero}" disabled></div>
-        <div class="sfield"><label>Cantidad de Personas</label><input type="text" data-int value="${fmtInputInt(s.personas||0)}" data-sol-personas="${dicId}|${s.id}"></div>
-        ${cantidadPagosSolicitudSelectHTML(p, dicId, s)}
-        ${dateTimeInlineHTML('sol', dicId+'|'+s.id, 'Compromiso', s.fecha_compromiso)}
+      <div class="solicitud-item" data-solicitud-item="${s.id}">
+        <div class="sol-info">
+          <span>Solicitud <b>${s.numero}</b></span>
+          <span>Personas: <b>${fmtNum(s.personas||0)}</b></span>
+          <span>Pagos: <b>${fmtNum(s.cantidad_pagos||1)}</b></span>
+          <span>Monto: <b>${fmtMoney(montoSolicitud)}</b></span>
+        </div>
         <button class="icon-btn" title="Eliminar solicitud" data-del-solicitud="${s.id}">✕</button>
       </div>`;
-}
-
-/* Recalcula en vivo (sin llamar a la API) las cifras de "Personas" y
-   "Recurso comprometido" que se muestran al pie del dictamen, conforme se
-   agregan/quitan solicitudes o se edita la cantidad de personas. */
-function recomputeDictamenTotals(block, montoBeneficiario){
-  const personas = Array.from(block.querySelectorAll('[data-sol-personas]')).reduce((s,inp)=> s+numValue(inp), 0);
-  const comprometido = personas * Number(montoBeneficiario||0);
-  const totalDiv = block.querySelector('.dictamen-total');
-  if(totalDiv){
-    totalDiv.innerHTML = `<div>Personas: <b>${fmtNum(personas)}</b></div><div>Recurso comprometido: <b>${fmtMoney(comprometido)}</b></div>`;
-  }
 }
 
 function bindDictamenBlock(block, p){
   const pid = p.id;
   const dicId = block.dataset.dictamenBlock;
 
-  block.querySelector('[data-del-dictamen]').addEventListener('click', (e)=> handleDeleteDictamen(pid, block, dicId, e.currentTarget));
-  block.querySelector('[data-add-solicitud]').addEventListener('click', ()=> addSolicitudLocal(block, p));
-  block.querySelector('[data-save-dictamen]').addEventListener('click', (e)=> saveDictamen(p, dicId, block, e.currentTarget));
-  block.querySelectorAll('.solicitud-row').forEach(row=> bindSolicitudRow(row, block, p));
+  block.querySelector('[data-del-dictamen]').addEventListener('click', (e)=> handleDeleteDictamen(pid, dicId, e.currentTarget));
+  block.querySelector('[data-add-solicitud]').addEventListener('click', ()=> openModalNuevaSolicitud(p, dicId));
+  block.querySelectorAll('[data-del-solicitud]').forEach(btn=>{
+    btn.addEventListener('click', (e)=> handleDeleteSolicitud(pid, dicId, btn.dataset.delSolicitud, e.currentTarget));
+  });
 
-  // Recalcula en vivo el chip "$X autorizados" mientras se teclea el monto,
-  // sin llamar a la API (solo se guarda al presionar "Guardar Dictamen").
-  const montoInput = block.querySelector('[data-dic-monto]');
-  const chip = block.querySelector('[data-dic-chip]');
-  if(montoInput && chip){
-    montoInput.addEventListener('input', ()=>{
-      chip.textContent = `${fmtMoney(numValue(montoInput))} autorizados`;
-    });
-  }
-
-  // Acta Firmada de Dictamen: solo disponible si el dictamen ya tiene un id
-  // real (esNuevo=false lo deshabilita en el HTML).
   const actaBtn = block.querySelector('[data-upload-acta]');
-  if(actaBtn && !esTemporal(dicId)){
+  if(actaBtn){
     const fileInput = document.getElementById('acta-input-'+dicId);
     actaBtn.addEventListener('click', ()=> fileInput && fileInput.click());
     if(fileInput) fileInput.addEventListener('change', ()=> uploadActaDictamen(pid, dicId, fileInput, actaBtn));
   }
 }
 
-function bindSolicitudRow(row, block, p){
-  const delBtn = row.querySelector('[data-del-solicitud]');
-  delBtn.addEventListener('click', (e)=> handleDeleteSolicitud(p, block, delBtn.dataset.delSolicitud, e.currentTarget));
-  const inp = row.querySelector('[data-sol-personas]');
-  inp.addEventListener('input', ()=> recomputeDictamenTotals(block, p.monto_beneficiario));
+/* ---- Agregar Dictamen (ventana): monto autorizado + fecha de registro +
+   Acta Firmada opcional en un solo paso, igual que Cargar Monto Autorizado
+   / Registrar Modificación. Si no se adjunta el acta, el dictamen se crea
+   igual y se puede cargar después desde su propia tarjeta. ---- */
+function openModalNuevoDictamen(pid){
+  openModal(`
+    <div class="modal-header"><h3>Agregar Dictamen</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="form-grid single">
+        <div class="field"><label>Monto Autorizado del Dictamen</label><input type="text" data-money id="dn-monto" placeholder="$0.00"></div>
+        <div class="field"><label>Registro del dictamen</label><input type="date" id="dn-fecha"></div>
+        ${fileDropZoneHTML('dn-doc','Acta Firmada de Dictamen (opcional)','.pdf,.jpg,.jpeg,.png,.doc,.docx',null,'Acta Firmada de Dictamen')}
+        <div class="field-hint">Si no tienes el acta a la mano, puedes cargarla después desde la tarjeta del dictamen.</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-gold" id="submitDictamen">Crear Dictamen</button>
+    </div>
+  `);
+  bindDropZone('dn-doc');
+  document.getElementById('submitDictamen').addEventListener('click', async (e)=>{
+    const btn = e.currentTarget;
+    const monto = numValue(document.getElementById('dn-monto'));
+    const fecha = document.getElementById('dn-fecha').value;
+    const archivo = document.getElementById('dn-doc').files[0];
+    if(!monto) return;
+    const fd = new FormData();
+    fd.append('monto_autorizado', monto);
+    if(fecha) fd.append('fecha_dictamen', fecha);
+    if(archivo) fd.append('documento', archivo);
+    try{
+      await withLoading(btn, ()=>safeCall(()=>Api.postForm(`/programs/${pid}/dictamenes`, fd), 'Dictamen creado correctamente.'), archivo ? 'Subiendo documento…' : 'Creando…');
+      closeModal();
+      await refreshOneProgram(pid); renderDetalle(pid);
+    }catch(e){ /* el error ya se mostró vía safeCall */ }
+  });
 }
 
-/* + Agregar Otro Dictamen: solo inserta un bloque vacío en el formulario.
-   No se registra nada en el servidor hasta presionar "Guardar Dictamen". */
-function addDictamenLocal(p){
-  const card = document.getElementById('dictamenesCard') || document.getElementById('section-body-dictaminacion');
-  const emptyState = card.querySelector('.empty-state');
-  if(emptyState) emptyState.remove();
-
-  const draft = { id: tmpId(), numero: null, monto_autorizado: 0, solicitudes: [] };
-  const wrap = document.createElement('div');
-  wrap.innerHTML = dictamenBlockHTML(p, draft).trim();
-  const block = wrap.firstElementChild;
-
-  document.getElementById('dictamenAddWrap').insertAdjacentElement('beforebegin', block);
-  bindDictamenBlock(block, p);
-  bindNumberInputs(block);
-  block.scrollIntoView({behavior:'smooth', block:'center'});
-}
-
-/* + Agregar otra solicitud: inserta la fila dentro del mismo dictamen, sin
-   tocar el servidor ni redibujar la pantalla. */
-function addSolicitudLocal(block, p){
-  const dicId = block.dataset.dictamenBlock;
-  const draft = { id: tmpId(), numero: null, personas: 0 };
-  const wrap = document.createElement('div');
-  wrap.innerHTML = solicitudRowHTML(p, dicId, draft).trim();
-  const row = wrap.firstElementChild;
-
-  const actionsRow = block.querySelector('[data-dictamen-actions]');
-  actionsRow.insertAdjacentElement('beforebegin', row);
-  bindSolicitudRow(row, block, p);
-  bindNumberInputs(row);
-  recomputeDictamenTotals(block, p.monto_beneficiario);
-}
-
-/* ---------- Mutaciones vía API ---------- */
-/* Guarda el dictamen completo de una sola vez: crea (POST) lo que se haya
-   agregado localmente —el dictamen mismo y/o sus solicitudes nuevas— y
-   actualiza (PATCH) lo que ya existía, leyendo los valores actuales del
-   formulario. Solo aquí se llama a la API y se refresca la pantalla. */
-async function saveDictamen(p, dicId, blockEl, btn){
-  if(!blockEl) return;
-  const pid = p.id;
-  const montoInput = blockEl.querySelector('[data-dic-monto]');
-  const montoValue = montoInput ? numValue(montoInput) : 0;
-  const fechaDictamen = readDateTimeInline(blockEl, 'dic', dicId);
-  const solRows = Array.from(blockEl.querySelectorAll('.solicitud-row'));
-
-  /* ---------- Validación: no comprometer más de lo autorizado ----------
-     Antes, si el dictamen comprometía más personas × monto por beneficiario
-     de lo que el programa tiene de Recurso Autorizado (neto de
-     modificaciones), el guardado simplemente tronaba contra el servidor sin
-     ninguna explicación clara. Ahora se calcula el nuevo total comprometido
-     ANTES de enviar nada, usando los mismos valores reales que ya se
-     muestran en el pipeline del programa, y si excede el autorizado se
-     avisa con claridad y se pide confirmación explícita antes de continuar. */
-  const personasEsteDictamen = solRows.reduce((s,row)=>{
-    const inp = row.querySelector('[data-sol-personas]');
-    return s + (inp ? numValue(inp) : 0);
-  }, 0);
-  const dictamenActual = (p.dictamenes||[]).find(d=>String(d.id)===String(dicId));
-  const personasOtrosDictamenes = totalPersonasDictaminadas(p) - (dictamenActual ? (dictamenActual.solicitudes||[]).reduce((s,so)=>s+Number(so.personas||0),0) : 0);
-  const montoBeneficiario = Number(p.monto_beneficiario||0);
-  const comprometidoNuevo = (personasOtrosDictamenes + personasEsteDictamen) * montoBeneficiario;
-  const autorizadoNeto = totalAutorizadoNeto(p);
-  if(comprometidoNuevo > autorizadoNeto + 0.01){
-    const excedente = comprometidoNuevo - autorizadoNeto;
-    const continuar = await confirmAction({
-      title: 'El recurso autorizado no alcanza',
-      message: `Con este dictamen el programa comprometería ${fmtMoney(comprometidoNuevo)} en total, pero solo tiene ${fmtMoney(autorizadoNeto)} de Recurso Autorizado (excede por ${fmtMoney(excedente)}). Puedes cancelar y registrar una Ampliación primero, o guardar de todas formas.`,
-      confirmText: 'Guardar de todas formas',
-      danger: false,
-    });
-    if(!continuar) return;
-  }
-
-  await withLoading(btn, ()=>safeCall(async ()=>{
-    let realDicId = dicId;
-    if(esTemporal(dicId)){
-      const creado = await Api.post(`/programs/${pid}/dictamenes`, {monto_autorizado: montoValue, fecha_dictamen: fechaDictamen});
-      realDicId = creado.id;
-    } else {
-      await Api.patch(`/programs/${pid}/dictamenes/${dicId}`, {monto_autorizado: montoValue, fecha_dictamen: fechaDictamen});
+/* ---- Agregar Solicitud (ventana): Cantidad de Personas + Cantidad de
+   Pagos. Ya no captura Compromiso ni Hora — ver petición del usuario.
+   Antes de enviar, valida que el dictamen no quede comprometido por
+   encima de su propio Monto Autorizado: Personas × (Pagos × Monto por
+   Beneficiario), igual que la validación de Recurso Autorizado a nivel
+   programa (advierte y pide confirmar, no bloquea de forma dura). ---- */
+function openModalNuevaSolicitud(p, dicId){
+  const dictamen = (p.dictamenes||[]).find(d=>String(d.id)===String(dicId));
+  const maxPagos = Math.max(1, Number(p.cantidad_pagos||1));
+  const opciones = Array.from({length:maxPagos}, (_,i)=>i+1)
+    .map(n=> `<option value="${n}">${n===1?'1 pago':n+' pagos'}</option>`).join('');
+  openModal(`
+    <div class="modal-header"><h3>Agregar Solicitud</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="form-grid single">
+        <div class="field"><label>Cantidad de Personas</label><input type="text" data-int id="sn-personas" placeholder="0"></div>
+        <div class="field"><label>Cantidad de Pagos</label><select id="sn-pagos">${opciones}</select></div>
+      </div>
+      <div id="sn-error" style="color:var(--red);font-size:12.5px;font-weight:700;display:none;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-gold" id="submitSolicitud">Agregar Solicitud</button>
+    </div>
+  `);
+  document.getElementById('submitSolicitud').addEventListener('click', async (e)=>{
+    const btn = e.currentTarget;
+    const personas = numValue(document.getElementById('sn-personas'));
+    const cantidadPagos = Number(document.getElementById('sn-pagos').value) || 1;
+    const err = document.getElementById('sn-error');
+    if(!personas || personas < 1){
+      err.textContent = 'La Cantidad de Personas debe ser al menos 1.';
+      err.style.display = 'block';
+      return;
     }
 
-    for(const row of solRows){
-      const inp = row.querySelector('[data-sol-personas]');
-      if(!inp) continue;
-      const [, solId] = inp.dataset.solPersonas.split('|');
-      const personas = numValue(inp);
-      const fechaCompromiso = readDateTimeInline(row, 'sol', dicId+'|'+solId);
-      const cantidadPagosSel = row.querySelector('[data-sol-cantidad-pagos]');
-      const cantidadPagos = cantidadPagosSel ? (Number(cantidadPagosSel.value)||1) : 1;
-      if(esTemporal(solId)){
-        await Api.post(`/programs/${pid}/dictamenes/${realDicId}/solicitudes`, {personas, fecha_compromiso: fechaCompromiso, cantidad_pagos: cantidadPagos});
-      } else {
-        await Api.patch(`/programs/${pid}/dictamenes/${realDicId}/solicitudes/${solId}`, {personas, fecha_compromiso: fechaCompromiso, cantidad_pagos: cantidadPagos});
-      }
+    const montoBeneficiario = Number(p.monto_beneficiario||0);
+    const comprometidoActual = (dictamen?.solicitudes||[]).reduce((s,so)=> s + Number(so.personas||0)*Number(so.cantidad_pagos||1)*montoBeneficiario, 0);
+    const comprometidoNuevo = comprometidoActual + (personas * cantidadPagos * montoBeneficiario);
+    const autorizado = Number(dictamen?.monto_autorizado||0);
+    if(comprometidoNuevo > autorizado + 0.01){
+      const excedente = comprometidoNuevo - autorizado;
+      const continuar = await confirmAction({
+        title: 'El dictamen no alcanza',
+        message: `Con esta solicitud el dictamen comprometería ${fmtMoney(comprometidoNuevo)}, pero solo tiene ${fmtMoney(autorizado)} autorizados (excede por ${fmtMoney(excedente)}). Puedes cancelar y corregir el Monto Autorizado del dictamen, o agregar la solicitud de todas formas.`,
+        confirmText: 'Agregar de todas formas',
+        danger: false,
+      });
+      if(!continuar) return;
     }
-  }, 'Dictamen guardado correctamente.'), 'Guardando…');
 
-  await refreshOneProgram(pid); renderDetalle(pid);
+    try{
+      await withLoading(btn, ()=>safeCall(()=>Api.post(`/programs/${p.id}/dictamenes/${dicId}/solicitudes`, {personas, cantidad_pagos: cantidadPagos}), 'Solicitud agregada correctamente.'), 'Guardando…');
+      closeModal();
+      await refreshOneProgram(p.id); renderDetalle(p.id);
+    }catch(e){ /* el error ya se mostró vía safeCall */ }
+  });
 }
 
-async function handleDeleteSolicitud(p, block, solId, btn){
-  if(esTemporal(solId)){
-    btn.closest('.solicitud-row').remove();
-    recomputeDictamenTotals(block, p.monto_beneficiario);
-    return;
-  }
-  const dicId = block.dataset.dictamenBlock;
+async function handleDeleteSolicitud(pid, dicId, solId, btn){
   const ok = await confirmAction({
     title: 'Eliminar Solicitud',
-    message: '¿Eliminar esta solicitud ya guardada? Esta acción no se puede deshacer.',
+    message: '¿Eliminar esta solicitud? Esta acción no se puede deshacer.',
     confirmText: 'Sí, Eliminar',
   });
   if(!ok) return;
-  await withLoading(btn, ()=>safeCall(()=>Api.del(`/programs/${p.id}/dictamenes/${dicId}/solicitudes/${solId}`), 'Solicitud eliminada.'), 'Eliminando…');
-  await refreshOneProgram(p.id); renderDetalle(p.id);
+  await withLoading(btn, ()=>safeCall(()=>Api.del(`/programs/${pid}/dictamenes/${dicId}/solicitudes/${solId}`), 'Solicitud eliminada.'), 'Eliminando…');
+  await refreshOneProgram(pid); renderDetalle(pid);
 }
 
-async function handleDeleteDictamen(pid, block, dicId, btn){
-  if(esTemporal(dicId)){
-    block.remove();
-    return;
-  }
+async function handleDeleteDictamen(pid, dicId, btn){
   const ok = await confirmAction({
     title: 'Eliminar Dictamen',
-    message: '¿Eliminar este dictamen ya guardado y todas sus solicitudes? Esta acción no se puede deshacer.',
+    message: '¿Eliminar este dictamen y todas sus solicitudes? Esta acción no se puede deshacer.',
     confirmText: 'Sí, Eliminar',
   });
   if(!ok) return;

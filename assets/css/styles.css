@@ -609,28 +609,40 @@ textarea:focus-visible,
 .empty-state{text-align:center;padding:30px 10px;color:var(--text-secondary);font-size:13px;}
 
 /* ===== DICTAMEN BLOCK =====
-   .solicitud-row: rejilla de N columnas de campo + 1 columna final "auto"
-   para el botón de eliminar. El número de columnas de campo DEBE coincidir
-   con la cantidad de .sfield que arma solicitudRowHTML() en app.js
-   (Solicitud No. · Cantidad de Personas · Cantidad de Pagos · Fecha ·
-   Hora = 5), para que el desplegable "Cantidad de Pagos" quede como una
-   celda más de la rejilla y no se recorra a una fila aparte. */
-.dictamen-block{border:1px solid var(--border-hairline);border-radius:var(--radius-md);padding:17px 18px;margin-bottom:14px;background:var(--surface-2);}
+   Tarjeta con fondo guinda sólido (mismo tratamiento que .kpi-card-brand /
+   .insight-card) — un Dictamen es un compromiso de recurso ya autorizado,
+   así que se lee como bloque de "marca", no como una tarjeta blanca más.
+   Las Solicitudes dentro de él son de solo lectura (se crean/eliminan vía
+   modal, no se editan en línea) y usan .solicitud-item, no .solicitud-row. */
+.dictamen-block{
+  border:1px solid rgba(255,255,255,0.08);border-radius:var(--radius-md);
+  padding:18px 20px;margin-bottom:14px;
+  background:linear-gradient(150deg,var(--maroon-700),var(--maroon-900));
+  color:var(--text-on-brand);
+}
 .dictamen-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:10px;flex-wrap:wrap;}
-.dictamen-head h4{margin:0;font-size:13.5px;font-weight:700;color:var(--text-primary);}
-.solicitud-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr auto;gap:10px;align-items:end;background:var(--surface-1);border:1px solid var(--border-hairline);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:8px;}
-@media (max-width:760px){.solicitud-row{grid-template-columns:1fr 1fr;}}
-@media (max-width:480px){.solicitud-row{grid-template-columns:1fr;}}
-.solicitud-row .sfield label{font-size:9.5px;color:var(--text-secondary);font-weight:600;text-transform:uppercase;}
-/* input y select comparten exactamente el mismo tratamiento visual (borde,
-   radio, padding, tamaño de fuente) para que el desplegable "Cantidad de
-   Pagos" se vea como un campo más de la fila, no como un <select> nativo
-   sin estilo suelto junto a su etiqueta. */
-.solicitud-row .sfield input,.solicitud-row .sfield select{width:100%;padding:7px 10px;border-radius:var(--radius-xs);border:1px solid var(--border-strong);font-size:13px;font-weight:500;color:var(--text-primary);background:var(--surface-1);}
-.solicitud-row .sfield select{cursor:pointer;}
+.dictamen-head h4{margin:0;font-size:14px;font-weight:700;color:#fff;}
+.dictamen-block .chip{background:rgba(255,255,255,0.14);color:var(--gold-500);}
+.dictamen-block .field-hint{color:var(--text-on-brand);opacity:0.75;}
+.dictamen-block .btn-outline{background:transparent;border-color:rgba(255,255,255,0.4);color:#fff;}
+.dictamen-block .btn-outline:hover{background:rgba(255,255,255,0.12);}
+.dictamen-meta{display:flex;gap:22px;flex-wrap:wrap;margin-bottom:14px;font-size:12.5px;}
+.dictamen-meta div{color:var(--text-on-brand);opacity:0.8;}
+.dictamen-meta b{color:#fff;font-weight:700;}
+
+.solicitud-item{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+  background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);
+  border-radius:var(--radius-sm);padding:9px 12px;margin-bottom:8px;
+}
+.solicitud-item .sol-info{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--text-on-brand);}
+.solicitud-item .sol-info b{color:#fff;}
 .icon-btn{background:none;border:none;color:var(--red);font-size:15px;padding:5px 9px;border-radius:var(--radius-xs);transition:background var(--dur-base) var(--ease-standard);}
 .icon-btn:hover{background:#FCEBEC;}
-.dictamen-total{display:flex;gap:22px;margin-top:10px;font-size:12px;color:var(--maroon-800);font-weight:600;}
+.dictamen-block .icon-btn{color:#ffb4bd;}
+.dictamen-block .icon-btn:hover{background:rgba(255,255,255,0.14);}
+.dictamen-total{display:flex;gap:22px;margin-top:10px;font-size:12.5px;color:var(--text-on-brand);font-weight:600;}
+.dictamen-total b{color:#fff;}
 
 /* breadcrumb / back */
 .back-link{display:inline-flex;align-items:center;gap:6px;color:var(--maroon-700);font-weight:600;font-size:13px;text-decoration:none;margin-bottom:14px;background:none;border:none;padding:0;transition:opacity var(--dur-base) var(--ease-standard);}

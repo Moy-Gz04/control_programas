@@ -391,7 +391,14 @@ router.delete('/:id/modificaciones/:modId/documento', async (req, res) => {
 /* Dictaminación                                                           */
 /* ---------------------------------------------------------------------- */
 
-router.post('/:id/dictamenes', async (req, res) => {
+// Crear Dictamen: el flujo ahora es "una sola ventana" — monto autorizado,
+// fecha de registro y, opcionalmente, el Acta Firmada de Dictamen en el
+// mismo paso (igual que Cargar Monto Autorizado / Registrar Modificación).
+// Si no se adjunta archivo, el dictamen se crea igual y el acta se puede
+// cargar después desde su propia tarjeta. Ya NO se crea automáticamente
+// una primera Solicitud vacía: cada solicitud se agrega explícitamente
+// desde la tarjeta del dictamen ("+ Agregar Solicitud").
+router.post('/:id/dictamenes', upload.single('documento'), async (req, res) => {
   try {
     const programa = await getPrograma(req.params.id);
     if (!programa) return res.status(404).json({ error: 'Programa no encontrado.' });
@@ -401,15 +408,23 @@ router.post('/:id/dictamenes', async (req, res) => {
     const montoAutorizado = Number(req.body?.monto_autorizado || 0);
     const fechaDictamen = parseFechaManual(req.body?.fecha_dictamen);
 
-    const { rows } = await db.query(
-      `INSERT INTO dictamenes (programa_id, numero, monto_autorizado, fecha_dictamen)
-       VALUES ($1,$2,$3,COALESCE($4, now())) RETURNING id`,
-      [req.params.id, numero, montoAutorizado, fechaDictamen]
-    );
-    const fechaCompromiso = parseFechaManual(req.body?.fecha_compromiso);
+    let documentoUrl = null;
+    let documentoNombre = null;
+    if (req.file) {
+      try {
+        const subido = await uploadDocumento(req.file.buffer, req.file.originalname, req.file.mimetype);
+        documentoUrl = subido.url;
+        documentoNombre = subido.nombre;
+      } catch (uploadErr) {
+        console.error('[programs/dictamenes] Google Drive', uploadErr);
+        return res.status(502).json({ error: uploadErr.message || 'No se pudo subir el documento a Google Drive.' });
+      }
+    }
+
     await db.query(
-      `INSERT INTO solicitudes (dictamen_id, numero, personas, fecha_compromiso) VALUES ($1, 1, 0, COALESCE($2, now()))`,
-      [rows[0].id, fechaCompromiso]
+      `INSERT INTO dictamenes (programa_id, numero, monto_autorizado, fecha_dictamen, acta_documento_url, acta_documento_nombre, acta_fecha_carga)
+       VALUES ($1,$2,$3,COALESCE($4, now()),$5,$6,${documentoUrl ? 'now()' : 'NULL'})`,
+      [req.params.id, numero, montoAutorizado, fechaDictamen, documentoUrl, documentoNombre]
     );
 
     res.status(201).json(await getProgramaCompleto(req.params.id));
