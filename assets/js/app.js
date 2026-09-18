@@ -800,10 +800,7 @@ async function renderDetalle(id){
 
     ${collapsibleSection('hacienda','Solicitudes a Hacienda', `${(p.solicitudesHacienda||[]).length} trámite(s)`, `
       ${(p.solicitudesHacienda||[]).length? p.solicitudesHacienda.map(h=>haciendaItemHTML(h,p)).join('') : `<div class="empty-state">Sin trámites enviados a Hacienda.</div>`}
-      <div style="text-align:center;margin-top:10px;">
-        <button class="btn btn-outline btn-sm" id="btnAddHacienda">+ Registrar Solicitud a Hacienda</button>
-      </div>
-    `)}
+    `, true, `<button class="btn btn-outline btn-sm" id="btnAddHacienda">+ Registrar Solicitud a Hacienda</button>`)}
 
     ${collapsibleSection('pagos','Recurso Dispersado', `${(p.pagos||[]).length} dispersión(es)`, `
       <div class="log-list">
@@ -1038,45 +1035,53 @@ function haciendaItemHTML(h, p){
     : (h.dictamen_id!=null ? `Dictamen #${h.dictamen_id}` : null);
   return `
   <div class="hacienda-item ${badge.mod}" data-hacienda-item="${h.id}">
-    <div class="hacienda-item-head">
-      <div class="hacienda-item-main">
+    <div class="hacienda-columns">
+      <div class="hacienda-stage hacienda-col-1">
+        <div class="hacienda-stage-label">1 · Solicitud a Hacienda</div>
         <div class="hacienda-item-eyebrow">Folio</div>
         <div class="hacienda-item-title">${esc(h.folio)}</div>
         <div class="lmeta">Solicitado: ${fmtDateOnly(h.fecha)}${dictamenLabel ? ` · Vinculado a ${esc(dictamenLabel)}` : ' · Sin vincular a un dictamen específico'}</div>
+        <div class="hacienda-item-amount">
+          <div class="hacienda-item-monto">${fmtMoney(h.monto)}</div>
+          <span class="badge-pill ${badge.cls}">${badge.label}</span>
+        </div>
+        ${docLinkRowHTML(h.documento_url, `/programs/${p.id}/hacienda/${h.id}/documento`)}
+        <div class="hacienda-item-actions">
+          <button class="btn btn-outline btn-sm" data-editar-hacienda="${h.id}">Editar</button>
+          <button class="btn btn-danger btn-sm" data-del-hacienda="${h.id}">Eliminar</button>
+        </div>
       </div>
-      <div class="hacienda-item-amount">
-        <div class="hacienda-item-monto">${fmtMoney(h.monto)}</div>
-        <span class="badge-pill ${badge.cls}">${badge.label}</span>
-      </div>
-      <div class="hacienda-item-actions">
-        <button class="btn btn-outline btn-sm" data-editar-hacienda="${h.id}">Editar</button>
-        <button class="btn btn-danger btn-sm" data-del-hacienda="${h.id}">Eliminar</button>
-      </div>
-    </div>
-    ${docLinkRowHTML(h.documento_url, `/programs/${p.id}/hacienda/${h.id}/documento`)}
 
-    ${h.autorizacion ? `
+      ${h.autorizacion ? `
       <div class="hacienda-stage">
-        <div class="hacienda-stage-label">Autorizado por Hacienda</div>
+        <div class="hacienda-stage-label">2 · Autorizado por Hacienda</div>
         <div class="hacienda-stage-body">
           <div class="hacienda-stage-amount">${fmtMoney(h.autorizacion.monto_autorizado)}</div>
           <div class="lmeta">${fmtDateOnly(h.autorizacion.fecha_autorizacion)}</div>
         </div>
         ${docLinkRowHTML(h.autorizacion.documento_url, `/programs/${p.id}/hacienda/${h.id}/autorizacion/documento`)}
       </div>
-    ` : `
+      ` : `
       <div class="hacienda-stage hacienda-stage-empty">
-        <div class="hacienda-stage-label">Autorizado por Hacienda</div>
+        <div class="hacienda-stage-label">2 · Autorizado por Hacienda</div>
+        <div class="hacienda-stage-hint">Registra cuánto autorizó Hacienda de esta solicitud para poder continuar con el Archivo de Asignación.</div>
         <button class="btn btn-gold btn-sm" data-autorizar-hacienda="${h.id}">+ Registrar Autorización</button>
       </div>
-    `}
-    ${h.autorizacion ? asignacionBlockHTML(h) : ''}
+      `}
+
+      ${asignacionBlockHTML(h)}
+    </div>
   </div>`;
 }
 
 /* ---------- Archivo de Asignación: bloque de carga / revisión por solicitud a Hacienda ----------
-   Solo se dibuja cuando la solicitud ya tiene su Autorización de Hacienda
-   registrada (ver haciendaItemHTML). Estados:
+   Siempre se dibuja (como la 3ª columna del flujo), aunque todavía no se
+   pueda usar: si la solicitud ni siquiera tiene su Autorización de
+   Hacienda registrada, se muestra "bloqueado" en vez de desaparecer, para
+   que las 3 columnas (Solicitud / Autorización / Asignación) queden
+   siempre una junto a otra y se entienda de un vistazo qué falta.
+   Estados:
+     bloqueado      -> sin Autorización todavía, nada que hacer aquí aún.
      sin registro   -> botón para cargar el archivo.
      'revision'     -> botones Marcar Correcto / Marcar Incorrecto.
      'incorrecto'   -> motivo + fecha de revisión, botón para cargar un
@@ -1085,10 +1090,18 @@ function haciendaItemHTML(h, p){
 function asignacionBlockHTML(h){
   const a = h.asignacion;
   const hid = h.id;
+  if(!h.autorizacion){
+    return `
+    <div class="hacienda-stage hacienda-stage-empty hacienda-stage-blocked">
+      <div class="hacienda-stage-label">3 · Archivo de Asignación</div>
+      <div class="hacienda-stage-hint">Se habilita en cuanto se registre la Autorización de Hacienda (columna anterior).</div>
+    </div>`;
+  }
   if(!a){
     return `
     <div class="hacienda-stage hacienda-stage-empty">
-      <div class="hacienda-stage-label">Archivo de Asignación</div>
+      <div class="hacienda-stage-label">3 · Archivo de Asignación</div>
+      <div class="hacienda-stage-hint">Sube el archivo que confirma la asignación de los beneficiarios para esta solicitud.</div>
       <input type="file" id="asig-input-${hid}" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" hidden>
       <button class="btn btn-outline btn-sm" data-asig-upload="${hid}">Cargar Archivo de Asignación</button>
     </div>`;
@@ -1104,7 +1117,7 @@ function asignacionBlockHTML(h){
   if(a.estatus==='revision'){
     return `
     <div class="hacienda-stage">
-      <div class="hacienda-stage-label">Archivo de Asignación <span class="badge-pill badge-revision">En Revisión</span></div>
+      <div class="hacienda-stage-label">3 · Archivo de Asignación <span class="badge-pill badge-revision">En Revisión</span></div>
       ${cargaInfo}
       <div class="asignacion-actions">
         <button class="btn btn-outline btn-sm" data-asig-correcto="${hid}">Marcar Correcto</button>
@@ -1115,7 +1128,7 @@ function asignacionBlockHTML(h){
   if(a.estatus==='incorrecto'){
     return `
     <div class="hacienda-stage">
-      <div class="hacienda-stage-label">Archivo de Asignación <span class="badge-pill badge-incorrecta">Incorrecto</span></div>
+      <div class="hacienda-stage-label">3 · Archivo de Asignación <span class="badge-pill badge-incorrecta">Incorrecto</span></div>
       ${cargaInfo}
       <div class="lmeta">Motivo: ${esc(a.motivo_rechazo||'')} · ${fmtDateOnly(a.fecha_revision)}</div>
       <input type="file" id="asig-input-${hid}" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" hidden>
@@ -1127,7 +1140,7 @@ function asignacionBlockHTML(h){
   // correcto
   return `
     <div class="hacienda-stage">
-      <div class="hacienda-stage-label">Archivo de Asignación <span class="badge-pill badge-autorizada">Correcto</span></div>
+      <div class="hacienda-stage-label">3 · Archivo de Asignación <span class="badge-pill badge-autorizada">Correcto</span></div>
       ${cargaInfo}
       <div class="lmeta">Folio proporcionado: <b>${esc(a.folio||'')}</b> · ${fmtDateOnly(a.fecha_revision)}</div>
     </div>`;

@@ -920,17 +920,13 @@ footer.app-footer{
 /* =========================================================================
    ESTADO DE SOLICITUDES A HACIENDA (Autorización / Archivo de Asignación /
    disponible para Dispersión)
-   La tarjeta se divide en franjas verticales claramente separadas:
-   1) encabezado (folio, fecha, dictamen vinculado, monto, estatus);
-   2) etapa "Autorizado por Hacienda" (.hacienda-stage);
-   3) etapa "Archivo de Asignación" (.hacienda-stage), anidada dentro de
-      la anterior en el flujo del programa.
-   Cada etapa vive en su propia caja con fondo, borde y una etiqueta en
-   mayúsculas (.hacienda-stage-label) para que, aun con varias solicitudes
-   una debajo de otra, se distinga de un vistazo dónde termina una franja
-   y empieza la siguiente — antes todo el texto (folio, montos, fechas,
-   botones "Ver Documento") vivía suelto dentro de la misma tarjeta sin
-   separación visual.
+   La tarjeta se divide en 3 columnas, una junto a la otra, siguiendo el
+   flujo real: 1) Solicitud a Hacienda, 2) Autorizado por Hacienda,
+   3) Archivo de Asignación. Cada columna es su propia caja (.hacienda-stage)
+   con fondo, borde y una etiqueta numerada (.hacienda-stage-label), así
+   que se lee de un vistazo en qué paso del trámite va cada solicitud —
+   incluyendo los pasos que todavía no se han hecho, mostrados como
+   pendientes/bloqueados en vez de simplemente no existir en pantalla.
    ========================================================================= */
 .hacienda-item{
   border:1px solid var(--border-hairline);border-left:4px solid var(--status-registrado);
@@ -945,35 +941,36 @@ footer.app-footer{
 .hacienda-item.is-revision{border-left-color:var(--gold-600);}
 .hacienda-item.is-incorrecta{border-left-color:var(--red);}
 .hacienda-item.is-pagada{border-left-color:var(--maroon-700);}
-.hacienda-item-head{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding-bottom:12px;border-bottom:1px solid var(--border-hairline);}
+
+.hacienda-columns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;align-items:start;}
+@media (max-width:900px){.hacienda-columns{grid-template-columns:1fr;}}
+
 .hacienda-item-eyebrow{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-tertiary);margin-bottom:2px;}
 .hacienda-item-title{font-weight:800;font-size:15px;color:var(--text-primary);letter-spacing:-0.1px;}
-.hacienda-item-main .lmeta{margin-top:3px;}
-.hacienda-item-amount{display:flex;flex-direction:column;align-items:flex-start;gap:7px;}
+.hacienda-item-amount{display:flex;flex-direction:column;align-items:flex-start;gap:7px;margin-top:10px;}
 .hacienda-item-monto{font-size:17px;font-weight:800;color:var(--maroon-800);letter-spacing:-0.2px;}
-.hacienda-item>.doc-link-row{margin-top:10px;}
-.hacienda-item-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.hacienda-item-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
 
-/* Cada etapa (Autorizado por Hacienda / Archivo de Asignación) es su
-   propia caja con fondo distinguible y separación vertical generosa,
-   en vez de texto corrido con un simple borde punteado arriba. */
+/* Cada columna vive en su propia caja con fondo distinguible, en vez de
+   texto corrido con un simple borde punteado arriba. */
 .hacienda-stage{
-  margin-top:12px;padding:12px 14px;border-radius:var(--radius-sm);
+  padding:14px 14px 16px;border-radius:var(--radius-sm);
   background:var(--surface-2);border:1px solid var(--border-hairline);
+  display:flex;flex-direction:column;height:100%;
 }
-.hacienda-stage-empty{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:var(--surface-1);border-style:dashed;}
+.hacienda-stage-empty{background:var(--surface-1);border-style:dashed;align-items:flex-start;}
+.hacienda-stage-blocked{opacity:0.6;}
 .hacienda-stage-label{
   font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--maroon-700);
   display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;
 }
-.hacienda-stage-empty .hacienda-stage-label{margin-bottom:0;}
+/* Frase corta bajo la etiqueta de una columna vacía/bloqueada, para que
+   quede claro qué hace falta o qué pasa al presionar el botón — en vez de
+   dejar solo un botón suelto sin ningún contexto. */
+.hacienda-stage-hint{font-size:12px;color:var(--text-secondary);line-height:1.5;margin-bottom:10px;}
 .hacienda-stage-body{display:flex;flex-direction:column;align-items:flex-start;gap:4px;}
 .hacienda-stage-amount{font-size:14px;font-weight:800;color:var(--text-primary);}
 .hacienda-stage .doc-link-row{margin-top:8px;}
-/* Cuando el Archivo de Asignación se anida dentro de la tarjeta (después
-   de la etapa de Autorización) se recorre un poco a la derecha, como una
-   sub-etapa del flujo, sin perder su propia caja. */
-.hacienda-stage + .hacienda-stage{margin-left:10px;border-left:2px solid var(--gold-500);}
 .badge-pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:var(--radius-pill);font-size:10px;font-weight:700;letter-spacing:0.2px;}
 .badge-pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0;}
 .badge-pendiente{background:#FBEFD8;color:#8A6512;}
@@ -983,7 +980,7 @@ footer.app-footer{
 .badge-incorrecta{background:#FCEBEC;color:var(--red);}
 
 /* ---------- Acciones dentro de una etapa (Marcar Correcto/Incorrecto, etc.) ---------- */
-.asignacion-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;justify-content:flex-end;}
+.asignacion-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;justify-content:flex-start;}
 
 /* =========================================================================
    PIPELINE DE FLUJO PRESUPUESTAL
@@ -1130,7 +1127,6 @@ footer.app-footer{
   .hacienda-item{padding:14px 14px 16px;}
   .hacienda-item-title{font-size:14px;}
   .hacienda-item-monto{font-size:15.5px;}
-  .hacienda-stage + .hacienda-stage{margin-left:0;border-left:none;border-top:2px solid var(--gold-500);padding-top:12px;}
 
   .dictamen-block{padding:14px 14px;}
 
