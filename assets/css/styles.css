@@ -272,7 +272,7 @@ textarea:focus-visible,
    el título y el subtítulo apilados y centrados como eje visual de cada
    pantalla. */
 .header-band{
-  background:linear-gradient(120deg,var(--maroon-800),var(--maroon-700) 60%,var(--maroon-800));
+  background:var(--guinda-card-grad);
   padding:22px 20px 20px;text-align:center;color:#fff;position:relative;
 }
 .header-band h1{
@@ -311,7 +311,7 @@ textarea:focus-visible,
    Recurso" para que las 5 tarjetas se lean como un solo bloque de
    situación actual, en vez de un color distinto por concepto. */
 .kpi-card-brand{
-  background:linear-gradient(150deg,var(--maroon-700),var(--maroon-900));
+  background:var(--guinda-card-grad);
   border-color:rgba(255,255,255,0.08);
 }
 .kpi-card-brand::before{display:none;}
@@ -335,7 +335,7 @@ textarea:focus-visible,
 .chart-flex{display:grid;grid-template-columns:minmax(0,2fr) minmax(260px,1fr);gap:16px;align-items:stretch;}
 @media (max-width:980px){.chart-flex{grid-template-columns:1fr;}}
 .insight-card{
-  background:linear-gradient(165deg,var(--maroon-800),var(--maroon-900));
+  background:var(--guinda-card-grad);
   border-radius:var(--radius-xl);padding:22px 24px;color:var(--text-on-brand);
   box-shadow:var(--shadow-md);display:flex;flex-direction:column;gap:10px;
 }
@@ -540,7 +540,7 @@ textarea:focus-visible,
 .modal.modal-wide{max-width:600px;}
 @keyframes modalIn{from{opacity:0;transform:translateY(14px) scale(0.98);}to{opacity:1;transform:none;}}
 .modal-header{
-  padding:14px 20px;background:linear-gradient(120deg,var(--maroon-800),var(--maroon-700));
+  padding:14px 20px;background:var(--guinda-card-grad);
   color:#fff;border-radius:var(--radius-lg) var(--radius-lg) 0 0;display:flex;align-items:center;justify-content:space-between;
 }
 .modal-header h3{margin:0;font-size:14px;font-weight:700;}
@@ -673,7 +673,7 @@ textarea:focus-visible,
 
 footer.app-footer{
   margin-top:44px;padding:22px 5%;
-  background:linear-gradient(135deg,var(--maroon-900),var(--maroon-800) 60%,var(--maroon-700));
+  background:var(--guinda-card-grad);
   border-top:1px solid rgba(201,168,78,0.4);
 }
 .footer-inner{max-width:1600px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
@@ -1041,7 +1041,7 @@ footer.app-footer{
      abajo de este componente, en la misma pantalla), para que las tres
      piezas se lean como un solo bloque de "situación actual". */
   --pipeline-guinda:#691C32; --pipeline-gold:#B38E5D;
-  background:linear-gradient(160deg,var(--maroon-800),var(--maroon-900));
+  background:var(--guinda-card-grad);
   border-radius:var(--radius-xl);border:1px solid rgba(201,168,78,0.4);box-shadow:var(--shadow-modal);
   margin-bottom:20px;font-family:'Montserrat',var(--font-sans);
   /* Sin overflow:hidden: con él, el tooltip que aparece arriba de cada
