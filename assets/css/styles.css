@@ -18,6 +18,11 @@
   --maroon-800:#4A0A1D;
   --maroon-700:#6B0F2B;
   --maroon-600:#8C3358;
+  /* Guinda "de marca" para tarjetas (Dictamen, Solicitud a Hacienda,
+     Dispersión): más clara y con algo de transparencia que el guinda
+     sólido 700→900 de antes, para que las etiquetas y el texto no se
+     pierdan contra las esquinas más oscuras del degradado. */
+  --guinda-card-grad: linear-gradient(150deg, rgba(140,51,88,0.90), rgba(90,15,40,0.92));
   --gold-600:#9A7D30;
   --gold-500:#C8A951;
   --gold-chart:#C9862B;
@@ -608,6 +613,22 @@ textarea:focus-visible,
 .log-row .lamount.pos{color:#0F7C57;}
 .empty-state{text-align:center;padding:30px 10px;color:var(--text-secondary);font-size:13px;}
 
+/* Recurso Dispersado (Dispersión ya entregada): mismo fondo guinda "de
+   marca" que Dictamen / Solicitud a Hacienda, en vez de la tarjeta clara
+   genérica que comparte con Modificaciones y Documentos. Va DESPUÉS de
+   las reglas base .log-row de arriba para poder sobreescribirlas (misma
+   especificidad, gana el orden de aparición). */
+.log-row-pago{background:var(--guinda-card-grad);border-color:rgba(255,255,255,0.08);color:var(--text-on-brand);}
+.log-row-pago:hover{background:var(--guinda-card-grad);box-shadow:var(--shadow-sm);transform:translateY(-1px);}
+.log-row-pago .log-row-icon-pos{background:rgba(255,255,255,0.18);color:#fff;}
+.log-row-pago .log-row-title{color:#fff;}
+.log-row-pago .lmeta{color:var(--text-on-brand);opacity:0.75;}
+.log-row-pago .lamount.pos{color:#fff;}
+.log-row-pago .btn-ver-documento{background:rgba(255,255,255,0.14);border-color:rgba(255,255,255,0.4);color:#fff;}
+.log-row-pago .btn-ver-documento:hover{background:rgba(255,255,255,0.26);color:#fff;}
+.log-row-pago .icon-btn{color:#ffb4bd;}
+.log-row-pago .icon-btn:hover{background:rgba(255,255,255,0.14);}
+
 /* ===== DICTAMEN BLOCK =====
    Tarjeta con fondo guinda sólido (mismo tratamiento que .kpi-card-brand /
    .insight-card) — un Dictamen es un compromiso de recurso ya autorizado,
@@ -617,12 +638,12 @@ textarea:focus-visible,
 .dictamen-block{
   border:1px solid rgba(255,255,255,0.08);border-radius:var(--radius-md);
   padding:18px 20px;margin-bottom:14px;
-  background:linear-gradient(150deg,var(--maroon-700),var(--maroon-900));
+  background:var(--guinda-card-grad);
   color:var(--text-on-brand);
 }
 .dictamen-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:10px;flex-wrap:wrap;}
 .dictamen-head h4{margin:0;font-size:14px;font-weight:700;color:#fff;}
-.dictamen-block .chip{background:rgba(255,255,255,0.14);color:var(--gold-500);}
+.dictamen-block .chip{background:rgba(255,255,255,0.18);color:#fff;}
 .dictamen-block .field-hint{color:var(--text-on-brand);opacity:0.75;}
 .dictamen-block .btn-outline{background:transparent;border-color:rgba(255,255,255,0.4);color:#fff;}
 .dictamen-block .btn-outline:hover{background:rgba(255,255,255,0.12);}
@@ -956,14 +977,14 @@ footer.app-footer{
    clara — un Dictamen o un trámite de Hacienda son igual de "de marca". */
 .hacienda-stage{
   padding:14px 14px 16px;border-radius:var(--radius-sm);
-  background:linear-gradient(150deg,var(--maroon-700),var(--maroon-900));
+  background:var(--guinda-card-grad);
   border:1px solid rgba(255,255,255,0.08);color:var(--text-on-brand);
   display:flex;flex-direction:column;height:100%;
 }
 .hacienda-stage-empty{border-style:dashed;border-color:rgba(255,255,255,0.3);align-items:flex-start;}
 .hacienda-stage-blocked{opacity:0.55;}
 .hacienda-stage-label{
-  font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--gold-500);
+  font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-on-brand);
   display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;
 }
 /* Frase corta bajo la etiqueta de una columna vacía/bloqueada, para que
