@@ -714,6 +714,7 @@ function renderProgramas(){
     </div>
   `;
   bindProgramTileClicks(el);
+  animateViewIn(el);
 }
 
 /* =========================================================================
@@ -882,6 +883,8 @@ async function renderDetalle(id){
   // (una ventana por acción, igual que el resto del sistema) — ya no hay
   // edición en línea ni un botón "Guardar" que agrupe varios cambios.
   el.querySelectorAll('.dictamen-block').forEach(block=> bindDictamenBlock(block, p));
+
+  animateViewIn(el);
 }
 
 /* ---------- FLUJO DE RECURSOS DEL PROGRAMA ----------
@@ -2157,6 +2160,39 @@ function openModalPago(p){
     }catch(e){ /* el error ya se mostró vía safeCall */ }
   });
 }
+
+/* =========================================================================
+   MOVIMIENTO (GSAP) — entrada escalonada de tarjetas al renderizar una
+   vista, y micro-interacciones de hover en botones que antes solo tenían
+   filter/box-shadow. Todo con gsap.killTweensOf/overwrite:'auto' para que
+   un re-render a mitad de animación (ej. cambiar de programa rápido) no
+   dispare tweens encimados ni deje elementos a medio desvanecer.
+   ========================================================================= */
+function animateViewIn(container){
+  if(!window.gsap || !container) return;
+  const items = container.querySelectorAll('.prog-tile, .kpi-card, .card, .chart-card, .pipeline-card, .insight-card, .dictamen-block, .hacienda-stage');
+  if(!items.length) return;
+  gsap.killTweensOf(items);
+  gsap.fromTo(items,
+    { opacity:0, y:14, scale:0.985 },
+    { opacity:1, y:0, scale:1, duration:0.5, ease:'power2.out', stagger:0.045, clearProps:'transform' }
+  );
+}
+function initHoverMicrointeractions(){
+  if(!window.gsap) return;
+  const LIFT_SELECTOR = '.btn-primary, .btn-gold, .nav-cta';
+  document.addEventListener('mouseenter', (e)=>{
+    const t = e.target.closest && e.target.closest(LIFT_SELECTOR);
+    if(!t || t.disabled) return;
+    gsap.to(t, {y:-2, scale:1.02, duration:0.25, ease:'power2.out', overwrite:'auto'});
+  }, true);
+  document.addEventListener('mouseleave', (e)=>{
+    const t = e.target.closest && e.target.closest(LIFT_SELECTOR);
+    if(!t) return;
+    gsap.to(t, {y:0, scale:1, duration:0.3, ease:'power2.out', overwrite:'auto'});
+  }, true);
+}
+initHoverMicrointeractions();
 
 /* ---------- START ---------- */
 init();

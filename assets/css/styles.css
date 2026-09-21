@@ -12,25 +12,32 @@
      referencia directamente en estilos inline (ej. --accent, var(--red)).
      Sólo se refinan los valores para una paleta más sobria y premium.
      --------------------------------------------------------------------- */
-  /* Paleta alineada a la de correspondencia (guinda/dorado) para que
-     el sistema de programas comparta identidad visual con el resto. */
-  --maroon-900:#3A0818;
-  --maroon-800:#4A0A1D;
-  --maroon-700:#6B0F2B;
-  --maroon-600:#8C3358;
-  /* Guinda "de marca" para tarjetas (header-band, KPI, Dictamen, Hacienda,
-     pipeline, modales, footer): degradado entre los dos Pantone guinda
-     institucionales —7420 C (#A02142, más vivo) y 7421 C (#691B31, el
-     guinda base de gobierno)— en vez de una mezcla propia. El salto de
-     tono da profundidad sin caer en el sólido plano ni perder el color
-     oficial. */
-  --guinda-card-grad: linear-gradient(155deg, #A02142 0%, #83193B 45%, #691B31 100%);
+  /* Paleta derivada de los DOS Pantone guinda institucionales —7420 C
+     (#A02142, vivo) y 7421 C (#691B31, base de gobierno)— para que toda
+     la app (navbar, botones, texto, tarjetas) comparta una sola familia
+     de guinda en vez de mezclar el Pantone con un guinda casi-negro
+     inventado aparte (así se veían "sin combinar"). --maroon-800 ES el
+     7421 C oficial; --maroon-600 ES el 7420 C oficial; 900/700 son un
+     paso más oscuro/medio de la misma familia, no un tono ajeno. */
+  --maroon-900:#3D0E1F;
+  --maroon-800:#691B31;
+  --maroon-700:#83193B;
+  --maroon-600:#A02142;
+  /* Tarjetas/paneles "de marca" (header-band, KPI, Dictamen, Hacienda,
+     pipeline, modales, footer): mismo degradado 7420→7421 construido con
+     los tokens de arriba (una sola fuente de verdad), más un velo de luz
+     superior sutil para que no quede plano. */
+  --guinda-card-grad:
+    radial-gradient(120% 140% at 12% -10%, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0) 45%),
+    linear-gradient(155deg, var(--maroon-600) 0%, var(--maroon-700) 45%, var(--maroon-800) 100%);
+  --guinda-shadow: 0 14px 34px -14px rgba(105,27,49,0.55);
   /* Dorados institucionales: 465 C para relleno sólido (botones, iconos),
      468 C para texto/etiquetas sobre guinda (más claro, mejor contraste
      que el dorado saturado de antes). */
   --gold-500:#BC955B;
   --gold-600:#96723F;
   --gold-100:#DDC9A3;
+  --gold-grad: linear-gradient(135deg, var(--gold-100) 0%, var(--gold-500) 55%, var(--gold-600) 100%);
   --gold-chart:#C9862B;
   --aqua-chart:#159C6C;
   --cream-50:#FAF9F6;
@@ -63,7 +70,7 @@
 
   --border-hairline:rgba(34,27,24,0.08);
   --border-strong:var(--card-border);
-  --focus-ring:0 0 0 4px rgba(140,51,88,0.16);
+  --focus-ring:0 0 0 4px rgba(162,33,66,0.16);
 
   --radius-xs:8px;
   --radius-sm:12px;
@@ -136,7 +143,7 @@ input,select,textarea{font-family:inherit;}
 h1,h2,h3,h4,p{margin:0;}
 a{color:inherit;}
 
-::selection{background:rgba(140,51,88,0.18);}
+::selection{background:rgba(162,33,66,0.18);}
 
 /* Scrollbar discreta (Webkit); no afecta el layout ni el comportamiento */
 ::-webkit-scrollbar{width:11px;height:11px;}
@@ -264,7 +271,7 @@ textarea:focus-visible,
 .nav-cta{
   margin-left:auto;
   padding:8px 18px;border-radius:var(--radius-pill);
-  background:linear-gradient(135deg,var(--gold-500),var(--gold-600));border:none;
+  background:var(--gold-grad);border:none;
   color:var(--maroon-900);font-weight:800;font-size:11.5px;letter-spacing:0.2px;
   box-shadow:0 2px 8px rgba(0,0,0,0.25);
   transition:filter var(--dur-base) var(--ease-standard), transform var(--dur-fast) var(--ease-standard);
@@ -280,6 +287,7 @@ textarea:focus-visible,
 .header-band{
   background:var(--guinda-card-grad);
   padding:22px 20px 20px;text-align:center;color:#fff;position:relative;
+  box-shadow:var(--guinda-shadow);
 }
 .header-band h1{
   margin:0;font-size:22px;letter-spacing:0.1px;font-weight:800;
@@ -319,6 +327,7 @@ textarea:focus-visible,
 .kpi-card-brand{
   background:var(--guinda-card-grad);
   border-color:rgba(255,255,255,0.08);
+  box-shadow:var(--guinda-shadow);
 }
 .kpi-card-brand::before{display:none;}
 .kpi-card-brand .kpi-label{color:var(--gold-100);opacity:0.95;}
@@ -343,7 +352,7 @@ textarea:focus-visible,
 .insight-card{
   background:var(--guinda-card-grad);
   border-radius:var(--radius-xl);padding:22px 24px;color:var(--text-on-brand);
-  box-shadow:var(--shadow-md);display:flex;flex-direction:column;gap:10px;
+  box-shadow:var(--guinda-shadow);display:flex;flex-direction:column;gap:10px;
 }
 .insight-head{font-size:10.5px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:var(--gold-100);border-bottom:1px solid rgba(255,255,255,0.14);padding-bottom:10px;margin-bottom:2px;}
 .insight-card p{margin:0;font-size:12.5px;line-height:1.65;color:var(--text-on-brand);opacity:0.92;}
@@ -399,7 +408,7 @@ textarea:focus-visible,
 .btn:active{transform:scale(0.97);}
 .btn-primary{background:linear-gradient(135deg,var(--maroon-800),var(--maroon-700));color:#fff;box-shadow:0 1px 2px rgba(20,10,15,0.12);}
 .btn-primary:hover{filter:brightness(1.08);box-shadow:0 4px 14px rgba(76,18,48,0.28);}
-.btn-gold{background:linear-gradient(135deg,var(--gold-500),var(--gold-600));color:var(--maroon-900);}
+.btn-gold{background:var(--gold-grad);color:var(--maroon-900);}
 .btn-gold:hover{filter:brightness(1.05);box-shadow:0 4px 14px rgba(176,138,42,0.32);}
 .btn-outline{background:var(--surface-1);color:var(--maroon-800);border:1.5px solid var(--maroon-700);}
 .btn-outline:hover{background:var(--cream-50);}
@@ -645,6 +654,7 @@ textarea:focus-visible,
   border:1px solid rgba(255,255,255,0.08);border-radius:var(--radius-md);
   padding:18px 20px;margin-bottom:14px;
   background:var(--guinda-card-grad);
+  box-shadow:var(--guinda-shadow);
   color:var(--text-on-brand);
 }
 .dictamen-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:10px;flex-wrap:wrap;}
@@ -721,7 +731,7 @@ footer.app-footer{
 :root{
   --neu-bg:var(--maroon-800);
   --neu-surface:var(--maroon-800);
-  --neu-light:rgba(140,51,88,0.55);
+  --neu-light:rgba(162,33,66,0.55);
   --neu-dark:rgba(8,1,4,0.6);
   --neu-accent:var(--gold-500);
   --neu-accent-soft:var(--gold-600);
@@ -745,7 +755,7 @@ footer.app-footer{
 .login-halo{
   position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
   width:min(560px,90vw);height:min(560px,90vw);border-radius:50%;z-index:0;
-  background:radial-gradient(circle, rgba(140,51,88,0.55) 0%, rgba(140,51,88,0) 70%);
+  background:radial-gradient(circle, rgba(162,33,66,0.55) 0%, rgba(162,33,66,0) 70%);
   pointer-events:none;
 }
 
@@ -850,7 +860,7 @@ footer.app-footer{
 
 .neu-btn{
   width:100%;height:52px;border:none;border-radius:99px;cursor:pointer;
-  background:linear-gradient(135deg,var(--gold-500),var(--gold-600));color:var(--neu-btn-text);font-family:var(--neu-font);
+  background:var(--gold-grad);color:var(--neu-btn-text);font-family:var(--neu-font);
   font-size:13px;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;
   box-shadow:8px 8px 16px var(--neu-dark), -8px -8px 16px var(--neu-light);
   transition:box-shadow .15s ease, transform .15s ease, filter .15s ease;
@@ -1046,9 +1056,9 @@ footer.app-footer{
      oscuro que ya usan --kpi-card-brand-- e --insight-card-- (arriba y
      abajo de este componente, en la misma pantalla), para que las tres
      piezas se lean como un solo bloque de "situación actual". */
-  --pipeline-guinda:#691C32; --pipeline-gold:#B38E5D;
+  --pipeline-guinda:#691B31; --pipeline-gold:#B38E5D;
   background:var(--guinda-card-grad);
-  border-radius:var(--radius-xl);border:1px solid rgba(201,168,78,0.4);box-shadow:var(--shadow-modal);
+  border-radius:var(--radius-xl);border:1px solid rgba(201,168,78,0.4);box-shadow:var(--guinda-shadow);
   margin-bottom:20px;font-family:'Montserrat',var(--font-sans);
   /* Sin overflow:hidden: con él, el tooltip que aparece arriba de cada
      barra al pasar el cursor (.has-tooltip::after) quedaba cortado por el
