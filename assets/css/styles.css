@@ -18,13 +18,19 @@
   --maroon-800:#4A0A1D;
   --maroon-700:#6B0F2B;
   --maroon-600:#8C3358;
-  /* Guinda "de marca" para tarjetas (Dictamen, Solicitud a Hacienda,
-     Dispersión): más clara y con algo de transparencia que el guinda
-     sólido 700→900 de antes, para que las etiquetas y el texto no se
-     pierdan contra las esquinas más oscuras del degradado. */
-  --guinda-card-grad: linear-gradient(150deg, rgba(140,51,88,0.90), rgba(90,15,40,0.92));
-  --gold-600:#9A7D30;
-  --gold-500:#C8A951;
+  /* Guinda "de marca" para tarjetas (header-band, KPI, Dictamen, Hacienda,
+     pipeline, modales, footer): degradado entre los dos Pantone guinda
+     institucionales —7420 C (#A02142, más vivo) y 7421 C (#691B31, el
+     guinda base de gobierno)— en vez de una mezcla propia. El salto de
+     tono da profundidad sin caer en el sólido plano ni perder el color
+     oficial. */
+  --guinda-card-grad: linear-gradient(155deg, #A02142 0%, #83193B 45%, #691B31 100%);
+  /* Dorados institucionales: 465 C para relleno sólido (botones, iconos),
+     468 C para texto/etiquetas sobre guinda (más claro, mejor contraste
+     que el dorado saturado de antes). */
+  --gold-500:#BC955B;
+  --gold-600:#96723F;
+  --gold-100:#DDC9A3;
   --gold-chart:#C9862B;
   --aqua-chart:#159C6C;
   --cream-50:#FAF9F6;
@@ -242,7 +248,7 @@ textarea:focus-visible,
   background:var(--maroon-900);
   min-height:46px;
 }
-.navbar-menu-label{font-size:10.5px;font-weight:700;letter-spacing:1px;color:var(--gold-500);text-transform:uppercase;margin-right:2px;}
+.navbar-menu-label{font-size:10.5px;font-weight:700;letter-spacing:1px;color:var(--gold-100);text-transform:uppercase;margin-right:2px;}
 .nav-link{
   display:flex;align-items:center;gap:6px;
   padding:14px 1px;border-radius:0;color:rgba(255,255,255,0.62);
@@ -315,7 +321,7 @@ textarea:focus-visible,
   border-color:rgba(255,255,255,0.08);
 }
 .kpi-card-brand::before{display:none;}
-.kpi-card-brand .kpi-label{color:var(--gold-500);opacity:0.95;}
+.kpi-card-brand .kpi-label{color:var(--gold-100);opacity:0.95;}
 .kpi-card-brand .kpi-value{color:#fff;}
 .kpi-card-brand .kpi-sub{color:var(--text-on-brand);opacity:0.75;}
 
@@ -339,14 +345,14 @@ textarea:focus-visible,
   border-radius:var(--radius-xl);padding:22px 24px;color:var(--text-on-brand);
   box-shadow:var(--shadow-md);display:flex;flex-direction:column;gap:10px;
 }
-.insight-head{font-size:10.5px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:var(--gold-500);border-bottom:1px solid rgba(255,255,255,0.14);padding-bottom:10px;margin-bottom:2px;}
+.insight-head{font-size:10.5px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:var(--gold-100);border-bottom:1px solid rgba(255,255,255,0.14);padding-bottom:10px;margin-bottom:2px;}
 .insight-card p{margin:0;font-size:12.5px;line-height:1.65;color:var(--text-on-brand);opacity:0.92;}
 .insight-card p b{color:#fff;opacity:1;font-weight:700;}
 /* Lista con viñetas (en vez de párrafos sueltos) para que el panel de
    "Situación Actual" se lea como puntos rápidos, no como texto corrido. */
 .insight-bullets{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px;}
 .insight-bullets li{position:relative;padding-left:15px;font-size:12.5px;line-height:1.6;color:var(--text-on-brand);opacity:0.92;}
-.insight-bullets li::before{content:"•";position:absolute;left:0;top:0;color:var(--gold-500);font-weight:900;}
+.insight-bullets li::before{content:"•";position:absolute;left:0;top:0;color:var(--gold-100);font-weight:900;}
 .insight-bullets li b{color:#fff;opacity:1;font-weight:700;}
 .table-toggle{
   border:1px solid var(--border-strong);background:var(--cream-50);color:var(--maroon-800);
