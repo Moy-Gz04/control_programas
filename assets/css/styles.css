@@ -27,9 +27,7 @@
      pipeline, modales, footer): mismo degradado 7420→7421 construido con
      los tokens de arriba (una sola fuente de verdad), más un velo de luz
      superior sutil para que no quede plano. */
-  --guinda-card-grad:
-    radial-gradient(120% 140% at 12% -10%, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0) 45%),
-    linear-gradient(155deg, var(--maroon-600) 0%, var(--maroon-700) 45%, var(--maroon-800) 100%);
+  --guinda-card-grad: var(--maroon-800);
   --guinda-shadow: 0 14px 34px -14px rgba(95,33,50,0.55);
   /* Dorados institucionales: 465 C para relleno sólido (botones, iconos),
      468 C para texto/etiquetas sobre guinda (más claro, mejor contraste
@@ -37,7 +35,7 @@
   --gold-500:#A9824C;
   --gold-600:#7C5D31;
   --gold-100:#E8D9BC;
-  --gold-grad: linear-gradient(135deg, var(--gold-100) 0%, var(--gold-500) 55%, var(--gold-600) 100%);
+  --gold-grad: var(--gold-500);
   --gold-chart:#A9824C;
   --aqua-chart:#1A6E35;
   --cream-50:#FFFDF9;
@@ -199,7 +197,7 @@ textarea:focus-visible,
 }
 /* Delgada línea guinda→dorado que separa la barra blanca del menú oscuro,
    para que la marca institucional siga presente aunque el fondo sea claro. */
-.navbar-top::after{content:"";position:absolute;left:0;right:0;bottom:-3px;height:3px;background:linear-gradient(90deg,var(--maroon-700),var(--gold-500));}
+.navbar-top::after{content:"";position:absolute;left:0;right:0;bottom:-3px;height:3px;background:var(--gold-500);}
 .brand{display:flex;align-items:center;gap:12px;}
 /* Logo en "moneda": círculo con borde dorado y sombra suave, en vez del
    cuadrado plano anterior — mismo tratamiento que el escudo institucional
@@ -211,7 +209,7 @@ textarea:focus-visible,
 }
 .brand-logo-fallback{
   width:42px;height:42px;border-radius:50%;
-  background:radial-gradient(circle at 35% 30%, var(--gold-500), var(--gold-600) 65%, #8a6c14);
+  background:var(--gold-500);
   border:2px solid var(--gold-500);box-shadow:0 2px 6px rgba(75,18,48,0.18);
   display:flex;align-items:center;justify-content:center;color:var(--maroon-900);font-weight:700;font-size:17px;
   flex-shrink:0;
@@ -236,7 +234,7 @@ textarea:focus-visible,
 .nav-user .who .r{font-size:9.5px;color:var(--text-secondary);opacity:1;text-transform:uppercase;letter-spacing:0.4px;}
 .nav-logout{
   display:inline-flex;align-items:center;gap:7px;
-  background:linear-gradient(135deg,var(--maroon-700),var(--maroon-800));
+  background:var(--maroon-800);
   border:1.5px solid rgba(201,168,78,0.55);color:#fff;padding:9px 18px;border-radius:var(--radius-pill);
   font-size:12.5px;font-weight:700;white-space:nowrap;letter-spacing:0.2px;
   box-shadow:0 2px 10px rgba(0,0,0,0.28);
@@ -397,7 +395,7 @@ textarea:focus-visible,
 .prog-tile .metrics div span{display:block;color:var(--text-secondary);font-weight:600;font-size:9.5px;text-transform:uppercase;letter-spacing:0.3px;}
 .prog-tile .metrics div b{font-size:13px;font-weight:700;}
 .prog-tile .bar-bg{height:5px;border-radius:4px;background:var(--cream-200);margin-top:13px;overflow:hidden;}
-.prog-tile .bar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--aqua-chart),#0F7C57);transition:width var(--dur-slow) var(--ease-out);}
+.prog-tile .bar-fill{height:100%;border-radius:4px;background:var(--aqua-chart);transition:width var(--dur-slow) var(--ease-out);}
 
 /* ===== BUTTONS ===== */
 .btn{
@@ -406,7 +404,7 @@ textarea:focus-visible,
   transition:filter var(--dur-base) var(--ease-standard), transform var(--dur-fast) var(--ease-standard), box-shadow var(--dur-base) var(--ease-standard), background var(--dur-base) var(--ease-standard);
 }
 .btn:active{transform:scale(0.97);}
-.btn-primary{background:linear-gradient(135deg,var(--maroon-800),var(--maroon-700));color:#fff;box-shadow:0 1px 2px rgba(20,10,15,0.12);}
+.btn-primary{background:var(--maroon-800);color:#fff;box-shadow:0 1px 2px rgba(20,10,15,0.12);}
 .btn-primary:hover{filter:brightness(1.08);box-shadow:0 4px 14px rgba(76,18,48,0.28);}
 .btn-gold{background:var(--gold-grad);color:var(--maroon-900);}
 .btn-gold:hover{filter:brightness(1.05);box-shadow:0 4px 14px rgba(176,138,42,0.32);}
@@ -696,7 +694,7 @@ footer.app-footer{
 .footer-brand{display:flex;align-items:center;gap:12px;}
 .footer-brand-mark{
   width:34px;height:34px;border-radius:10px;flex-shrink:0;
-  background:radial-gradient(circle at 35% 30%, var(--gold-500), var(--gold-600) 65%, #8a6c14);
+  background:var(--gold-500);
   display:flex;align-items:center;justify-content:center;color:var(--maroon-900);font-weight:700;font-size:14px;
 }
 .footer-brand-name{font-size:12.5px;font-weight:700;color:#fff;letter-spacing:0.2px;}
@@ -747,7 +745,7 @@ footer.app-footer{
 .login-wrap{
   position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;
   padding:24px;
-  background:radial-gradient(ellipse 70% 55% at 50% 32%, var(--maroon-700) 0%, var(--maroon-900) 72%);
+  background:var(--maroon-900);
 }
 
 /* Halo suave detrás de la tarjeta: el eco de la forma circular de la
@@ -755,7 +753,7 @@ footer.app-footer{
 .login-halo{
   position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
   width:min(560px,90vw);height:min(560px,90vw);border-radius:50%;z-index:0;
-  background:radial-gradient(circle, rgba(138,46,69,0.55) 0%, rgba(138,46,69,0) 70%);
+  background:none;display:none;
   pointer-events:none;
 }
 
@@ -910,7 +908,7 @@ footer.app-footer{
 .section-title.collapsible-header{cursor:pointer;user-select:none;}
 .section-title.collapsible-header:hover h2{color:var(--maroon-700);}
 .section-toggle-btn{
-  background:linear-gradient(135deg,var(--maroon-700),var(--maroon-800));border:1px solid var(--maroon-800);color:#fff;
+  background:var(--maroon-800);border:1px solid var(--maroon-800);color:#fff;
   width:26px;height:26px;border-radius:50%;font-size:11px;line-height:1;flex-shrink:0;
   display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(75,18,48,0.3);
   transition:filter var(--dur-base) var(--ease-standard), transform var(--dur-base) var(--ease-standard);
@@ -1084,7 +1082,7 @@ footer.app-footer{
 .pipeline-bar-grid{position:relative;z-index:1;display:grid;grid-template-columns:repeat(5,1fr);height:100%;column-gap:4px;}
 .pipeline-bar-col{display:flex;align-items:flex-end;justify-content:center;}
 .pipeline-bar{
-  width:58%;min-width:34px;border-radius:8px 8px 3px 3px;background:linear-gradient(180deg,var(--pipeline-gold),var(--pipeline-guinda));
+  width:58%;min-width:34px;border-radius:8px 8px 3px 3px;background:var(--pipeline-guinda);
   color:#fff;font-weight:700;font-size:11px;display:flex;align-items:flex-start;justify-content:center;
   padding-top:8px;text-align:center;box-shadow:0 4px 10px rgba(0,0,0,0.35);cursor:help;
   transition:filter var(--dur-base) var(--ease-standard);
