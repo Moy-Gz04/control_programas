@@ -1207,3 +1207,43 @@ footer.app-footer{
   .btn{padding:9px 16px;font-size:12.5px;}
   .confirm-actions .btn{max-width:none;}
 }
+/* ============ Flujo y Estado del Presupuesto: diseño propio ============
+   Tarjeta clara (no se pierde contra el guinda), una etapa = un color
+   sólido que sigue el camino del dinero: guinda (autorizado) → dorado
+   (en trámite) → verde (dispersado). Sin degradados. */
+.pipeline-card.pipeline-flujo{
+  background:#FFFDF9;border:1px solid #E4D6C8;box-shadow:0 1px 2px rgba(32,16,23,.05),0 12px 30px -18px rgba(95,33,50,.35);
+  position:relative;
+}
+.pipeline-flujo::before{content:"";position:absolute;left:0;top:18px;bottom:18px;width:4px;border-radius:0 4px 4px 0;background:#5F2132;}
+.pipeline-flujo .pipeline-eyebrow{color:#5F2132;font-size:12px;letter-spacing:1.2px;margin-bottom:18px;}
+.pipeline-flujo .pipeline-scroll-hint{color:#6B5563;}
+.pipe-montos{display:grid;column-gap:4px;margin-bottom:6px;}
+.pipe-monto{text-align:center;font-weight:800;font-size:13px;color:var(--c);font-variant-numeric:tabular-nums;letter-spacing:-.2px;white-space:nowrap;}
+.pipe-cero{color:#B5A6AD;font-weight:600;}
+.pipeline-flujo .pipeline-bar-row{border-bottom:2px solid #E4D6C8;}
+.pipeline-flujo .pipeline-bar{width:54%;border-radius:10px 10px 0 0;box-shadow:none;padding:0;}
+.pipeline-flujo .pipeline-bar:hover{filter:brightness(1.12);}
+.pipeline-flujo .pipe-vacia{height:26px;background:transparent;border:2px dashed var(--c);border-bottom:none;opacity:.45;}
+.pipe-riel{display:grid;column-gap:4px;position:relative;margin-top:14px;}
+.pipe-riel::before{content:"";position:absolute;left:calc(100% / 12);right:calc(100% / 12);top:50%;height:2px;background:#E4D6C8;}
+.pipe-paso{display:flex;justify-content:center;position:relative;}
+.pipe-num{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:800;
+  background:#fff;color:var(--c);border:2px solid var(--c);}
+.pipe-num[data-activo="true"]{background:var(--c);color:#fff;}
+.pipeline-flujo .pipeline-label-grid{margin-top:10px;}
+.pipeline-flujo .pipeline-node-title{color:#201017;font-size:12px;}
+.pipeline-flujo .pipeline-node-sub{color:#6B5563;font-size:10px;}
+.pipe-pct{margin:6px auto 0;width:max-content;max-width:100%;font-size:10px;font-weight:700;color:var(--c);
+  border:1px solid currentColor;border-radius:999px;padding:2px 8px;}
+.pipe-pct-base{color:#5F2132;}
+.pipeline-flujo .table-toggle{background:#fff;border-color:#C7AE81;color:#5F2132;}
+.pipeline-flujo .table-toggle:hover{background:#F6EEDD;}
+.pipeline-flujo .data-table th{color:#6B5563;border-bottom-color:#E4D6C8;}
+.pipeline-flujo .data-table td{color:#201017;border-bottom-color:#EFE6DC;}
+.pipeline-flujo .data-table tbody tr:hover{background:#F9F0F3;}
+@media (max-width:760px){
+  .pipeline-flujo .pipe-montos, .pipeline-flujo .pipe-riel{min-width:560px;}
+  .pipe-monto{font-size:10.5px;}
+  .pipe-pct{display:none;}
+}

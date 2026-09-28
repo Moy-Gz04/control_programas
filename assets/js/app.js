@@ -947,51 +947,54 @@ function pipelinePresupuestoHTML(p){
   const BAR_H = 170; // debe coincidir con --pipeline-bar-h en CSS
   const N = nodos.length;
   const maxScale = Math.max(autorizadoBase, comprometido, solicitadoHacienda, autorizadoHacienda, pagado, 1);
-  const heightFor = (v)=> v>0 ? Math.max((v/maxScale) * BAR_H, 5) : 0;
+  const heightFor = (v)=> v>0 ? Math.max((v/maxScale) * BAR_H, 6) : 0;
   const alturas = nodos.map(n=>heightFor(n.valor));
+  // Un color sólido por etapa: el dinero "avanza" de guinda (autorizado)
+  // a dorado (en trámite) y termina en verde (dispersado).
+  const COLORES = ['#5F2132', '#8A2E45', '#A9824C', '#7C5D31', '#5E7A3A', '#1A6E35'];
+  const pctDe = (v)=> autorizadoBase>0 ? (v/autorizadoBase*100) : 0;
 
-  // Listones SVG: viewBox de N*100 unidades de ancho por BAR_H de alto.
-  // Cada nodo ocupa una franja de 100 unidades (igual que las columnas del
-  // grid en CSS); la barra se centra en esa franja con 56% de ancho.
+  // Listones entre barras: color sólido de la etapa de origen, translúcido.
   const slotW = 100;
-  const barHalfW = slotW*0.28;
-  const gradId = `pipeGrad-${p.id}`;
+  const barHalfW = slotW*0.26;
   let ribbons = '';
   for(let i=0;i<N-1;i++){
+    if(!alturas[i] && !alturas[i+1]) continue;
     const x1 = i*slotW + slotW/2 + barHalfW;
     const x2 = (i+1)*slotW + slotW/2 - barHalfW;
     const y1top = BAR_H - alturas[i];
     const y2top = BAR_H - alturas[i+1];
     const xm = (x1+x2)/2;
-    ribbons += `<path d="M ${x1} ${y1top} C ${xm} ${y1top}, ${xm} ${y2top}, ${x2} ${y2top} L ${x2} ${BAR_H} C ${xm} ${BAR_H}, ${xm} ${BAR_H}, ${x1} ${BAR_H} Z" fill="url(#${gradId})" opacity="0.55"/>`;
+    ribbons += `<path d="M ${x1} ${y1top} C ${xm} ${y1top}, ${xm} ${y2top}, ${x2} ${y2top} L ${x2} ${BAR_H} L ${x1} ${BAR_H} Z" fill="${COLORES[i]}" opacity="0.16"/>`;
   }
 
   return `
-  <div class="pipeline-card pipeline-card-chart">
+  <div class="pipeline-card pipeline-card-chart pipeline-flujo">
     <div class="pipeline-eyebrow">Flujo y Estado del Presupuesto<span class="pipeline-scroll-hint">Desliza para ver todo →</span></div>
     <div class="pipeline-scroll">
+      <div class="pipe-montos" style="grid-template-columns:repeat(${N},1fr);">
+        ${nodos.map((n,i)=>`<div class="pipe-monto" style="--c:${COLORES[i]}">${n.valor>0 ? fmtMoney(n.valor) : '<span class="pipe-cero">$0</span>'}</div>`).join('')}
+      </div>
       <div class="pipeline-bar-row" style="height:${BAR_H}px;">
-        <svg class="pipeline-svg" viewBox="0 0 ${N*slotW} ${BAR_H}" preserveAspectRatio="none">
-          <defs>
-            <linearGradient id="${gradId}" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stop-color="var(--pipeline-guinda)"/>
-              <stop offset="100%" stop-color="var(--pipeline-gold)"/>
-            </linearGradient>
-          </defs>
-          ${ribbons}
-        </svg>
+        <svg class="pipeline-svg" viewBox="0 0 ${N*slotW} ${BAR_H}" preserveAspectRatio="none" aria-hidden="true">${ribbons}</svg>
         <div class="pipeline-bar-grid" style="grid-template-columns:repeat(${N},1fr);">
           ${nodos.map((n,i)=>`
             <div class="pipeline-bar-col">
-              <div class="pipeline-bar has-tooltip" data-tooltip="${n.titulo}: ${fmtMoney(n.valor)} · ${n.sub}" style="height:${alturas[i]}px;">${fmtMoney(n.valor)}</div>
+              ${alturas[i]
+                ? `<div class="pipeline-bar has-tooltip" data-tooltip="${n.titulo}: ${fmtMoney(n.valor)} · ${n.sub}" style="height:${alturas[i]}px;background:${COLORES[i]};"></div>`
+                : `<div class="pipeline-bar pipe-vacia has-tooltip" data-tooltip="${n.titulo}: sin movimientos todavía" style="--c:${COLORES[i]}"></div>`}
             </div>`).join('')}
         </div>
       </div>
+      <div class="pipe-riel" style="grid-template-columns:repeat(${N},1fr);">
+        ${nodos.map((n,i)=>`<div class="pipe-paso"><span class="pipe-num" style="--c:${COLORES[i]}" data-activo="${n.valor>0}">${i+1}</span></div>`).join('')}
+      </div>
       <div class="pipeline-label-grid" style="grid-template-columns:repeat(${N},1fr);">
-        ${nodos.map(n=>`
+        ${nodos.map((n,i)=>`
           <div class="pipeline-node-label">
             <div class="pipeline-node-title">${n.titulo}</div>
             <div class="pipeline-node-sub">${n.sub}</div>
+            ${i>0 ? `<div class="pipe-pct" style="--c:${COLORES[i]}">${pctDe(n.valor).toFixed(1)}% del autorizado</div>` : '<div class="pipe-pct pipe-pct-base">100% · punto de partida</div>'}
           </div>`).join('')}
       </div>
     </div>
