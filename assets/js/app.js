@@ -14,9 +14,9 @@ if (!sessionStorage.getItem('pb_token') || !CURRENT_USER) {
 }
 
 /* ---------- COLORES (paleta validada) ---------- */
-const COLOR_AUTORIZADO   = '#8C3358';
-const COLOR_COMPROMETIDO = '#C9862B';
-const COLOR_PAGADO       = '#159C6C';
+const COLOR_AUTORIZADO   = '#7A2039';
+const COLOR_COMPROMETIDO = '#A9824C';
+const COLOR_PAGADO       = '#1A6E35';
 const COLOR_MODIFICADO   = '#6E5A8C';
 const COLOR_HACIENDA     = '#2A78D6';
 
@@ -1561,7 +1561,7 @@ const valueLabelPlugin = {
         const value = dataset.data[index];
         if(value===null || value===undefined) return;
         ctx.save();
-        ctx.fillStyle = '#221B18';
+        ctx.fillStyle = '#201017';
         ctx.font = '700 9.5px Inter, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
@@ -1594,7 +1594,7 @@ function buildComparativeChart(canvasId, programs){
     options:{
       responsive:true, maintainAspectRatio:false, layout:{padding:{top:24}},
       plugins:{
-        legend:{position:'top', labels:{usePointStyle:true, boxWidth:8, font:{size:11.5, weight:'600'}, color:'#221B18'}},
+        legend:{position:'top', labels:{usePointStyle:true, boxWidth:8, font:{size:11.5, weight:'600'}, color:'#201017'}},
         tooltip:{
           backgroundColor:'#32091D', padding:11, cornerRadius:10, titleFont:{weight:'700'},
           callbacks:{
@@ -1608,8 +1608,8 @@ function buildComparativeChart(canvasId, programs){
         }
       },
       scales:{
-        x:{ grid:{display:false}, ticks:{color:'#6E665C', font:{size:11}} },
-        y:{ beginAtZero:true, grid:{color:'#ECE6D8'}, ticks:{color:'#6E665C', font:{size:10.5}, callback:(v)=>fmtMoney(v)} }
+        x:{ grid:{display:false}, ticks:{color:'#6B5563', font:{size:11}} },
+        y:{ beginAtZero:true, grid:{color:'#E4D6C8'}, ticks:{color:'#6B5563', font:{size:10.5}, callback:(v)=>fmtMoney(v)} }
       }
     }
   });

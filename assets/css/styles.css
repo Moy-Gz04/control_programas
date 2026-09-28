@@ -13,16 +13,16 @@
      Sólo se refinan los valores para una paleta más sobria y premium.
      --------------------------------------------------------------------- */
   /* Paleta derivada de los DOS Pantone guinda institucionales —7420 C
-     (#A02142, vivo) y 7421 C (#691B31, base de gobierno)— para que toda
+     (#8A2E45, vivo) y 7421 C (#5F2132, base de gobierno)— para que toda
      la app (navbar, botones, texto, tarjetas) comparta una sola familia
      de guinda en vez de mezclar el Pantone con un guinda casi-negro
      inventado aparte (así se veían "sin combinar"). --maroon-800 ES el
      7421 C oficial; --maroon-600 ES el 7420 C oficial; 900/700 son un
      paso más oscuro/medio de la misma familia, no un tono ajeno. */
-  --maroon-900:#3D0E1F;
-  --maroon-800:#691B31;
-  --maroon-700:#83193B;
-  --maroon-600:#A02142;
+  --maroon-900:#3D1420;
+  --maroon-800:#5F2132;
+  --maroon-700:#7A2039;
+  --maroon-600:#8A2E45;
   /* Tarjetas/paneles "de marca" (header-band, KPI, Dictamen, Hacienda,
      pipeline, modales, footer): mismo degradado 7420→7421 construido con
      los tokens de arriba (una sola fuente de verdad), más un velo de luz
@@ -30,27 +30,27 @@
   --guinda-card-grad:
     radial-gradient(120% 140% at 12% -10%, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0) 45%),
     linear-gradient(155deg, var(--maroon-600) 0%, var(--maroon-700) 45%, var(--maroon-800) 100%);
-  --guinda-shadow: 0 14px 34px -14px rgba(105,27,49,0.55);
+  --guinda-shadow: 0 14px 34px -14px rgba(95,33,50,0.55);
   /* Dorados institucionales: 465 C para relleno sólido (botones, iconos),
      468 C para texto/etiquetas sobre guinda (más claro, mejor contraste
      que el dorado saturado de antes). */
-  --gold-500:#BC955B;
-  --gold-600:#96723F;
-  --gold-100:#DDC9A3;
+  --gold-500:#A9824C;
+  --gold-600:#7C5D31;
+  --gold-100:#E8D9BC;
   --gold-grad: linear-gradient(135deg, var(--gold-100) 0%, var(--gold-500) 55%, var(--gold-600) 100%);
-  --gold-chart:#C9862B;
-  --aqua-chart:#159C6C;
-  --cream-50:#FAF9F6;
-  --cream-100:#F5F3ED;
-  --cream-200:#ECE6D8;
-  --card-border:#E6E1D3;
-  --status-registrado:#9C958A;
-  --status-autorizado:#C99A2E;
-  --status-dictaminacion:#8C3358;
-  --status-pagado:#159C6C;
-  --red:#D8394C;
-  --text-dark:#221B18;
-  --text-muted:#6E665C;
+  --gold-chart:#A9824C;
+  --aqua-chart:#1A6E35;
+  --cream-50:#FFFDF9;
+  --cream-100:#F6EEDD;
+  --cream-200:#E4D6C8;
+  --card-border:#E4D6C8;
+  --status-registrado:#6B5563;
+  --status-autorizado:#A9824C;
+  --status-dictaminacion:#7A2039;
+  --status-pagado:#1A6E35;
+  --red:#A32D2D;
+  --text-dark:#201017;
+  --text-muted:#6B5563;
   --white:#FFFFFF;
   --shadow-card: 0 1px 2px rgba(20,10,15,0.05), 0 10px 28px rgba(20,10,15,0.06);
   --shadow-modal: 0 30px 80px rgba(15,5,10,0.32);
@@ -58,19 +58,19 @@
   /* ---------------------------------------------------------------------
      Sistema de diseño extendido
      --------------------------------------------------------------------- */
-  --surface-0:#F5F5F3;          /* fondo de página */
+  --surface-0:#F9F0F3;          /* fondo de página */
   --surface-1:var(--white);      /* tarjetas / superficies elevadas */
-  --surface-2:#FBFAF7;          /* relleno sutil dentro de tarjetas */
+  --surface-2:#FFFDF9;          /* relleno sutil dentro de tarjetas */
   --surface-inverse:var(--maroon-900);
 
   --text-primary:var(--text-dark);
   --text-secondary:var(--text-muted);
-  --text-tertiary:#A39B8E;
-  --text-on-brand:#F6ECDD;
+  --text-tertiary:#9A8A93;
+  --text-on-brand:#F6EEDD;
 
   --border-hairline:rgba(34,27,24,0.08);
   --border-strong:var(--card-border);
-  --focus-ring:0 0 0 4px rgba(162,33,66,0.16);
+  --focus-ring:0 0 0 4px rgba(138,46,69,0.16);
 
   --radius-xs:8px;
   --radius-sm:12px;
@@ -143,7 +143,7 @@ input,select,textarea{font-family:inherit;}
 h1,h2,h3,h4,p{margin:0;}
 a{color:inherit;}
 
-::selection{background:rgba(162,33,66,0.18);}
+::selection{background:rgba(138,46,69,0.18);}
 
 /* Scrollbar discreta (Webkit); no afecta el layout ni el comportamiento */
 ::-webkit-scrollbar{width:11px;height:11px;}
@@ -731,7 +731,7 @@ footer.app-footer{
 :root{
   --neu-bg:var(--maroon-800);
   --neu-surface:var(--maroon-800);
-  --neu-light:rgba(162,33,66,0.55);
+  --neu-light:rgba(138,46,69,0.55);
   --neu-dark:rgba(8,1,4,0.6);
   --neu-accent:var(--gold-500);
   --neu-accent-soft:var(--gold-600);
@@ -755,7 +755,7 @@ footer.app-footer{
 .login-halo{
   position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
   width:min(560px,90vw);height:min(560px,90vw);border-radius:50%;z-index:0;
-  background:radial-gradient(circle, rgba(162,33,66,0.55) 0%, rgba(162,33,66,0) 70%);
+  background:radial-gradient(circle, rgba(138,46,69,0.55) 0%, rgba(138,46,69,0) 70%);
   pointer-events:none;
 }
 
@@ -1056,7 +1056,7 @@ footer.app-footer{
      oscuro que ya usan --kpi-card-brand-- e --insight-card-- (arriba y
      abajo de este componente, en la misma pantalla), para que las tres
      piezas se lean como un solo bloque de "situación actual". */
-  --pipeline-guinda:#691B31; --pipeline-gold:#B38E5D;
+  --pipeline-guinda:#5F2132; --pipeline-gold:#B38E5D;
   background:var(--guinda-card-grad);
   border-radius:var(--radius-xl);border:1px solid rgba(201,168,78,0.4);box-shadow:var(--guinda-shadow);
   margin-bottom:20px;font-family:'Montserrat',var(--font-sans);
