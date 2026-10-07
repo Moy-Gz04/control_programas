@@ -1247,3 +1247,6 @@ footer.app-footer{
   .pipe-monto{font-size:10.5px;}
   .pipe-pct{display:none;}
 }
+
+/* Logo del Gobierno de Hidalgo en el encabezado: sin círculo ni marco */
+.navbar-top .brand-logo { border: 0; border-radius: 0; background: none; padding: 0; box-shadow: none; }
