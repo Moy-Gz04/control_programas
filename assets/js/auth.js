@@ -21,7 +21,7 @@
 
     hideError();
     btn.disabled = true;
-    btn.textContent = 'Entrando…';
+    btn.classList.add('cargando');
 
     // El backend (Render, plan gratuito) tarda ~40s en "despertar" si
     // estaba inactivo. Se muestra el overlay desde el primer intento: si
@@ -50,7 +50,7 @@
       stopWakeOverlay();
       showError(err.message || 'No se pudo iniciar sesión.');
       btn.disabled = false;
-      btn.textContent = 'Iniciar Sesión';
+      btn.classList.remove('cargando');
     }
   });
 

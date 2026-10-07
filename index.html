@@ -10,49 +10,86 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/styles.css">
-</head>
-<body class="neu-body">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<link rel="stylesheet" href="assets/css/login-eclipse.css?v=1">
 
-<div class="login-wrap">
-  <div class="login-halo"></div>
-  <div class="login-card">
-    <div class="login-head">
-      <img class="brand-logo" src="assets/img/logo.png" alt="Logo" onerror="this.style.display='none';document.getElementById('logoFallback').style.display='flex';">
-      <div id="logoFallback" class="brand-logo-fallback" style="display:none;">B</div>
-      <h1>Sistema de Programas</h1>
-      <p>Inicia sesión en tu cuenta</p>
-    </div>
-    <div class="login-body">
-      <div class="login-error" id="loginError"></div>
-      <form id="loginForm">
-        <div class="field" style="margin-bottom:16px;">
-          <label>Correo institucional</label>
-          <div class="neu-input">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            <input type="email" id="email" placeholder="usuario@bienestar.gob.mx" autocomplete="username" required>
+</head>
+<body>
+
+
+<!-- ============ LOGIN (mismo diseño que Contratos: cielo, anillos, tarjeta circular y MiniSEBISO) ============ -->
+<div class="login-eclipse">
+  <div class="login-espacio" aria-hidden="true">
+    <canvas id="login-estrellas"></canvas>
+    <span class="anillo a1"></span><span class="anillo a2"></span><span class="anillo a3"></span>
+    <span class="eclipse"></span>
+  </div>
+
+  <div class="login-wrap">
+    <div class="login-halo"></div>
+
+    <div class="login-card">
+      <div class="login-header">
+        <!-- MiniSEBISO: la mascota del sistema; sus ojos siguen el ratón (js/minisebiso.js) -->
+        <div class="minisebiso" role="button" tabindex="0" aria-label="MiniSEBISO, la mascota de SEBISO. Toca para saludar">
+          <div class="ms-burbuja" aria-live="polite">¡Hola! Soy el asistente virtual de los sistemas C.A.</div>
+          <div class="ms-cuerpo">
+            <span class="ms-ojo-mov izq"><span class="ms-ojo"></span></span>
+            <span class="ms-ojo-mov der"><span class="ms-ojo"></span></span>
+          </div>
+          <div class="ms-estrella"></div>
+        </div>
+        <div class="login-gov">Gobierno del Estado de Hidalgo</div>
+        <div class="login-secretaria">Secretaría de Bienestar e Inclusión Social</div>
+        <div class="login-subsecretaria">Sistema de Programas</div>
+      </div>
+
+      <div class="login-titulo-bloque">
+        <div class="login-titulo">Acceso al Sistema</div>
+      </div>
+
+      <form class="login-body" id="loginForm">
+        <div class="campo-grupo">
+          <label class="campo-label" for="email">Usuario</label>
+          <div class="campo-input-wrap">
+            <i class="ti ti-user icono-campo"></i>
+            <input class="campo-input" id="email" type="email" autocomplete="username" placeholder="Tu correo institucional" required spellcheck="false">
           </div>
         </div>
-        <div class="field" style="margin-bottom:14px;">
-          <label>Contraseña</label>
-          <div class="neu-input">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-            <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" required>
-            <button type="button" class="neu-eye" id="btnVerPassword" aria-label="Mostrar contraseña" aria-pressed="false">
-              <svg class="neu-eye-abierto" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-              <svg class="neu-eye-cerrado" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.6 21.6 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 7 11 7a21.6 21.6 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-            </button>
+
+        <div class="campo-grupo">
+          <label class="campo-label" for="password">Contraseña</label>
+          <div class="campo-input-wrap">
+            <i class="ti ti-lock icono-campo"></i>
+            <input class="campo-input" id="password" type="password" autocomplete="current-password" placeholder="••••••••" required>
+            <button type="button" class="btn-ver-pass" id="btnVerPassword" aria-label="Mostrar contraseña" aria-pressed="false" tabindex="-1"><i class="ti ti-eye neu-eye-abierto"></i><i class="ti ti-eye-off neu-eye-cerrado" style="display:none;"></i></button>
           </div>
         </div>
-        <div class="neu-row">
+
+        <div class="fila-recordarme">
           <label class="neu-toggle">
             <input type="checkbox" id="recordarme">
             <span class="neu-toggle-track"><span class="neu-toggle-thumb"></span></span>
             <span class="neu-toggle-label">Recordarme</span>
           </label>
         </div>
-        <button type="submit" class="neu-btn" id="btnLogin">Iniciar Sesión</button>
+
+        <div class="error-msg error-toggle login-error" id="loginError"></div>
+
+        <button type="submit" id="btnLogin" class="btn-login">
+          <span class="spinner"></span>
+          <i class="ti ti-login btn-icono"></i>
+          <span class="btn-texto">Ingresar al Sistema</span>
+        </button>
+
+        <div class="login-pie">
+          Sistema de uso exclusivo para personal autorizado de la Secretaría.<br>
+          SEBISO © 2026 — Gobierno del Estado de Hidalgo
+        </div>
       </form>
-      <div class="login-footer-note">Acceso exclusivo para personal autorizado.<br>Si olvidaste tu contraseña, contacta al <span class="neu-link">administrador del sistema</span>.</div>
     </div>
   </div>
 </div>
@@ -75,6 +112,9 @@
 <script src="assets/js/config.js"></script>
 <script src="assets/js/api.js"></script>
 <script src="assets/js/auth.js"></script>
+<script src="assets/js/login-espacio.js"></script>
+<script src="assets/js/minisebiso.js"></script>
+
 <script>
   // Entrada suave de la tarjeta de login (halo + card), una sola vez al cargar.
   if(window.gsap){

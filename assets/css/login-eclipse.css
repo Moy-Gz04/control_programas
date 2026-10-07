@@ -1,0 +1,385 @@
+/* =========================================================
+   login-eclipse.css
+   Login compartido por los sistemas de SEBISO (copia exacta del de
+   Contratos): cielo con estrellas, anillos dorados, tarjeta circular
+   guinda y MiniSEBISO. Todo va acotado a .login-eclipse.
+   Origen: CONTRATOS/css/estilos.css (secciones LOGIN y LOGIN ECLIPSE).
+   ========================================================= */
+html:has(.login-eclipse), body:has(.login-eclipse) { margin: 0; padding: 0; min-height: 100%; background: #07070b; }
+.login-eclipse, .login-eclipse *, .login-eclipse *::before, .login-eclipse *::after { box-sizing: border-box; }
+.login-eclipse { display: block; min-height: 100vh; }
+.login-eclipse p, .login-eclipse h1, .login-eclipse h2 { margin: 0; }
+/* Mensajes de error que se muestran con una clase (.visible / .show) o al tener texto */
+.login-eclipse .error-toggle:not(.visible):not(.show) { display: none; }
+.login-eclipse .error-vacio:empty { display: none; }
+.login-eclipse .error-msg { display: flex; align-items: center; justify-content: center; gap: 6px; }
+/* ======================================================
+   LOGIN
+   ====================================================== */
+
+/* Login con el mismo diseño que Correspondencia: superficie guinda en
+   relieve (neumorfismo), campos tipo pill hundidos, acento dorado,
+   tipografía Poppins y lluvia de flores de cempasúchil al fondo.
+   Todo va acotado a .login-eclipse para no tocar el resto del sistema. */
+.login-eclipse {
+  --neu-surface: #4A0A1D;
+  --neu-light: rgba(140,51,88,.55);
+  --neu-dark: rgba(8,1,4,.6);
+  --neu-accent: #C8A951;
+  --neu-accent-soft: #9a7d30;
+  --neu-text: #F3E2D9;
+  --neu-text-soft: #C89BA8;
+  --neu-btn-text: #3A0818;
+  font-family: 'Poppins', 'Segoe UI', sans-serif;
+  background: radial-gradient(ellipse 70% 55% at 50% 32%, #6B0F2B 0%, #2a0510 72%);
+  position: relative; overflow-x: hidden;
+}
+.login-eclipse.activa { display: block; }
+
+.login-eclipse .login-wrap {
+  position: relative; z-index: 1; min-height: 100vh; width: 100%;
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+}
+
+.lluvia-flores { position: fixed; inset: 0; overflow: hidden; z-index: 0; pointer-events: none; }
+.flor-lluvia {
+  position: absolute; top: -6%;
+  background: url('../img/lluvia.png') center / contain no-repeat;
+  opacity: 0; will-change: transform, opacity; pointer-events: auto; cursor: pointer;
+  animation-name: caerFlorCempasuchil; animation-timing-function: linear; animation-iteration-count: infinite;
+}
+@keyframes caerFlorCempasuchil {
+  0%   { transform: translateY(0) translateX(0) rotate(0deg); opacity: 0; }
+  8%   { opacity: .8; }
+  90%  { opacity: .7; }
+  100% { transform: translateY(112vh) translateX(var(--deriva, 24px)) rotate(var(--giro-final, 300deg)); opacity: 0; }
+}
+.chispa-fuego {
+  position: absolute; border-radius: 50%; pointer-events: none; transform: translate(-50%, -50%);
+  box-shadow: 0 0 4px currentColor; animation: explotarChispa .6s cubic-bezier(.15,.8,.4,1) forwards;
+}
+@keyframes explotarChispa {
+  0%   { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  65%  { opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px))) scale(.25); opacity: 0; }
+}
+.destello-fuego {
+  position: absolute; width: 5px; height: 5px; border-radius: 50%; transform: translate(-50%, -50%);
+  background: radial-gradient(circle, #fff8dc 0%, rgba(255,193,79,.85) 45%, transparent 75%);
+  pointer-events: none; animation: destelloFuego .35s ease-out forwards;
+}
+@keyframes destelloFuego {
+  0%   { transform: translate(-50%, -50%) scale(.3); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(5.5); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .flor-lluvia, .chispa-fuego, .destello-fuego { animation: none; opacity: 0; }
+}
+
+.login-eclipse .login-halo {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: min(560px, 90vw); height: min(560px, 90vw); border-radius: 50%; z-index: 0; pointer-events: none;
+  background: radial-gradient(circle, rgba(140,51,88,.55) 0%, rgba(140,51,88,0) 70%);
+}
+.login-eclipse .login-card {
+  position: relative; z-index: 1; width: 100%; max-width: 420px;
+  background: var(--neu-surface); border-radius: 36px; padding: 40px 34px 32px;
+  box-shadow: 14px 14px 28px var(--neu-dark), -14px -14px 28px var(--neu-light);
+  animation: aparecerLogin .5s cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes aparecerLogin {
+  from { opacity: 0; transform: translateY(20px) scale(.98); }
+  to   { opacity: 1; transform: none; }
+}
+
+.login-eclipse .login-header { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; }
+.login-eclipse .escudo-placeholder {
+  width: 56px; height: 56px; margin-bottom: 10px; border-radius: 16px; overflow: hidden;
+  background: linear-gradient(135deg, var(--neu-accent), var(--neu-accent-soft));
+  display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,.3);
+}
+.login-eclipse .escudo-placeholder img { width: 100%; height: 100%; object-fit: cover; }
+.login-eclipse .escudo-placeholder i { font-size: 24px; color: var(--neu-btn-text); }
+.login-eclipse .login-gov { font-size: 8.7px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--neu-text-soft); }
+.login-eclipse .login-secretaria { font-size: 15px; font-weight: 700; color: var(--neu-text); line-height: 1.25; margin-top: 2px; }
+.login-eclipse .login-subsecretaria { font-size: 10.5px; color: var(--neu-text-soft); margin-top: 2px; }
+.login-eclipse .login-titulo-bloque { text-align: center; margin-top: 18px; }
+.login-eclipse .login-titulo { font-size: 24px; font-weight: 800; color: var(--neu-accent); letter-spacing: -.01em; }
+.login-eclipse .login-subtitulo { font-size: 12px; color: var(--neu-text-soft); margin-top: 6px; }
+
+.login-eclipse .login-body { display: flex; flex-direction: column; gap: 16px; margin-top: 26px; }
+.login-eclipse .campo-grupo { display: flex; flex-direction: column; gap: 8px; }
+.login-eclipse .campo-label { font-size: 10.2px; font-weight: 600; letter-spacing: .04em; color: var(--neu-text-soft); }
+.login-eclipse .campo-input-wrap {
+  display: flex; align-items: center; gap: 10px; height: 50px; padding: 0 18px;
+  background: var(--neu-surface); border-radius: 99px;
+  box-shadow: inset 0 3px 7px var(--neu-dark), inset 0 -3px 7px var(--neu-light); transition: box-shadow .2s ease;
+}
+.login-eclipse .campo-input-wrap:focus-within {
+  box-shadow: inset 0 2px 5px var(--neu-dark), inset 0 -2px 5px var(--neu-light), 0 0 0 1.5px var(--neu-accent);
+}
+.login-eclipse .icono-campo { flex-shrink: 0; font-size: 16px; color: var(--neu-text-soft); transition: color .2s; }
+.login-eclipse .campo-input-wrap:focus-within .icono-campo { color: var(--neu-accent); }
+.login-eclipse .campo-input {
+  flex: 1; min-width: 0; height: 100%; padding: 0; border: none; background: transparent; outline: none; box-shadow: none;
+  font-size: 13.8px; font-family: inherit; color: var(--neu-text);
+}
+.login-eclipse .campo-input::placeholder { color: rgba(243,226,217,.4); }
+.login-eclipse .campo-input:-webkit-autofill,
+.login-eclipse .campo-input:-webkit-autofill:hover,
+.login-eclipse .campo-input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--neu-text); caret-color: var(--neu-text);
+  -webkit-box-shadow: 0 0 0 1000px var(--neu-surface) inset; box-shadow: 0 0 0 1000px var(--neu-surface) inset;
+  transition: background-color 5000s ease-in-out 0s;
+}
+.login-eclipse .campo-input[type="password"]::-ms-reveal { display: none; }
+.login-eclipse .btn-ver-pass {
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 22px; height: 22px;
+  padding: 0; border: none; background: transparent; cursor: pointer; font-size: 16px; color: var(--neu-text-soft);
+}
+.login-eclipse .btn-ver-pass:hover { color: var(--neu-accent); }
+
+.login-eclipse .fila-recordarme { display: flex; align-items: center; margin: 2px 2px 0; }
+.login-eclipse .neu-toggle { display: flex; flex-direction: row; align-items: center; gap: 9px; cursor: pointer; user-select: none; font-size: inherit; letter-spacing: normal; }
+.login-eclipse .neu-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+.login-eclipse .neu-toggle-track {
+  width: 34px; height: 19px; border-radius: 99px; background: var(--neu-surface); position: relative; flex-shrink: 0;
+  box-shadow: inset 0 2px 4px var(--neu-dark), inset 0 -2px 4px var(--neu-light); transition: background .2s ease;
+}
+.login-eclipse .neu-toggle-thumb {
+  position: absolute; top: 2.5px; left: 2.5px; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--neu-text); box-shadow: 1px 1px 3px rgba(0,0,0,.35); transition: transform .2s ease;
+}
+.login-eclipse .neu-toggle input:checked + .neu-toggle-track { background: var(--neu-accent-soft); }
+.login-eclipse .neu-toggle input:checked + .neu-toggle-track .neu-toggle-thumb { transform: translateX(15px); background: var(--neu-btn-text); }
+.login-eclipse .neu-toggle input:focus-visible + .neu-toggle-track { outline: 2px solid var(--neu-accent); outline-offset: 2px; }
+.login-eclipse .neu-toggle-label { font-size: 11.7px; color: var(--neu-text-soft); font-weight: 500; }
+
+.login-eclipse .error-msg {
+  margin: 0; background: rgba(8,1,4,.35); border-radius: 14px; padding: 10px 14px;
+  font-size: 11.7px; color: var(--neu-accent); font-weight: 600; animation: sacudir .35s ease;
+}
+.login-eclipse .error-msg:empty { display: none; }
+@keyframes sacudir { 0%,100% { transform: none; } 20%,60% { transform: translateX(-5px); } 40%,80% { transform: translateX(5px); } }
+
+.login-eclipse .btn-login {
+  width: 100%; height: 52px; border: none; border-radius: 99px; cursor: pointer;
+  background: linear-gradient(135deg, var(--neu-accent), var(--neu-accent-soft)); color: var(--neu-btn-text);
+  font-size: 12.3px; font-weight: 700; font-family: inherit; letter-spacing: .06em; text-transform: uppercase;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  box-shadow: 8px 8px 16px var(--neu-dark), -8px -8px 16px var(--neu-light);
+  transition: box-shadow .15s ease, transform .15s ease, filter .15s ease;
+}
+.login-eclipse .btn-login .btn-texto, .login-eclipse .btn-login .btn-icono { color: inherit; background: none; padding: 0; font-size: inherit; border-radius: 0; }
+.login-eclipse .btn-login .btn-icono { font-size: 16px; }
+.login-eclipse .btn-login:hover { filter: brightness(1.06); }
+.login-eclipse .btn-login:active { box-shadow: inset 0 3px 6px rgba(0,0,0,.35); transform: translateY(1px); }
+.login-eclipse .btn-login:disabled { opacity: .65; cursor: not-allowed; }
+.login-eclipse .btn-login:focus-visible { outline: 2px solid var(--neu-text); outline-offset: 3px; }
+.login-eclipse .spinner {
+  display: none; width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid rgba(58,8,24,.3); border-top-color: var(--neu-btn-text); animation: girar .6s linear infinite;
+}
+@keyframes girar { to { transform: rotate(360deg); } }
+.login-eclipse .btn-login.cargando .spinner { display: block; }
+.login-eclipse .btn-login.cargando .btn-texto,
+.login-eclipse .btn-login.cargando .btn-icono { display: none; }
+.login-eclipse .login-pie { font-size: 10.8px; color: var(--neu-text-soft); text-align: center; margin-top: 6px; line-height: 1.6; }
+
+@media (max-width: 768px) { .login-eclipse .campo-input { font-size: 16px; } }
+@media (max-width: 600px) {
+  .login-eclipse .login-card { padding: 32px 24px 26px; border-radius: 28px; }
+  .login-eclipse .login-titulo { font-size: 21px; }
+}
+@media (max-height: 700px) { .login-eclipse .login-wrap { align-items: flex-start; padding-top: 28px; } }
+
+.campo-error { color: var(--peligro); font-size: 13px; min-height: 18px; margin: 2px 0 0; }
+
+/* ======================================================
+   LOGIN "ECLIPSE": cielo nocturno con estrellas, anillos de luz dorada
+   y una tarjeta circular guinda con halo, como la imagen de referencia.
+   Todo acotado a .login-eclipse.
+   ====================================================== */
+.login-eclipse {
+  background:
+    radial-gradient(circle at 50% 46%, rgba(120, 22, 52, .35) 0%, rgba(120, 22, 52, 0) 38%),
+    radial-gradient(ellipse 120% 90% at 50% 50%, #1a1520 0%, #0d0c13 55%, #07070b 100%);
+}
+.login-eclipse .lluvia-flores { display: none; }
+.login-eclipse .login-espacio { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+#login-estrellas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.login-eclipse .anillo {
+  position: absolute; left: 50%; top: 50%; border-radius: 50%; transform: translate(-50%, -50%);
+  border: 1px solid rgba(214, 180, 110, .16);
+  box-shadow: 0 0 40px rgba(214, 180, 110, .07), inset 0 0 40px rgba(214, 180, 110, .05);
+}
+.login-eclipse .anillo.a1 { width: min(860px, 150vw); height: min(860px, 150vw); }
+.login-eclipse .anillo.a2 { width: min(1080px, 190vw); height: min(1080px, 190vw); border-color: rgba(214, 180, 110, .10); }
+.login-eclipse .anillo.a3 { width: min(1400px, 240vw); height: min(1400px, 240vw); border-color: rgba(214, 180, 110, .06); }
+.login-eclipse .eclipse {
+  position: absolute; top: calc(50% - min(330px, 46vw)); left: calc(50% + min(250px, 30vw)); width: 160px; height: 160px; border-radius: 50%;
+  background: radial-gradient(circle at 42% 40%, #15131a 0%, #0a090d 70%);
+  box-shadow: 0 0 0 1px rgba(214, 180, 110, .3), -8px 6px 26px rgba(214, 180, 110, .38), 0 0 70px rgba(214, 180, 110, .12);
+}
+
+/* Tarjeta circular */
+.login-eclipse .login-halo {
+  width: min(820px, 98vw); height: min(820px, 98vw);
+  background: radial-gradient(circle, rgba(200, 160, 90, .22) 38%, rgba(200, 160, 90, .06) 52%, rgba(200, 160, 90, 0) 66%);
+}
+.login-eclipse .login-card {
+  width: min(680px, 94vw); max-width: none; aspect-ratio: 1 / 1; border-radius: 50%;
+  padding: 48px 24px 36px; align-items: center;
+  display: flex; flex-direction: column; justify-content: center;
+  background: radial-gradient(circle at 50% 42%, #6E1530 0%, #5A0E26 45%, #460A1D 72%, #3A0818 100%);
+  box-shadow:
+    0 0 0 1px rgba(214, 180, 110, .35),
+    0 0 0 14px rgba(110, 21, 48, .35),
+    0 0 0 15px rgba(214, 180, 110, .18),
+    0 0 80px rgba(214, 180, 110, .28),
+    0 30px 80px rgba(0, 0, 0, .55),
+    inset 0 0 60px rgba(0, 0, 0, .35);
+}
+.login-eclipse .login-card::before {
+  content: ""; position: absolute; inset: 7%; border-radius: 50%; pointer-events: none;
+  border: 1px solid rgba(214, 180, 110, .12);
+}
+.login-eclipse .login-card > * { position: relative; width: 100%; max-width: 380px; }
+
+/* Medallón del emblema */
+.login-eclipse .escudo-placeholder {
+  width: 84px; height: 84px; border-radius: 50%; margin-bottom: 10px;
+  background: radial-gradient(circle at 50% 40%, #6E1530, #3A0818);
+  border: 2px solid rgba(214, 180, 110, .75);
+  box-shadow: 0 0 0 4px rgba(58, 8, 24, .9), 0 0 0 5px rgba(214, 180, 110, .35), 0 0 30px rgba(214, 180, 110, .35);
+  padding: 12px;
+}
+.login-eclipse .escudo-placeholder img { object-fit: contain; border-radius: 0; }
+.login-eclipse .login-gov { color: #D9BFA6; }
+.login-eclipse .login-secretaria { font-size: 17px; color: #FBEFE6; }
+.login-eclipse .login-titulo { font-size: 26px; color: #D4AE5A; }
+.login-eclipse .login-body { gap: 14px; margin-top: 22px; }
+
+/* Campos con contorno dorado */
+.login-eclipse .campo-input-wrap {
+  background: rgba(40, 6, 18, .35);
+  border: 1.5px solid rgba(214, 180, 110, .7);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, .35);
+}
+.login-eclipse .campo-input-wrap:focus-within {
+  border-color: #E2C278;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, .35), 0 0 0 3px rgba(214, 180, 110, .18);
+}
+.login-eclipse .neu-toggle input:checked + .neu-toggle-track { background: linear-gradient(135deg, #C8A951, #9a7d30); }
+.login-eclipse .btn-login {
+  background: linear-gradient(180deg, #D8B866 0%, #B8933F 55%, #9C7A2E 100%);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .4), inset 0 1px 0 rgba(255, 240, 200, .45);
+}
+.login-eclipse .login-pie { color: #C9A7B0; }
+
+/* Pantallas bajas o angostas: la tarjeta vuelve a ser rectangular */
+@media (max-width: 620px), (max-height: 700px) {
+  .login-eclipse .login-card {
+    width: 100%; max-width: 420px; aspect-ratio: auto; border-radius: 36px; padding: 40px 30px 30px;
+  }
+  .login-eclipse .login-card::before { inset: 10px; border-radius: 28px; }
+  .login-eclipse .eclipse { display: none; }
+}
+@media (max-width: 620px), (max-height: 700px) {
+  .login-eclipse .login-card { box-shadow: 0 0 0 1px rgba(214,180,110,.35), 0 0 60px rgba(214,180,110,.22), 0 24px 60px rgba(0,0,0,.5), inset 0 0 50px rgba(0,0,0,.3); }
+}
+
+/* ======================================================
+   MiniSEBISO: la mascota del sistema (almohada blanca con la
+   estrella de Hidalgo), en lugar del medallón del login
+   ====================================================== */
+.minisebiso {
+  position: relative; width: 124px; aspect-ratio: 1024 / 935; margin: 0 auto 8px;
+  animation: msRespirar 5s ease-in-out infinite; transform-origin: 50% 90%;
+}
+.ms-cuerpo {
+  position: absolute; left: 12.7%; top: 11.6%; width: 74.6%; height: 74.2%;
+  border-radius: 27% 27% 30% 30% / 29% 29% 31% 31%;
+  background:
+    radial-gradient(ellipse 55% 40% at 30% 18%, #fff 0%, rgba(255,255,255,0) 70%),
+    linear-gradient(180deg, #fbfcfe 0%, #f1f3f8 38%, #dfe5ef 70%, #c8d1e0 100%);
+  box-shadow:
+    inset 0 -8px 14px rgba(132, 150, 186, .45),
+    inset 0 5px 9px rgba(255, 255, 255, .95),
+    inset -5px 0 10px rgba(150, 165, 196, .35),
+    0 8px 16px rgba(0, 0, 0, .5),
+    0 0 26px rgba(214, 180, 110, .28);
+}
+.ms-ojo-mov {
+  position: absolute; top: 37%; width: 10.2%; height: 20.2%;
+  transform: translate(var(--dx, 0px), var(--dy, 0px)); transition: transform .14s ease-out;
+}
+.ms-ojo-mov.izq { left: 32.5%; }
+.ms-ojo-mov.der { left: 57.3%; }
+.ms-ojo {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: radial-gradient(ellipse 60% 55% at 45% 40%, #2a2a30 0%, #0d0d10 70%, #050506 100%);
+  box-shadow: 0 1px 1px rgba(255, 255, 255, .7);
+  animation: msParpadear 5.5s infinite;
+}
+.ms-ojo::after {
+  content: ""; position: absolute; left: 22%; top: 9%; width: 42%; height: 24%; border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(255,255,255,.8), rgba(255,255,255,0) 70%);
+}
+.ms-estrella {
+  position: absolute; left: 4.5%; top: 2.8%; width: 40%; aspect-ratio: 1;
+  background: url('../img/logo-hidalgo.png') center / contain no-repeat;
+  filter: drop-shadow(0 0 1px #FBEFE6) drop-shadow(0 0 1px #FBEFE6) drop-shadow(0 0 5px rgba(255, 226, 170, .55)) drop-shadow(1px 3px 3px rgba(0, 0, 0, .45));
+  transform: rotate(-4deg);
+}
+@keyframes msRespirar { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.015, .99); } }
+@keyframes msParpadear { 0%, 94%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.1); } }
+@media (prefers-reduced-motion: reduce) { .minisebiso, .ms-ojo { animation: none; } }
+
+/* Login: textos de la Secretaría más grandes, pie dentro del círculo y
+   botón que no cambia de tamaño mientras inicia sesión */
+.login-eclipse .login-gov { font-size: 11.5px; letter-spacing: .18em; }
+.login-eclipse .login-secretaria { font-size: 22px; line-height: 1.2; margin-top: 4px; }
+.login-eclipse .login-subsecretaria { font-size: 12.5px; margin-top: 4px; }
+.login-eclipse .login-titulo-bloque { margin-top: 14px; }
+.login-eclipse .login-pie { max-width: 290px; margin: 4px auto 0; font-size: 10.3px; line-height: 1.5; }
+.login-eclipse .btn-login.cargando { padding: 0; text-align: center; color: var(--neu-btn-text); }
+.login-eclipse .btn-login { flex-shrink: 0; }
+
+/* Burbuja de MiniSEBISO */
+.minisebiso { cursor: pointer; outline: none; }
+.minisebiso:focus-visible .ms-cuerpo { box-shadow: 0 0 0 3px rgba(214, 180, 110, .8); }
+.ms-burbuja {
+  position: absolute; left: 50%; bottom: calc(100% + 10px); z-index: 5;
+  width: 230px; padding: 10px 14px; border-radius: 16px;
+  background: #FBF6EE; color: #3A0818; font-size: 12.5px; font-weight: 600; line-height: 1.35; text-align: center;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .45), 0 0 0 1px rgba(214, 180, 110, .6);
+  opacity: 0; pointer-events: none; transform: translate(-50%, 8px) scale(.9); transform-origin: 50% 100%;
+  transition: opacity .2s ease, transform .25s cubic-bezier(.34, 1.56, .64, 1);
+}
+.ms-burbuja::after {
+  content: ""; position: absolute; left: 50%; top: 100%; transform: translateX(-50%);
+  border: 8px solid transparent; border-top-color: #FBF6EE;
+}
+.minisebiso.hablando .ms-burbuja { opacity: 1; transform: translate(-50%, 0) scale(1); }
+.minisebiso.saltando { animation: msSalto .45s cubic-bezier(.34, 1.56, .64, 1); }
+@keyframes msSalto { 0% { transform: translateY(0); } 40% { transform: translateY(-10px) scale(1.04, .97); } 100% { transform: translateY(0); } }
+.login-eclipse .login-card > .login-header { max-width: 480px; }
+.login-eclipse .minisebiso { margin-bottom: 4px; }
+.login-eclipse .login-pie { margin-top: 0; }
+.login-eclipse .login-card { padding-top: 30px; padding-bottom: 64px; }
+.login-eclipse .minisebiso { width: 112px; }
+.login-eclipse .login-titulo-bloque { margin-top: 10px; }
+.login-eclipse .login-body { gap: 12px; margin-top: 16px; }
+.login-eclipse .login-pie { max-width: 270px; }
+@media (max-width: 620px), (max-height: 700px) {
+  .login-eclipse .login-card { padding: 34px 26px 28px; }
+  .login-eclipse .login-secretaria { font-size: 19px; }
+}
+
+
+/* Neutraliza estilos de login anteriores que el sistema pudiera seguir cargando */
+.login-eclipse .login-wrap { background: none; }
+.login-eclipse .login-halo { display: block; }
+.login-eclipse .login-body { padding-top: 0; }
+.login-eclipse .login-error { margin: 0; }
