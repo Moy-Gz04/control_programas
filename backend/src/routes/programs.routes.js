@@ -124,8 +124,9 @@ async function getProgramaCompleto(id) {
       asignacion,
       pagada,
       // Disponible para pago/dispersión: autorizada por Hacienda, con
-      // Archivo de Asignación marcado como 'correcto', y sin pago todavía.
-      disponibleParaPago: !!autorizacion && !!asignacion && asignacion.estatus === 'correcto' && !pagada
+      // Archivo de Asignación marcado como 'correcto' (salvo los programas que
+      // no lo requieren: pasan directo del Autorizado a la Dispersión), y sin pago todavía.
+      disponibleParaPago: !!autorizacion && (programa.requiere_asignacion === false || (!!asignacion && asignacion.estatus === 'correcto')) && !pagada
     };
   });
 
@@ -981,7 +982,7 @@ router.post('/:id/pagos', upload.single('documento'), async (req, res) => {
     if (!hacRows[0].autorizacion_id) {
       return res.status(409).json({ error: 'Esta solicitud aún no cuenta con Autorización de Hacienda; regístrala antes de capturar la dispersión.' });
     }
-    if (hacRows[0].asignacion_estatus !== 'correcto') {
+    if (programa.requiere_asignacion !== false && hacRows[0].asignacion_estatus !== 'correcto') {
       return res.status(409).json({ error: 'Esta solicitud aún no tiene su Archivo de Asignación marcado como correcto; complétalo antes de capturar la dispersión.' });
     }
 

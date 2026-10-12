@@ -833,7 +833,7 @@ async function renderDetalle(id){
       <div style="text-align:center;margin-top:10px;">
         ${disponiblesParaPago.length
           ? `<button class="btn btn-outline btn-sm" id="btnAddPago">+ Registrar Dispersión</button>`
-          : `<div class="field-hint" style="margin-bottom:8px;">No hay solicitudes a Hacienda con Archivo de Asignación correcto, pendientes de dispersión.</div>`}
+          : `<div class="field-hint" style="margin-bottom:8px;">${p.requiere_asignacion === false ? 'No hay solicitudes autorizadas por Hacienda pendientes de dispersión.' : 'No hay solicitudes a Hacienda con Archivo de Asignación correcto, pendientes de dispersión.'}</div>`}
       </div>
     `)}
 
@@ -1040,8 +1040,12 @@ function pagoRowHTML(p, g){
    distingue de un vistazo aunque tengan documento adjunto, monto y fecha. */
 function haciendaItemHTML(h, p){
   let badge;
+  // Programas sin Archivo de Asignación: del Autorizado por Hacienda pasan directo a la Dispersión
+  const sinAsignacion = p && p.requiere_asignacion === false;
   if(h.pagada){
     badge = { cls:'badge-pagada', mod:'is-pagada', label:'Dispersado' };
+  } else if(sinAsignacion && h.autorizacion){
+    badge = { cls:'badge-autorizada', mod:'is-autorizada', label:'Listo para Dispersión' };
   } else if(h.asignacion && h.asignacion.estatus==='correcto'){
     badge = { cls:'badge-autorizada', mod:'is-autorizada', label:'Listo para Dispersión' };
   } else if(h.asignacion && h.asignacion.estatus==='incorrecto'){
@@ -1090,12 +1094,12 @@ function haciendaItemHTML(h, p){
       ` : `
       <div class="hacienda-stage hacienda-stage-empty">
         <div class="hacienda-stage-label">2 · Autorizado por Hacienda</div>
-        <div class="hacienda-stage-hint">Registra cuánto autorizó Hacienda de esta solicitud para poder continuar con el Archivo de Asignación.</div>
+        <div class="hacienda-stage-hint">Registra cuánto autorizó Hacienda de esta solicitud para poder continuar con ${sinAsignacion ? 'la Dispersión' : 'el Archivo de Asignación'}.</div>
         <button class="btn btn-gold btn-sm" data-autorizar-hacienda="${h.id}">+ Registrar Autorización</button>
       </div>
       `}
 
-      ${asignacionBlockHTML(h)}
+      ${sinAsignacion ? '' : asignacionBlockHTML(h)}
     </div>
   </div>`;
 }
@@ -2090,7 +2094,7 @@ function openModalAsignacionCorrecto(pid, hacId){
 function openModalPago(p){
   const disponibles = (p.solicitudesHacienda||[]).filter(h=>h.disponibleParaPago);
   if(!disponibles.length){
-    toast('No hay solicitudes a Hacienda con Archivo de Asignación correcto, disponibles para dispersión.', true);
+    toast(p.requiere_asignacion === false ? 'No hay solicitudes autorizadas por Hacienda disponibles para dispersión.' : 'No hay solicitudes a Hacienda con Archivo de Asignación correcto, disponibles para dispersión.', true);
     return;
   }
   openModal(`
