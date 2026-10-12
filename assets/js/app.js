@@ -455,15 +455,28 @@ function totalAutorizadoPorHacienda(p){
 /* "Disponible" contra el monto autorizado neto (autorizado + modificaciones).
    Se conserva con este nombre porque ya se usaba en otras vistas (tarjetas
    de listado, insights, gráfica comparativa). */
-function totalDisponible(p){ return totalAutorizadoNeto(p) - totalComprometido(p); }
+function totalDisponible(p){ return totalAutorizadoNeto(p) - totalComprometidoEfectivo(p); }
+
+/* Comprometido EFECTIVO: el recurso que ya salió del disponible. Normalmente
+   es lo comprometido en dictámenes, pero si ya se solicitó, autorizó o pagó
+   más que eso (p. ej. programas que no llevan dictámenes, como Verificación
+   Vehicular), ese dinero también está ocupado. Así el Disponible baja con lo
+   solicitado y dispersado aunque el programa no tenga dictámenes. */
+function totalComprometidoEfectivo(p){
+  return Math.max(totalComprometido(p), totalSolicitadoHacienda(p), totalAutorizadoPorHacienda(p), totalPagado(p));
+}
+/* Cascada del flujo (cada peso en UNA sola etapa; la suma da el autorizado):
+   Disponible + Comprometido pendiente + Solicitado pendiente + Aprobado pendiente + Dispersado */
+function solicitadoEfectivo(p){ return Math.max(totalSolicitadoHacienda(p), totalAutorizadoPorHacienda(p), totalPagado(p)); }
+function aprobadoEfectivo(p){ return Math.max(totalAutorizadoPorHacienda(p), totalPagado(p)); }
 
 /* Estado Real: cuánto queda disponible contra el autorizado ORIGINAL (sin
    contar modificaciones) una vez descontado lo ya comprometido. */
-function totalAutorizadoDisponible(p){ return montoAutorizadoBase(p) - totalComprometido(p); }
+function totalAutorizadoDisponible(p){ return montoAutorizadoBase(p) - totalComprometidoEfectivo(p); }
 /* Estado Real: de lo comprometido, cuánto sigue comprometido pendiente de
    solicitar/pagar (lo ya pagado deja de contar aquí, pero sigue intacto en
    el histórico de totalComprometido). */
-function totalComprometidoPendiente(p){ return Math.max(totalComprometido(p) - totalPagado(p), 0); }
+function totalComprometidoPendiente(p){ return Math.max(totalComprometidoEfectivo(p) - solicitadoEfectivo(p), 0); }
 /* Estado Real: de lo solicitado a Hacienda, cuánto sigue pendiente de pago
    (lo ya pagado deja de contar aquí, pero sigue intacto en el histórico de
    totalSolicitadoHacienda). */
@@ -475,11 +488,11 @@ function totalHaciendaPendiente(p){ return Math.max(totalSolicitadoHacienda(p) -
    mostraba el histórico completo aunque ya estuviera aprobado por
    Hacienda, contando el mismo peso dos veces (como "solicitado" y como
    "aprobado") — con este cálculo el peso ya autorizado deja de sumar aquí. */
-function totalSolicitadoHaciendaPendiente(p){ return Math.max(totalSolicitadoHacienda(p) - totalAutorizadoPorHacienda(p), 0); }
+function totalSolicitadoHaciendaPendiente(p){ return Math.max(solicitadoEfectivo(p) - aprobadoEfectivo(p), 0); }
 /* Estado Real: de lo ya autorizado por Hacienda, cuánto sigue pendiente de
    dispersión (lo ya pagado deja de contar aquí, pero sigue intacto en el
    histórico de totalAutorizadoPorHacienda). */
-function totalAutorizadoHaciendaPendiente(p){ return Math.max(totalAutorizadoPorHacienda(p) - totalPagado(p), 0); }
+function totalAutorizadoHaciendaPendiente(p){ return Math.max(aprobadoEfectivo(p) - totalPagado(p), 0); }
 
 /* ---------- Cantidad de pagos por beneficiario / Meta - Dispersión ----------
    cantidadPagosDe() siempre regresa al menos 1 (COALESCE en el mismo
@@ -585,8 +598,9 @@ function totalPersonasDispersion(p){
 
 function estadoPrograma(p){
   if(p.monto_autorizado===null || p.monto_autorizado===undefined) return {label:'Registrado', color:'var(--status-registrado)'};
-  if(totalComprometido(p)===0) return {label:'Autorizado', color:'var(--status-autorizado)'};
-  if(totalPagado(p) < totalComprometido(p)) return {label:'En Dictaminación', color:'var(--status-dictaminacion)'};
+  const efectivo = totalComprometidoEfectivo(p);
+  if(efectivo===0) return {label:'Autorizado', color:'var(--status-autorizado)'};
+  if(totalPagado(p) < efectivo - 0.005) return {label: totalComprometido(p)>0 ? 'En Dictaminación' : 'En Dispersión', color:'var(--status-dictaminacion)'};
   return {label:'Dispersado', color:'var(--status-pagado)'};
 }
 
@@ -676,9 +690,9 @@ function emptyPrograms(){
 function programTileHTML(p){
   const st = estadoPrograma(p);
   const disponible = totalAutorizadoNeto(p);
-  const comp = totalComprometido(p);
+  const comp = totalComprometidoEfectivo(p);
   const pag = totalPagado(p);
-  const pct = comp>0 ? Math.min(100, Math.round((pag/comp)*100)) : 0;
+  const pct = comp>0 ? Math.min(100, Math.floor((pag/comp)*100)) : 0;
   return `
   <div class="prog-tile" data-open="${p.id}" style="--accent:${st.color}">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;">
@@ -1897,7 +1911,9 @@ function openModalHacienda(pid){
        vez de tapar el formulario con otro, se avisa con un toast y se deja
        el formulario abierto para corregir el monto. */
     if(p){
-      const disponibleParaSolicitar = Math.max(totalComprometido(p) - totalSolicitadoHacienda(p), 0);
+      // Programas sin dictámenes/asignación: el tope es lo autorizado que aún no se solicita
+      const tope = p.requiere_asignacion === false ? totalAutorizadoNeto(p) : totalComprometido(p);
+      const disponibleParaSolicitar = Math.max(tope - totalSolicitadoHacienda(p), 0);
       if(monto > disponibleParaSolicitar + 0.01){
         toast(`El monto (${fmtMoney(monto)}) supera el recurso comprometido pendiente de solicitar (${fmtMoney(disponibleParaSolicitar)}). Ajusta el monto o registra primero un dictamen/ampliación adicional.`, true);
         return;
