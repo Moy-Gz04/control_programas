@@ -840,6 +840,8 @@ async function renderDetalle(id){
       ${(p.solicitudesHacienda||[]).length? p.solicitudesHacienda.map(h=>haciendaItemHTML(h,p)).join('') : `<div class="empty-state">Sin trámites enviados a Hacienda.</div>`}
     `, true, `<button class="btn btn-outline btn-sm" id="btnAddHacienda">+ Registrar Solicitud a Hacienda</button>`)}
 
+    ${transferenciasPendientesHTML(p)}
+
     ${collapsibleSection('pagos','Recurso Dispersado', `${(p.pagos||[]).length} dispersión(es)`, `
       <div class="log-list">
         ${(p.pagos||[]).length? p.pagos.map(g=>pagoRowHTML(p,g)).join('') : `<div class="empty-state">Sin dispersiones registradas.</div>`}
@@ -867,6 +869,7 @@ async function renderDetalle(id){
   document.getElementById('btnAddHacienda').addEventListener('click', ()=>openModalHacienda(p.id));
   const btnPago = document.getElementById('btnAddPago');
   if(btnPago) btnPago.addEventListener('click', ()=>openModalPago(p));
+  el.querySelectorAll('[data-registrar-transferencia]').forEach(b=> b.addEventListener('click', ()=>openModalPago(p, b.dataset.registrarTransferencia)));
 
   bindCollapsibleSections(el);
   bindNumberInputs(el);
@@ -954,7 +957,7 @@ function pipelinePresupuestoHTML(p){
     { titulo:'Recurso Disponible', sub:`${pctDisponible.toFixed(1)}% del autorizado`, valor:disponible },
     { titulo:'Comprometido', sub:`Histórico: ${fmtMoney(comprometido)}`, valor:comprometidoPendiente },
     { titulo:'Solicitado a Hacienda', sub:`Histórico: ${fmtMoney(solicitadoHacienda)}`, valor:solicitadoHaciendaPendiente },
-    { titulo:'Aprobado por Hacienda', sub:`${pctAutorizadoDeSolicitado.toFixed(1)}% de lo solicitado`, valor:autorizadoHaciendaPendiente },
+    { titulo:'Autorizado por Hacienda', sub:'pendiente de dispersión', valor:autorizadoHaciendaPendiente },
     { titulo:'Dispersado', sub:`${(p.pagos||[]).length} dispersión(es)`, valor:pagado },
   ];
 
@@ -1037,8 +1040,8 @@ function pagoRowHTML(p, g){
             <div class="log-row-body">
               <div class="log-row-icon log-row-icon-pos">$</div>
               <div class="log-row-main">
-                <div class="log-row-title">Folio ${esc(g.folio)}</div>
-                <div class="lmeta">${fmtDate(g.fecha)}${hac? ` · Solicitud a Hacienda folio ${esc(hac.folio)}` : ''}</div>
+                <div class="log-row-title">${hac && hac.proveedor ? `${esc(hac.proveedor)} · ` : ''}Folio ${esc(g.folio)}</div>
+                <div class="lmeta">${fmtDate(g.fecha)}${hac? ` · Solicitud a Hacienda folio ${esc(hac.folio)}` : ''}${hac && hac.periodo ? ` · ${esc(hac.periodo)}` : ''}</div>
               </div>
               <div class="lamount pos">${fmtMoney(g.monto)}</div>
             </div>
@@ -1084,6 +1087,8 @@ function haciendaItemHTML(h, p){
         <div class="hacienda-stage-label">1 · Solicitud a Hacienda</div>
         <div class="hacienda-item-eyebrow">Folio</div>
         <div class="hacienda-item-title">${esc(h.folio)}</div>
+        ${h.proveedor ? `<div class="hacienda-proveedor">${esc(h.proveedor)}</div>` : ''}
+        ${h.periodo ? `<div class="lmeta">Periodo: ${esc(h.periodo)}</div>` : ''}
         <div class="lmeta">Solicitado: ${fmtDateOnly(h.fecha)}${dictamenLabel ? ` · Vinculado a ${esc(dictamenLabel)}` : ' · Sin vincular a un dictamen específico'}</div>
         <div class="hacienda-item-amount">
           <div class="hacienda-item-monto">${fmtMoney(h.monto)}</div>
@@ -1871,6 +1876,8 @@ function openModalHacienda(pid){
     <div class="modal-body">
       <div class="form-grid single">
         <div class="field"><label>Folio</label><input type="text" id="h-folio" placeholder="Ej. SH-2026-0001"></div>
+        <div class="field"><label>Proveedor / beneficiario (opcional)</label><input type="text" id="h-proveedor" placeholder="A quién se le paga"></div>
+        <div class="field"><label>Periodo (opcional)</label><input type="text" id="h-periodo" placeholder="Ej. 1 al 10 de septiembre de 2026"></div>
         <div class="field"><label>Monto Solicitado</label><input type="text" data-money id="h-monto" placeholder="$0.00"></div>
         <div class="field">
           <label>Dictamen relacionado (opcional)</label>
@@ -1923,6 +1930,8 @@ function openModalHacienda(pid){
     const fd = new FormData();
     fd.append('folio', folio);
     fd.append('monto', monto);
+    fd.append('proveedor', document.getElementById('h-proveedor').value.trim());
+    fd.append('periodo', document.getElementById('h-periodo').value.trim());
     if(dictamenId) fd.append('dictamen_id', dictamenId);
     if(fecha) fd.append('fecha', fecha);
     if(archivo) fd.append('documento', archivo);
@@ -1947,6 +1956,8 @@ function openModalEditarHacienda(pid, hacId){
     <div class="modal-body">
       <div class="form-grid single">
         <div class="field"><label>Folio</label><input type="text" id="eh-folio" value="${esc(hac.folio||'')}"></div>
+        <div class="field"><label>Proveedor / beneficiario (opcional)</label><input type="text" id="eh-proveedor" value="${esc(hac.proveedor||'')}"></div>
+        <div class="field"><label>Periodo (opcional)</label><input type="text" id="eh-periodo" value="${esc(hac.periodo||'')}"></div>
         <div class="field"><label>Monto Solicitado</label><input type="text" data-money id="eh-monto" value="${fmtInputMoney(hac.monto)}"></div>
         <div class="field">
           <label>Dictamen relacionado (opcional)</label>
@@ -1983,7 +1994,7 @@ function openModalEditarHacienda(pid, hacId){
       return;
     }
     try{
-      await withLoading(btn, ()=>Api.patch(`/programs/${pid}/hacienda/${hacId}`, { folio, monto, dictamen_id: dictamenId || null, fecha }), 'Guardando…');
+      await withLoading(btn, ()=>Api.patch(`/programs/${pid}/hacienda/${hacId}`, { folio, monto, dictamen_id: dictamenId || null, fecha, proveedor: document.getElementById('eh-proveedor').value.trim(), periodo: document.getElementById('eh-periodo').value.trim() }), 'Guardando…');
       closeModal();
       toast('Solicitud a Hacienda actualizada.');
       await refreshOneProgram(pid); renderDetalle(pid);
@@ -2107,7 +2118,40 @@ function openModalAsignacionCorrecto(pid, hacId){
    dispersando. Al seleccionarla se muestra su información y la dispersión
    queda ligada a esa solicitud (Solicitud a Hacienda → Archivo de
    Asignación correcto → Dispersión → Documento comprobatorio). */
-function openModalPago(p){
+/* ---------- Transferencias pendientes ----------
+   Solicitudes ya autorizadas por Hacienda que todavía no tienen su
+   transferencia (dispersión) registrada: a quién, qué periodo, cuánto,
+   desde cuándo esperan y un botón para registrar su transferencia con su
+   comprobante. Es la etapa «Autorizado por Hacienda» del flujo, en detalle. */
+function transferenciasPendientesHTML(p){
+  const pend = (p.solicitudesHacienda||[]).filter(h=>h.disponibleParaPago)
+    .sort((a,b)=> new Date(a.autorizacion.fecha_autorizacion) - new Date(b.autorizacion.fecha_autorizacion));
+  const autorizadas = (p.solicitudesHacienda||[]).filter(h=>h.autorizacion).length;
+  if(!autorizadas) return '';
+  const total = pend.reduce((s,h)=> s + Number(h.autorizacion.monto_autorizado||0), 0);
+  const hoy = new Date();
+  const filas = pend.map(h=>{
+    const dias = Math.max(0, Math.floor((hoy - new Date(h.autorizacion.fecha_autorizacion)) / 86400000));
+    return `
+      <div class="transf-fila">
+        <div class="transf-quien">
+          <div class="transf-proveedor">${esc(h.proveedor || 'Proveedor sin capturar')}</div>
+          <div class="lmeta">${h.periodo ? `${esc(h.periodo)} · ` : ''}Cuenta por pagar ${esc(h.folio)}</div>
+        </div>
+        <div class="transf-dato"><span>Autorizado por Hacienda</span><b>${fmtMoney(h.autorizacion.monto_autorizado)}</b></div>
+        <div class="transf-dato"><span>Contrarrecibo</span><b>${fmtDateOnly(h.autorizacion.fecha_autorizacion)}</b><small class="${dias>15?'transf-tarde':''}">${dias===0?'hoy':`hace ${dias} día${dias===1?'':'s'}`}</small></div>
+        <button class="btn btn-primary btn-sm" data-registrar-transferencia="${h.id}">Registrar transferencia</button>
+      </div>`;
+  }).join('');
+  return collapsibleSection('transferencias','Transferencias pendientes',
+    pend.length ? `${pend.length} por dispersar · ${fmtMoney(total)}` : 'Al corriente',
+    pend.length
+      ? `<p class="field-hint" style="margin:0 0 10px;">Ya autorizadas por Hacienda (con contrarrecibo) y aún sin transferencia registrada. Al registrar la transferencia con su comprobante pasan a «Recurso Dispersado».</p><div class="transf-lista">${filas}</div>`
+      : `<div class="empty-state">Todas las solicitudes autorizadas por Hacienda ya tienen su transferencia registrada.</div>`,
+    true);
+}
+
+function openModalPago(p, preId){
   const disponibles = (p.solicitudesHacienda||[]).filter(h=>h.disponibleParaPago);
   if(!disponibles.length){
     toast(p.requiere_asignacion === false ? 'No hay solicitudes autorizadas por Hacienda disponibles para dispersión.' : 'No hay solicitudes a Hacienda con Archivo de Asignación correcto, disponibles para dispersión.', true);
@@ -2121,11 +2165,11 @@ function openModalPago(p){
           <label>Solicitud a Hacienda dispersada</label>
           <select id="g-hacienda">
             <option value="">Selecciona la solicitud que se dispersó…</option>
-            ${disponibles.map(h=>`<option value="${h.id}">Solicitud folio ${esc(h.folio)} — ${fmtMoney(h.autorizacion.monto_autorizado)}</option>`).join('')}
+            ${disponibles.map(h=>`<option value="${h.id}" ${String(h.id)===String(preId)?'selected':''}>${h.proveedor ? esc(h.proveedor)+' · ' : ''}${h.periodo ? esc(h.periodo)+' · ' : ''}Folio ${esc(h.folio)} — ${fmtMoney(h.autorizacion.monto_autorizado)}</option>`).join('')}
           </select>
         </div>
         <div id="g-preview"></div>
-        <div class="field"><label>Folio de la Dispersión</label><input type="text" id="g-folio" placeholder="Ej. PG-2026-0001"></div>
+        <div class="field"><label>Folio de la Dispersión</label><input type="text" id="g-folio" placeholder="Ej. número de operación de la transferencia"></div>
         <div class="field"><label>Monto Dispersado</label><input type="text" data-money id="g-monto" placeholder="$0.00"></div>
         ${dateTimeFieldGroupHTML('g-fecha','Registro de la Dispersión')}
         ${fileDropZoneHTML('g-doc','Documento que avala la dispersión','.pdf,.jpg,.jpeg,.png,.doc,.docx')}
@@ -2147,10 +2191,11 @@ function openModalPago(p){
     preview.innerHTML = `<div class="hacienda-preview">
       Solicitado: <b>${fmtMoney(hac.monto)}</b> · ${fmtDateOnly(hac.fecha)}<br>
       Autorizado por Hacienda: <b>${fmtMoney(hac.autorizacion.monto_autorizado)}</b> · ${fmtDate(hac.autorizacion.fecha_autorizacion)}<br>
-      Archivo de Asignación: <b>Correcto</b>${hac.asignacion && hac.asignacion.folio ? ` · Folio ${esc(hac.asignacion.folio)}` : ''}
+      ${p.requiere_asignacion === false ? '' : `Archivo de Asignación: <b>Correcto</b>${hac.asignacion && hac.asignacion.folio ? ` · Folio ${esc(hac.asignacion.folio)}` : ''}`}
     </div>`;
     if(!montoInput.value) montoInput.value = fmtInputMoney(hac.autorizacion.monto_autorizado);
   });
+  if(preId) selHacienda.dispatchEvent(new Event('change'));
 
   document.getElementById('submitPago').addEventListener('click', async (e)=>{
     const btn = e.currentTarget;

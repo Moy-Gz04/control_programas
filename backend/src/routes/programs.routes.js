@@ -656,9 +656,10 @@ router.post('/:id/hacienda', upload.single('documento'), async (req, res) => {
 
     const fecha = parseFechaManual(req.body?.fecha);
     await db.query(
-      `INSERT INTO solicitudes_hacienda (programa_id, folio, monto, fecha, created_by, documento_url, documento_nombre, dictamen_id)
-       VALUES ($1,$2,$3,COALESCE($4, now()),$5,$6,$7,$8)`,
-      [req.params.id, folio || 'S/F', monto, fecha, req.user.id, documentoUrl, documentoNombre, dictamenId]
+      `INSERT INTO solicitudes_hacienda (programa_id, folio, monto, fecha, created_by, documento_url, documento_nombre, dictamen_id, proveedor, periodo)
+       VALUES ($1,$2,$3,COALESCE($4, now()),$5,$6,$7,$8,$9,$10)`,
+      [req.params.id, folio || 'S/F', monto, fecha, req.user.id, documentoUrl, documentoNombre, dictamenId,
+       (req.body?.proveedor || '').toString().trim() || null, (req.body?.periodo || '').toString().trim() || null]
     );
     res.status(201).json(await getProgramaCompleto(req.params.id));
   } catch (err) {
@@ -697,9 +698,13 @@ router.patch('/:id/hacienda/:hacId', async (req, res) => {
 
     const fecha = parseFechaManual(req.body?.fecha);
     const { rows } = await db.query(
-      `UPDATE solicitudes_hacienda SET folio = $1, monto = $2, fecha = COALESCE($3, fecha), dictamen_id = $4
+      `UPDATE solicitudes_hacienda SET folio = $1, monto = $2, fecha = COALESCE($3, fecha), dictamen_id = $4,
+              proveedor = CASE WHEN $7::text IS NULL THEN proveedor ELSE NULLIF($7, '') END,
+              periodo = CASE WHEN $8::text IS NULL THEN periodo ELSE NULLIF($8, '') END
        WHERE id = $5 AND programa_id = $6 RETURNING id`,
-      [folio || 'S/F', monto, fecha, dictamenId, req.params.hacId, req.params.id]
+      [folio || 'S/F', monto, fecha, dictamenId, req.params.hacId, req.params.id,
+       req.body?.proveedor === undefined ? null : String(req.body.proveedor).trim(),
+       req.body?.periodo === undefined ? null : String(req.body.periodo).trim()]
     );
     if (!rows[0]) return res.status(404).json({ error: 'Solicitud a Hacienda no encontrada.' });
 
