@@ -65,27 +65,11 @@
   let wakeTimer = null;
 
   function startWakeOverlay() {
+    // Sin cuenta regresiva: la mascota trabajando, una barra que avanza sola y mensajes
     const overlay = document.getElementById('wakeOverlay');
-    const fill = document.getElementById('wakeBarFill');
-    const countdown = document.getElementById('wakeCountdown');
-    let restante = WAKE_SECONDS;
-
+    document.getElementById('wakeCard').innerHTML = Carga.html('Entrando al sistema…', 'servidor');
     overlay.classList.add('show');
     overlay.setAttribute('aria-hidden', 'false');
-    fill.style.width = '0%';
-    countdown.textContent = restante + ' s';
-
-    clearInterval(wakeTimer);
-    wakeTimer = setInterval(() => {
-      restante -= 1;
-      if (restante <= 0) {
-        restante = 0;
-        countdown.textContent = 'Esto está tardando más de lo usual, seguimos intentando…';
-      } else {
-        countdown.textContent = restante + ' s';
-      }
-      fill.style.width = Math.min(100, ((WAKE_SECONDS - restante) / WAKE_SECONDS) * 100) + '%';
-    }, 1000);
   }
 
   function stopWakeOverlay() {

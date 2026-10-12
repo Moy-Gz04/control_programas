@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/styles.css">
+<link rel="stylesheet" href="assets/css/styles.css?v=20261012e">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -99,19 +99,14 @@
 <!-- Overlay "despertando servidor": visible mientras el backend en Render
      (plan gratuito) sale de reposo. Lo controla assets/js/auth.js. -->
 <div class="wake-overlay" id="wakeOverlay" aria-hidden="true">
-  <div class="wake-card">
-    <div class="wake-spinner"></div>
-    <h2>Despertando servidor…</h2>
-    <p>El sistema estaba inactivo. Esto suele tardar unos <strong>40 segundos</strong>, por favor espera.</p>
-    <div class="wake-bar-track"><div class="wake-bar-fill" id="wakeBarFill"></div></div>
-    <div class="wake-countdown" id="wakeCountdown">40 s</div>
-  </div>
+  <div class="wake-card" id="wakeCard"></div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <script src="assets/js/config.js"></script>
 <script src="assets/js/api.js"></script>
-<script src="assets/js/auth.js"></script>
+<script src="assets/js/carga.js?v=1"></script>
+<script src="assets/js/auth.js?v=2"></script>
 <script src="assets/js/login-espacio.js"></script>
 <script src="assets/js/minisebiso.js"></script>
 

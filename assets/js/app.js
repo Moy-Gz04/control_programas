@@ -627,7 +627,7 @@ async function init(){
     navDateEl.textContent = hoy.charAt(0).toUpperCase() + hoy.slice(1);
   }
 
-  document.getElementById('view-programas').innerHTML = `<div class="loading-block"><span class="loading-spinner"></span> Cargando información…</div>`;
+  document.getElementById('view-programas').innerHTML = Carga.html('Cargando programas…', 'programas');
 
   try{
     UNIDADES = await Api.get('/unidades');
@@ -668,7 +668,9 @@ function navigate(view){
   window.scrollTo({top:0,behavior:'smooth'});
 }
 function setHeader(t,s,s2){
-  document.getElementById('headerTitle').textContent = t;
+  // Títulos escritos todo en mayúsculas («PROGRAMAS REGISTRADOS») se muestran como en los otros sistemas: «Programas registrados»
+  const titulo = t && t === t.toUpperCase() ? t.charAt(0) + t.slice(1).toLowerCase() : t;
+  document.getElementById('headerTitle').textContent = titulo;
   document.getElementById('headerSub').textContent = s;
   document.getElementById('headerSub2').textContent = s2;
 }
@@ -736,7 +738,7 @@ function renderProgramas(){
    ========================================================================= */
 async function renderDetalle(id){
   const el = document.getElementById('view-detalle');
-  el.innerHTML = `<div class="loading-block"><span class="loading-spinner"></span> Cargando programa…</div>`;
+  el.innerHTML = Carga.html('Cargando programa…', 'programa');
 
   // La lista general (GET /programs) no trae dictámenes, modificaciones, etc.
   // Siempre se pide el detalle completo antes de dibujar, para que los datos
