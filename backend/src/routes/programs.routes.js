@@ -155,7 +155,8 @@ router.get('/', async (req, res) => {
               COALESCE(pers_agg.personas, 0) AS personas_total,
               (COALESCE(pers_agg.personas, 0) * p.monto_beneficiario) AS comprometido_total,
               COALESCE(hac_agg.hacienda, 0) AS hacienda_total,
-              COALESCE(pag_agg.pagado, 0) AS pagado_total
+              COALESCE(pag_agg.pagado, 0) AS pagado_total,
+              COALESCE(aut_agg.autorizado, 0) AS autorizado_hacienda_total
        FROM programas p
        JOIN unidades un ON un.codigo = p.unidad_codigo
        LEFT JOIN (
@@ -173,6 +174,11 @@ router.get('/', async (req, res) => {
        LEFT JOIN (
          SELECT programa_id, SUM(monto) AS pagado FROM pagos GROUP BY programa_id
        ) pag_agg ON pag_agg.programa_id = p.id
+       LEFT JOIN (
+         SELECT h.programa_id, SUM(a.monto_autorizado) AS autorizado
+         FROM autorizaciones_hacienda a JOIN solicitudes_hacienda h ON h.id = a.hacienda_id
+         GROUP BY h.programa_id
+       ) aut_agg ON aut_agg.programa_id = p.id
        ORDER BY p.created_at DESC`
     );
     res.json(rows);
