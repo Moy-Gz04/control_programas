@@ -1330,3 +1330,150 @@ body{ background:var(--surface-0); }
 .nav-cta:hover{ filter:brightness(1.15); border-color:rgba(188,149,92,.95); }
 @media (max-width: 760px){ .header-band{ width:92%; padding-top:20px; } .header-band h1{ font-size:21px; } }
 .wake-card .carga-barra{width:100%;}
+
+/* =========================================================================
+   ENCABEZADO IDÉNTICO AL DE CORRESPONDENCIA (medidas, colores y efectos)
+   ========================================================================= */
+.navbar-wrap{ background:#fff; box-shadow:0 2px 14px rgba(95,33,50,.10); }
+.navbar-wrap .navbar-top{
+  width:90%; max-width:1800px; margin:0 auto; padding:16px 24px; gap:18px;
+  justify-content:flex-start; flex-wrap:wrap; border-bottom:1px solid #E4D6C8; background:transparent;
+}
+.navbar-wrap .navbar-top::after{ content:none; }
+.navbar-wrap .brand{ gap:14px; }
+.navbar-wrap .brand-text{ display:flex; flex-direction:column; gap:3px; line-height:1.18; }
+.navbar-wrap .brand-text .t0{
+  display:flex; align-items:center; gap:7px; font-size:.68rem; font-weight:600; letter-spacing:.16em; color:#7C5D31; text-transform:uppercase;
+}
+.navbar-wrap .brand-text .t0::before{ content:''; width:16px; height:2px; background:#A9824C; border-radius:2px; flex-shrink:0; }
+.navbar-wrap .brand-text .t1-full{ font-size:1.5rem; font-weight:700; color:#3D1420; letter-spacing:-.01em; margin:0; }
+.navbar-wrap .navbar-top-right{ margin-left:auto; gap:14px; padding:8px 6px 8px 18px; border-left:1px solid #E4D6C8; flex-wrap:wrap; }
+.navbar-wrap .navbar-date{ font-size:.78rem; font-weight:400; color:#6B5563; }
+.navbar-wrap .nav-user{
+  display:inline-flex; align-items:center; gap:8px; background:#f9f0f3; border:1px solid #E4D6C8;
+  padding:6px 14px 6px 6px; border-radius:999px; box-shadow:inset 0 1px 2px rgba(95,33,50,.06);
+}
+.navbar-wrap .nav-user .avatar{ width:24px; height:24px; font-size:11px; color:#fff; background:linear-gradient(135deg, #A9824C 0%, #7C5D31 100%); box-shadow:0 2px 5px rgba(124,93,49,.35); }
+.navbar-wrap .nav-user .who .n{ font-size:.85rem; color:#5F2132; }
+.navbar-wrap .nav-user .who .r{ display:none; }
+
+/* Botones con el mismo brillo y elevación que «Cerrar sesión» de Correspondencia */
+.navbar-wrap .nav-logout,
+.navbar-wrap .nav-cta{
+  position:relative; overflow:hidden; display:inline-flex; align-items:center; gap:7px;
+  padding:9px 22px; border-radius:999px; font-family:inherit; font-size:.8rem; font-weight:600; letter-spacing:.04em; white-space:nowrap;
+  transition:filter .18s, box-shadow .22s, transform .18s;
+}
+.navbar-wrap .nav-logout{
+  background:linear-gradient(135deg, #5F2132 0%, #3D1420 100%); border:1px solid rgba(200,169,81,.45); color:#fff;
+  box-shadow:0 2px 6px rgba(95,33,50,.22), 0 8px 18px rgba(95,33,50,.14), inset 0 1px 0 rgba(255,255,255,.14);
+}
+.navbar-wrap .nav-logout i{ color:#F6EEDD; font-size:15px; }
+.navbar-wrap .nav-cta{
+  margin-left:auto; background:linear-gradient(135deg, #A9824C 0%, #7C5D31 100%); border:1px solid rgba(255,255,255,.25); color:#3D1420; font-weight:700;
+  box-shadow:0 3px 10px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.25);
+}
+.navbar-wrap .nav-cta i{ font-size:15px; }
+.navbar-wrap .nav-logout::before,
+.navbar-wrap .nav-cta::before{
+  content:''; position:absolute; top:0; left:-60%; width:40%; height:100%;
+  background:linear-gradient(115deg, transparent, rgba(255,255,255,.35), transparent); transform:skewX(-20deg); transition:left .5s ease;
+}
+.navbar-wrap .nav-logout:hover,
+.navbar-wrap .nav-cta:hover{ filter:brightness(1.08); transform:translateY(-2px); }
+.navbar-wrap .nav-logout:hover{ box-shadow:0 4px 10px rgba(95,33,50,.28), 0 12px 26px rgba(95,33,50,.20), inset 0 1px 0 rgba(255,255,255,.18); }
+.navbar-wrap .nav-cta:hover{ box-shadow:0 6px 16px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.3); }
+.navbar-wrap .nav-logout:hover::before,
+.navbar-wrap .nav-cta:hover::before{ left:130%; }
+.navbar-wrap .nav-logout:active,
+.navbar-wrap .nav-cta:active{ transform:translateY(0); }
+
+/* Menú: degradado guinda, línea dorada, «MENÚ» con divisor y pestañas tipo píldora */
+.navbar-wrap .navbar-menu{
+  background:linear-gradient(135deg, #5F2132 0%, #3D1420 100%); border-bottom:3px solid #A9824C;
+  box-shadow:0 2px 12px rgba(95,33,50,.18); min-height:52px; gap:32px;
+  padding:0 max(24px, calc((100% - min(90%, 1800px)) / 2 + 24px));
+}
+.navbar-wrap .navbar-menu-label{
+  font-size:1.1rem; font-weight:700; color:#A9824C; letter-spacing:.08em; text-transform:uppercase;
+  border-right:1px solid rgba(200,169,81,.35); padding-right:24px; opacity:1;
+}
+.navbar-wrap .nav-link{
+  display:block; padding:8px 20px; font-size:.82rem; font-weight:600; letter-spacing:.04em; color:rgba(255,255,255,.8);
+  text-transform:uppercase; border-radius:999px; border-bottom:none; transition:background .18s, color .18s, transform .12s, box-shadow .18s;
+}
+.navbar-wrap .nav-link::after{ content:none !important; }
+.navbar-wrap .nav-link:hover{ background:rgba(255,255,255,.14); color:#fff; transform:translateY(-1px); }
+.navbar-wrap .nav-link.active{
+  background:linear-gradient(135deg, #A9824C 0%, #7C5D31 100%); color:#3D1420; font-weight:700;
+  box-shadow:0 3px 10px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.25);
+}
+@media (max-width: 760px){
+  .navbar-wrap .navbar-top{ width:92%; padding:12px 8px; }
+  .navbar-wrap .brand-text .t1-full{ font-size:1.05rem; }
+  .navbar-wrap .navbar-top-right{ border-left:none; padding-left:0; margin-left:0; }
+  .navbar-wrap .navbar-menu{ gap:14px; padding:0 12px; }
+  .navbar-wrap .navbar-menu-label{ font-size:.9rem; padding-right:12px; }
+}
+
+/* ── Asistente: menú de ayuda y ventana de trabajo ── */
+.pa-ayuda{
+  position:fixed; right:22px; bottom:120px; z-index:950; width:min(340px, calc(100vw - 32px));
+  background:#FBF6EE; border:1px solid rgba(169,130,76,.55); border-radius:18px; overflow:hidden;
+  box-shadow:0 14px 34px rgba(61,20,32,.28); font-family:'Montserrat',sans-serif; animation:paEntra .22s ease-out;
+}
+@keyframes paEntra{ from{ opacity:0; transform:translateY(8px) scale(.97);} to{ opacity:1; transform:none; } }
+.pa-ayuda-cab{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 14px;
+  background:linear-gradient(135deg,#5F2132,#3D1420); color:#F6EEDD; font-size:.85rem; border-bottom:3px solid #A9824C; }
+.pa-x{ background:rgba(255,255,255,.12); border:none; color:#F6EEDD; width:28px; height:28px; border-radius:50%; cursor:pointer; display:grid; place-items:center; }
+.pa-x:hover{ background:rgba(255,255,255,.24); }
+.pa-ayuda-lista{ display:flex; flex-direction:column; gap:6px; padding:12px; }
+.pa-preg{ display:flex; align-items:center; gap:8px; text-align:left; padding:9px 12px; border-radius:12px; cursor:pointer;
+  background:#fff; border:1px solid #E4D6C8; color:#3D1420; font:600 .78rem 'Montserrat',sans-serif; transition:background .15s, transform .12s; }
+.pa-preg i{ color:#A9824C; font-size:16px; flex-shrink:0; }
+.pa-preg:hover{ background:#f9f0f3; transform:translateY(-1px); }
+.pa-preg.activa{ background:linear-gradient(135deg,#A9824C,#7C5D31); color:#3D1420; border-color:transparent; }
+.pa-preg.activa i{ color:#3D1420; }
+.pa-resp{ margin:0 12px 12px; padding:10px 12px; border-radius:12px; background:#fff; border-left:3px solid #A9824C; color:#4A3A40; font-size:.78rem; line-height:1.5; }
+.pa-trabajo{ position:fixed; inset:0; z-index:12000; display:grid; place-items:center; background:rgba(61,20,32,.28); backdrop-filter:blur(2px); }
+.pa-trabajo-card{ display:flex; flex-direction:column; align-items:center; gap:10px; width:min(300px, calc(100vw - 32px)); padding:22px 24px;
+  background:#FBF6EE; border-radius:20px; border:1px solid rgba(169,130,76,.5); box-shadow:0 18px 40px rgba(61,20,32,.3); }
+.pa-trabajo-card .minisebiso{ width:84px; margin:0; }
+.pa-trabajo-txt{ font:700 .9rem 'Montserrat',sans-serif; color:#3D1420; }
+.pa-trabajo .carga-barra{ width:100%; }
+.pa-trabajo.listo .carga-barra span{ width:100% !important; animation:none; }
+
+/* ── Solicitud / Autorización de Hacienda: tarjetas claras y compactas ──
+   Fondo blanco con borde fino (como el resto del sistema) en lugar del bloque
+   guinda sólido; guinda para textos fuertes y dorado para etiquetas. */
+.hacienda-item{ padding:12px 14px; }
+.hacienda-columns{ gap:10px; align-items:stretch; }
+.hacienda-stage{
+  background:#fff; color:#3D1420; border:1px solid #E4D6C8; border-radius:12px;
+  padding:10px 14px 10px; gap:4px; height:auto; box-shadow:0 1px 3px rgba(61,20,32,.05);
+}
+.hacienda-stage-empty{ background:#FBF8F4; border:1px dashed #D9C6AE; }
+.hacienda-stage-label{ color:#7C5D31; font-size:10px; letter-spacing:.08em; margin-bottom:2px; justify-content:space-between; }
+.hacienda-stage-label .badge-pill{ text-transform:none; letter-spacing:.2px; }
+.hz-fila{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.hacienda-item-eyebrow{ display:inline; color:#9A8A90; opacity:1; font-size:9.5px; margin:0 4px 0 0; }
+.hacienda-item-title{ color:#3D1420; font-size:14px; }
+.hacienda-item-monto, .hacienda-stage-amount{ color:#5F2132; font-size:16px; font-weight:800; font-variant-numeric:tabular-nums; }
+.hacienda-proveedor{ color:#5F2132; font-size:12px; font-weight:700; margin:0; }
+.hacienda-stage .lmeta{ color:#6B5563; opacity:1; font-size:11.5px; line-height:1.4; }
+.hacienda-stage-hint{ color:#6B5563; opacity:1; font-size:11.5px; margin-bottom:6px; }
+.hz-pie{ display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-top:auto; padding-top:6px; }
+.hz-pie:empty{ display:none; }
+.hz-pie .hacienda-item-actions{ margin:0; gap:6px; }
+.hz-pie .doc-link-row, .hacienda-stage .doc-link-row{ margin:0 0 0 auto; }
+.hacienda-stage .btn-ver-documento{ background:#f9f0f3; color:#5F2132; border:1px solid #E4D6C8; padding:5px 12px; border-radius:999px; font-size:11.5px; font-weight:600; }
+.hacienda-stage .btn-ver-documento:hover{ background:#F2E3E8; }
+.hacienda-stage .btn-outline{ background:#fff; border-color:#D9C6AE; color:#5F2132; }
+.hacienda-stage .btn-outline:hover{ background:#f9f0f3; }
+.hacienda-stage .btn-sm{ padding:5px 14px; font-size:11.5px; }
+.hacienda-stage .icon-btn{ color:#A23B4E; }
+.hacienda-stage .icon-btn:hover{ background:#f9f0f3; }
+.hacienda-stage .doc-chip-icon{ background:#f9f0f3; color:#5F2132; }
+/* Programas sin Archivo de Asignación: solo 2 pasos, que ocupen todo el ancho */
+.hacienda-columns:not(:has(> :nth-child(3))){ grid-template-columns:1.4fr 1fr; }
+@media (max-width:900px){ .hacienda-columns:not(:has(> :nth-child(3))){ grid-template-columns:1fr; } }

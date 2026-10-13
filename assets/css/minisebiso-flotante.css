@@ -1,0 +1,292 @@
+/* =========================================================
+   minisebiso-flotante.css
+   MiniSEBISO dormido en la esquina inferior derecha de las páginas
+   de Correspondencia. Al tocarlo despierta 5 s y saluda.
+   La base (cuerpo, ojos, estrella, burbuja) es la misma del login.
+   ========================================================= */
+/*    MiniSEBISO: la mascota del sistema (almohada blanca con la
+   estrella de Hidalgo), en lugar del medallón del login
+   ====================================================== */
+.minisebiso {
+  position: relative; width: 124px; aspect-ratio: 1024 / 935; margin: 0 auto 8px;
+  animation: msRespirar 5s ease-in-out infinite; transform-origin: 50% 90%;
+}
+.ms-cuerpo {
+  position: absolute; left: 12.7%; top: 11.6%; width: 74.6%; height: 74.2%;
+  border-radius: 27% 27% 30% 30% / 29% 29% 31% 31%;
+  background:
+    radial-gradient(ellipse 55% 40% at 30% 18%, #fff 0%, rgba(255,255,255,0) 70%),
+    linear-gradient(180deg, #fbfcfe 0%, #f1f3f8 38%, #dfe5ef 70%, #c8d1e0 100%);
+  box-shadow:
+    inset 0 -8px 14px rgba(132, 150, 186, .45),
+    inset 0 5px 9px rgba(255, 255, 255, .95),
+    inset -5px 0 10px rgba(150, 165, 196, .35),
+    0 8px 16px rgba(0, 0, 0, .5),
+    0 0 26px rgba(214, 180, 110, .28);
+}
+.ms-ojo-mov {
+  position: absolute; top: 37%; width: 10.2%; height: 20.2%;
+  transform: translate(var(--dx, 0px), var(--dy, 0px)); transition: transform .14s ease-out;
+}
+.ms-ojo-mov.izq { left: 32.5%; }
+.ms-ojo-mov.der { left: 57.3%; }
+.ms-ojo {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: radial-gradient(ellipse 60% 55% at 45% 40%, #2a2a30 0%, #0d0d10 70%, #050506 100%);
+  box-shadow: 0 1px 1px rgba(255, 255, 255, .7);
+  animation: msParpadear 5.5s infinite;
+}
+.ms-ojo::after {
+  content: ""; position: absolute; left: 22%; top: 9%; width: 42%; height: 24%; border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(255,255,255,.8), rgba(255,255,255,0) 70%);
+}
+.ms-estrella {
+  position: absolute; left: 4.5%; top: 2.8%; width: 40%; aspect-ratio: 1;
+  background: url('../img/logo-hidalgo.png') center / contain no-repeat;
+  filter: drop-shadow(0 0 1px #FBEFE6) drop-shadow(0 0 1px #FBEFE6) drop-shadow(0 0 5px rgba(255, 226, 170, .55)) drop-shadow(1px 3px 3px rgba(0, 0, 0, .45));
+  transform: rotate(-4deg);
+}
+@keyframes msRespirar { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.015, .99); } }
+@keyframes msParpadear { 0%, 94%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.1); } }
+@media (prefers-reduced-motion: reduce) { .minisebiso, .ms-ojo { animation: none; } }
+
+/* Login: textos de la Secretaría más grandes, pie dentro del círculo y
+   botón que no cambia de tamaño mientras inicia sesión */
+
+/* Burbuja de MiniSEBISO */
+.minisebiso { cursor: pointer; outline: none; }
+.minisebiso:focus-visible .ms-cuerpo { box-shadow: 0 0 0 3px rgba(214, 180, 110, .8); }
+.ms-burbuja {
+  position: absolute; left: 50%; bottom: calc(100% + 10px); z-index: 5;
+  width: 230px; padding: 10px 14px; border-radius: 16px;
+  background: #FBF6EE; color: #3A0818; font-size: 12.5px; font-weight: 600; line-height: 1.35; text-align: center;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .45), 0 0 0 1px rgba(214, 180, 110, .6);
+  opacity: 0; pointer-events: none; transform: translate(-50%, 8px) scale(.9); transform-origin: 50% 100%;
+  transition: opacity .2s ease, transform .25s cubic-bezier(.34, 1.56, .64, 1);
+}
+.ms-burbuja::after {
+  content: ""; position: absolute; left: 50%; top: 100%; transform: translateX(-50%);
+  border: 8px solid transparent; border-top-color: #FBF6EE;
+}
+.minisebiso.hablando .ms-burbuja { opacity: 1; transform: translate(-50%, 0) scale(1); }
+.minisebiso.saltando { animation: msSalto .45s cubic-bezier(.34, 1.56, .64, 1); }
+@keyframes msSalto { 0% { transform: translateY(0); } 40% { transform: translateY(-10px) scale(1.04, .97); } 100% { transform: translateY(0); } }
+
+/* ---- Versión flotante ---- */
+.ms-flotante {
+  position: fixed; right: 22px; bottom: 18px; z-index: 900;
+  width: 92px; margin: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.ms-flotante .ms-cuerpo { box-shadow: inset 0 -7px 12px rgba(132,150,186,.45), inset 0 4px 8px rgba(255,255,255,.95), inset -4px 0 9px rgba(150,165,196,.35), 0 8px 18px rgba(60, 10, 25, .35); }
+.ms-flotante .ms-burbuja { left: auto; right: -6px; transform: translate(0, 8px) scale(.9); transform-origin: 85% 100%; width: 240px; }
+.ms-flotante.hablando .ms-burbuja { transform: translate(0, 0) scale(1); }
+.ms-flotante .ms-burbuja::after { left: auto; right: 30px; transform: none; }
+
+/* Dormido: ojos cerrados (una rayita curva), respiración lenta y zzZ */
+.ms-flotante.dormido { animation: msDormir 4.5s ease-in-out infinite; }
+.ms-flotante.dormido .ms-ojo-mov { transform: none; }
+.ms-flotante.dormido .ms-ojo-mov.izq { left: 27%; }
+.ms-flotante.dormido .ms-ojo-mov.der { left: 63%; }
+.ms-flotante.dormido .ms-ojo {
+  /* Ojos cerrados: curva grande y suave (dibujo SVG) */
+  animation: none; box-shadow: none; border: 0; border-radius: 0;
+  inset: 28% -60% auto -60%; height: 85%;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 18'%3E%3Cg fill='none' stroke='%232a1219' stroke-width='3' stroke-linecap='round'%3E%3Cpath d='M2.5 5 Q12 16 21.5 5'/%3E%3C/g%3E%3C/svg%3E") center / contain no-repeat;
+}
+.ms-flotante.dormido .ms-ojo::after { display: none; }
+@keyframes msDormir { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.025, .975); } }
+
+.ms-zzz { position: absolute; right: -4px; top: -6px; width: 40px; height: 46px; pointer-events: none; }
+.ms-zzz span {
+  position: absolute; left: 0; bottom: 0; font: 800 14px/1 'Poppins', 'Segoe UI', sans-serif; color: #6B0F2B;
+  text-shadow: 0 0 6px rgba(255,255,255,.9); opacity: 0;
+  animation: msZ 3s ease-out infinite;
+}
+.ms-zzz span:nth-child(2) { animation-delay: 1s; font-size: 17px; }
+.ms-zzz span:nth-child(3) { animation-delay: 2s; font-size: 21px; }
+@keyframes msZ {
+  0%   { opacity: 0; transform: translate(0, 0) rotate(-8deg); }
+  20%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(22px, -40px) rotate(10deg); }
+}
+.ms-flotante:not(.dormido) .ms-zzz { display: none; }
+@media (prefers-reduced-motion: reduce) { .ms-flotante.dormido, .ms-zzz span { animation: none; } .ms-zzz span { opacity: .8; } .ms-zzz span:nth-child(2) { transform: translate(10px, -16px); } .ms-zzz span:nth-child(3) { transform: translate(20px, -32px); } }
+@media (max-width: 600px) { .ms-flotante { width: 70px; right: 12px; bottom: 12px; } .ms-flotante .ms-burbuja { width: 200px; font-size: 11.5px; } }
+@media print { .ms-flotante { display: none; } }
+
+/* MiniSEBISO en dorado clarito (color universal de la mascota) */
+.minisebiso .ms-cuerpo {
+  background:
+    radial-gradient(ellipse 55% 40% at 30% 18%, #FFF9EC 0%, rgba(255,249,236,0) 70%),
+    linear-gradient(180deg, #FBEFD6 0%, #F2DFB4 40%, #E6CB93 72%, #D4B472 100%);
+  box-shadow:
+    inset 0 -7px 12px rgba(168, 128, 60, .45),
+    inset 0 4px 8px rgba(255, 250, 238, .95),
+    inset -4px 0 9px rgba(176, 138, 70, .35),
+    0 0 0 1px rgba(188, 149, 92, .55),
+    0 8px 18px rgba(60, 10, 25, .35);
+}
+
+
+/* ---- Diálogo "hablado" por MiniSEBISO (MiniSEBISO.preguntar) ---- */
+.ms-dlg-overlay {
+  position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 20px;
+  background: rgba(40, 8, 20, .35); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+  opacity: 0; transition: opacity .25s ease;
+}
+.ms-dlg-overlay.visible { opacity: 1; }
+.ms-dlg-escena { display: flex; align-items: flex-end; gap: 22px; max-width: 100%; }
+.ms-dlg-mascota { width: 150px; flex-shrink: 0; margin: 0 0 6px; animation: none; cursor: default; }
+.ms-dlg-globo {
+  position: relative; width: min(400px, 74vw); padding: 24px 26px 22px; border-radius: 26px;
+  background: #fff; color: #3A0818; text-align: left;
+  box-shadow: 0 22px 50px rgba(30, 5, 15, .35), 0 0 0 1px rgba(188, 149, 92, .35);
+  font-family: 'Montserrat', 'Poppins', 'Segoe UI', sans-serif;
+}
+/* Colita del globo apuntando a la mascota */
+.ms-dlg-globo::before {
+  content: ""; position: absolute; left: -15px; bottom: 34px; width: 30px; height: 30px;
+  background: #fff; border-left: 1px solid rgba(188, 149, 92, .35); border-bottom: 1px solid rgba(188, 149, 92, .35);
+  transform: rotate(45deg) skew(8deg, 8deg); border-radius: 0 0 0 6px;
+}
+.ms-dlg-saludo { font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #BC955C; }
+.ms-dlg-pregunta { margin-top: 4px; font-size: 21px; font-weight: 800; line-height: 1.25; color: #4A0A1D; text-wrap: balance; }
+.ms-dlg-detalle { margin-top: 8px; font-size: 13px; line-height: 1.5; color: #7a5a63; }
+.ms-dlg-botones { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; flex-wrap: wrap; }
+.ms-dlg-btn {
+  display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 18px; border-radius: 999px;
+  font: 700 13.5px 'Montserrat', 'Poppins', sans-serif; cursor: pointer; border: 0;
+  transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
+}
+.ms-dlg-btn:hover:not(:disabled) { transform: translateY(-1px); }
+.ms-dlg-btn:active:not(:disabled) { transform: translateY(1px) scale(.98); }
+.ms-dlg-btn:focus-visible { outline: 2px solid #BC955C; outline-offset: 2px; }
+.ms-dlg-btn:disabled { cursor: default; opacity: .85; }
+.ms-dlg-cancelar { background: #F4EFEA; color: #4A0A1D; box-shadow: inset 0 0 0 1px #E6DCD2; }
+.ms-dlg-ok { background: linear-gradient(135deg, #C0262D, #94141E); color: #fff; box-shadow: 0 6px 16px rgba(160, 20, 30, .35); }
+@media (max-width: 600px) {
+  .ms-dlg-escena { flex-direction: column; align-items: center; gap: 14px; }
+  .ms-dlg-mascota { width: 110px; margin: 0; }
+  .ms-dlg-globo { width: min(400px, 92vw); text-align: center; }
+  .ms-dlg-globo::before { left: 50%; top: -14px; bottom: auto; transform: translateX(-50%) rotate(135deg); }
+  .ms-dlg-botones { justify-content: center; }
+}
+
+/* ---- MiniSEBISO ayudante (ventanas de edición) ---- */
+.ms-ayudante { position: fixed; z-index: 10000; width: 120px; margin: 0; animation: msRespirar 5s ease-in-out infinite; cursor: default; }
+.ms-ayudante .ms-burbuja { width: 210px; font-size: 12.5px; }
+/* Lentes: dos aros guinda con un puente, sobre los ojos */
+.ms-lentes { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; }
+.ms-lente {
+  position: absolute; top: 32.8%; width: 26%; aspect-ratio: 1; border-radius: 50%;
+  border: 3px solid #4A0A1D;
+  background: radial-gradient(circle at 32% 28%, rgba(255, 255, 255, .55) 0 14%, rgba(255, 255, 255, .12) 15% 100%);
+  box-shadow: 0 2px 3px rgba(60, 10, 25, .25);
+}
+.ms-lente.izq { left: 19.1%; }
+.ms-lente.der { left: 55.1%; }
+.ms-puente { position: absolute; left: 44.6%; top: 43%; width: 11%; height: 7%; border-top: 3px solid #4A0A1D; border-radius: 50% 50% 0 0; }
+.ms-lentes::before, .ms-lentes::after {
+  content: ""; position: absolute; top: 44%; width: 9%; height: 3px; background: #4A0A1D; border-radius: 2px;
+}
+.ms-lentes::before { left: 10.6%; transform: rotate(-12deg); }
+.ms-lentes::after  { left: 80.6%; transform: rotate(12deg); }
+/* Con lentes los ojos se separan un poco para que quepan los aros */
+.con-lentes .ms-ojo-mov.izq { left: 27%; }
+.con-lentes .ms-ojo-mov.der { left: 63%; }
+
+/* Globo del ayudante: debajo de él, alineado a su izquierda (arriba no cabría en pantalla) */
+.ms-ayudante .ms-burbuja {
+  left: 0; bottom: auto; top: calc(100% + 12px); width: 220px; text-align: left;
+  transform: translateY(-8px) scale(.9); transform-origin: 40px 0;
+}
+.ms-ayudante.hablando .ms-burbuja { transform: none; }
+.ms-ayudante .ms-burbuja::after { left: 40px; top: auto; bottom: 100%; transform: none; border-top-color: transparent; border-bottom-color: #FBF6EE; }
+
+/* Campo que MiniSEBISO está señalando y su "sacudida" de aviso */
+.ms-campo-senalado { outline: 2px solid #C9A35A !important; outline-offset: 2px; box-shadow: 0 0 0 6px rgba(201, 163, 90, .25) !important; animation: msCampo 1.4s ease-in-out infinite; }
+@keyframes msCampo { 0%, 100% { box-shadow: 0 0 0 4px rgba(201, 163, 90, .2); } 50% { box-shadow: 0 0 0 9px rgba(201, 163, 90, .35); } }
+.ms-ayudante.ms-alerta .ms-cuerpo { animation: msSacudir .5s ease-in-out; }
+@keyframes msSacudir { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-8deg); } 50% { transform: rotate(7deg); } 75% { transform: rotate(-4deg); } }
+@media (prefers-reduced-motion: reduce) { .ms-campo-senalado, .ms-ayudante.ms-alerta .ms-cuerpo { animation: none; } }
+.ms-dlg-ok.ms-dlg-ok-dorado { background: linear-gradient(135deg, #D8B866, #9C7A2E); color: #3A0818; box-shadow: 0 6px 16px rgba(156, 122, 46, .35); }
+.ms-ayudante.ms-burbuja-izq .ms-burbuja { left: auto; right: 0; transform-origin: calc(100% - 40px) 0; }
+.ms-ayudante.ms-burbuja-izq .ms-burbuja::after { left: auto; right: 40px; }
+
+/* ---- Asistente (minisebiso-asistente.js) ---- */
+.ms-oculto { display: none !important; }
+/* Los diálogos de MiniSEBISO van por encima de ventanas, ayudante y escáner */
+.ms-dlg-overlay { z-index: 11000; }
+/* Burbuja con acción: se puede tocar */
+.ms-flotante.ms-con-accion .ms-burbuja { pointer-events: auto; cursor: pointer; }
+.ms-burbuja-accion {
+  display: block; width: fit-content; margin: 8px auto 0; padding: 5px 12px; border-radius: 999px;
+  background: linear-gradient(135deg, #D8B866, #9C7A2E); color: #3A0818; font-size: 11.5px; font-weight: 800;
+}
+.ms-flotante.ms-con-accion .ms-burbuja:hover .ms-burbuja-accion { filter: brightness(1.06); }
+/* El saludo del diálogo toma el color de la noticia */
+.ms-tono-exito .ms-dlg-saludo { color: #2E7D32; }
+.ms-tono-error .ms-dlg-saludo { color: #C0262D; }
+.ms-tono-aviso .ms-dlg-saludo { color: #B7791F; }
+/* Botón principal verde para buenas noticias / confirmaciones sin riesgo */
+.ms-dlg-ok.ms-dlg-ok-verde { background: linear-gradient(135deg, #3E9B47, #22692A); color: #fff; box-shadow: 0 6px 16px rgba(34, 105, 42, .3); }
+.ms-dlg-detalle { white-space: pre-line; }
+
+/* ---- Menú de ayuda: «¿En qué puedo ayudarte?» ---- */
+.ms-ayuda {
+  position: fixed; right: 22px; bottom: 116px; z-index: 950;
+  width: min(340px, calc(100vw - 32px)); max-height: calc(100vh - 150px); overflow-y: auto;
+  padding: 16px; border-radius: 20px; background: #fff; color: #3A0818;
+  box-shadow: 0 18px 44px rgba(40, 8, 20, .28), 0 0 0 1px rgba(188, 149, 92, .35);
+  font-family: 'Montserrat', 'Poppins', 'Segoe UI', sans-serif;
+  animation: msAyudaEntra .28s cubic-bezier(.34, 1.4, .64, 1); transform-origin: 90% 100%;
+}
+@keyframes msAyudaEntra { from { opacity: 0; transform: translateY(10px) scale(.92); } to { opacity: 1; transform: none; } }
+.ms-ayuda-cab { display: flex; flex-direction: column; gap: 2px; margin-bottom: 12px; }
+.ms-ayuda-cab-resp { flex-direction: row; align-items: center; gap: 8px; }
+.ms-ayuda-saludo { font-size: 11.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #BC955C; }
+.ms-ayuda-titulo { font-size: 17px; font-weight: 800; line-height: 1.25; color: #4A0A1D; text-wrap: balance; }
+.ms-ayuda-lista { display: flex; flex-direction: column; gap: 6px; }
+.ms-ayuda-op {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border-radius: 12px;
+  border: 1px solid #EADFCB; background: #FBF6EE; color: #4A0A1D; text-align: left;
+  font: 600 13px/1.3 'Montserrat', 'Poppins', sans-serif; cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, transform .12s ease;
+}
+.ms-ayuda-op > .ti:first-child { font-size: 18px; color: #9C7A2E; flex-shrink: 0; }
+.ms-ayuda-op span { flex: 1; }
+.ms-ayuda-flecha { font-size: 15px; color: #C7B08A; }
+.ms-ayuda-op:hover { background: #F5E9D2; border-color: #D8C29A; }
+.ms-ayuda-op:active { transform: scale(.98); }
+.ms-ayuda-op:focus-visible, .ms-ayuda-accion:focus-visible, .ms-ayuda-otra:focus-visible, .ms-ayuda-cerrar:focus-visible, .ms-ayuda-volver:focus-visible { outline: 2px solid #BC955C; outline-offset: 2px; }
+.ms-ayuda-cerrar, .ms-ayuda-otra {
+  margin-top: 10px; padding: 8px 14px; border-radius: 999px; border: 0; cursor: pointer;
+  background: #F4EFEA; color: #4A0A1D; box-shadow: inset 0 0 0 1px #E6DCD2;
+  font: 700 12.5px 'Montserrat', 'Poppins', sans-serif;
+}
+.ms-ayuda-cerrar { display: block; margin-left: auto; }
+.ms-ayuda-volver {
+  display: inline-grid; place-items: center; width: 32px; height: 32px; flex-shrink: 0; border-radius: 50%;
+  border: 0; background: #F4EFEA; color: #4A0A1D; cursor: pointer; font-size: 16px;
+}
+.ms-ayuda-resp { font-size: 13.5px; line-height: 1.5; color: #4E2B35; }
+.ms-ayuda-resp p { margin: 0 0 10px; }
+.ms-ayuda-cargando { color: #9a7f86; font-style: italic; }
+.ms-ayuda-pasos { margin: 0 0 12px; padding-left: 0; list-style: none; counter-reset: paso; display: flex; flex-direction: column; gap: 8px; }
+.ms-ayuda-pasos li { counter-increment: paso; display: flex; gap: 10px; align-items: flex-start; }
+.ms-ayuda-pasos li::before {
+  content: counter(paso); flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+  background: #4A0A1D; color: #F2DFB4; font-size: 11.5px; font-weight: 800; margin-top: 1px;
+}
+.ms-ayuda-acciones { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ms-ayuda-acciones .ms-ayuda-otra { margin-top: 0; }
+.ms-ayuda-accion {
+  display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 999px; border: 0; cursor: pointer;
+  background: linear-gradient(135deg, #D8B866, #9C7A2E); color: #3A0818; box-shadow: 0 5px 14px rgba(156, 122, 46, .3);
+  font: 800 12.5px 'Montserrat', 'Poppins', sans-serif; transition: transform .12s ease, filter .15s ease;
+}
+.ms-ayuda-accion:hover { filter: brightness(1.05); transform: translateY(-1px); }
+@media (max-width: 600px) { .ms-ayuda { right: 12px; bottom: 92px; } }
+@media (prefers-reduced-motion: reduce) { .ms-ayuda { animation: none; } }
+@media print { .ms-ayuda { display: none; } }

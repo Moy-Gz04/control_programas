@@ -1086,31 +1086,30 @@ function haciendaItemHTML(h, p){
   <div class="hacienda-item ${badge.mod}" data-hacienda-item="${h.id}">
     <div class="hacienda-columns">
       <div class="hacienda-stage hacienda-col-1">
-        <div class="hacienda-stage-label">1 · Solicitud a Hacienda</div>
-        <div class="hacienda-item-eyebrow">Folio</div>
-        <div class="hacienda-item-title">${esc(h.folio)}</div>
-        ${h.proveedor ? `<div class="hacienda-proveedor">${esc(h.proveedor)}</div>` : ''}
-        ${h.periodo ? `<div class="lmeta">Periodo: ${esc(h.periodo)}</div>` : ''}
-        <div class="lmeta">Solicitado: ${fmtDateOnly(h.fecha)}${dictamenLabel ? ` · Vinculado a ${esc(dictamenLabel)}` : ' · Sin vincular a un dictamen específico'}</div>
-        <div class="hacienda-item-amount">
+        <div class="hacienda-stage-label">1 · Solicitud a Hacienda <span class="badge-pill ${badge.cls}">${badge.label}</span></div>
+        <div class="hz-fila">
+          <div class="hacienda-item-title"><span class="hacienda-item-eyebrow">Folio</span> ${esc(h.folio)}</div>
           <div class="hacienda-item-monto">${fmtMoney(h.monto)}</div>
-          <span class="badge-pill ${badge.cls}">${badge.label}</span>
         </div>
-        ${docLinkRowHTML(h.documento_url, `/programs/${p.id}/hacienda/${h.id}/documento`)}
-        <div class="hacienda-item-actions">
-          <button class="btn btn-outline btn-sm" data-editar-hacienda="${h.id}">Editar</button>
-          <button class="btn btn-danger btn-sm" data-del-hacienda="${h.id}">Eliminar</button>
+        ${h.proveedor ? `<div class="hacienda-proveedor">${esc(h.proveedor)}</div>` : ''}
+        <div class="lmeta">${h.periodo ? `Periodo ${esc(h.periodo)} · ` : ''}Solicitado ${fmtDateOnly(h.fecha)} · ${dictamenLabel ? `Vinculado a ${esc(dictamenLabel)}` : 'Sin dictamen específico'}</div>
+        <div class="hz-pie">
+          <div class="hacienda-item-actions">
+            <button class="btn btn-outline btn-sm" data-editar-hacienda="${h.id}">Editar</button>
+            <button class="btn btn-danger btn-sm" data-del-hacienda="${h.id}">Eliminar</button>
+          </div>
+          ${docLinkRowHTML(h.documento_url, `/programs/${p.id}/hacienda/${h.id}/documento`)}
         </div>
       </div>
 
       ${h.autorizacion ? `
       <div class="hacienda-stage">
         <div class="hacienda-stage-label">2 · Autorizado por Hacienda</div>
-        <div class="hacienda-stage-body">
+        <div class="hz-fila">
+          <div class="lmeta">Autorizado el ${fmtDateOnly(h.autorizacion.fecha_autorizacion)}</div>
           <div class="hacienda-stage-amount">${fmtMoney(h.autorizacion.monto_autorizado)}</div>
-          <div class="lmeta">${fmtDateOnly(h.autorizacion.fecha_autorizacion)}</div>
         </div>
-        ${docLinkRowHTML(h.autorizacion.documento_url, `/programs/${p.id}/hacienda/${h.id}/autorizacion/documento`)}
+        <div class="hz-pie">${docLinkRowHTML(h.autorizacion.documento_url, `/programs/${p.id}/hacienda/${h.id}/autorizacion/documento`)}</div>
       </div>
       ` : `
       <div class="hacienda-stage hacienda-stage-empty">

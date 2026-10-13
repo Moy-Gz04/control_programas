@@ -9,8 +9,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
 <script src="assets/js/chart.min.js"></script>
-<link rel="stylesheet" href="assets/css/styles.css?v=20261012e">
+<link rel="stylesheet" href="assets/css/minisebiso.css?v=1">
+<link rel="stylesheet" href="assets/css/styles.css?v=20261012h">
 </head>
 <body>
 
@@ -20,7 +22,7 @@
       <img class="brand-logo" src="assets/img/logo-hidalgo.png" alt="Logo" onerror="this.style.display='none';document.getElementById('logoFallback').style.display='flex';">
       <div id="logoFallback" class="brand-logo-fallback" style="display:none;">B</div>
       <div class="brand-text">
-        <div class="t0">— Gobierno del Estado de Hidalgo</div>
+        <div class="t0">Gobierno del Estado de Hidalgo</div>
         <div class="t1-full">Secretaría de Bienestar e Inclusión Social</div>
       </div>
     </div>
@@ -33,13 +35,13 @@
           <div class="r" id="navUserRole">—</div>
         </div>
       </div>
-      <button class="nav-logout" id="btnLogout">↩ Cerrar sesión</button>
+      <button class="nav-logout" id="btnLogout"><i class="ti ti-logout"></i> Cerrar sesión</button>
     </div>
   </div>
   <nav class="navbar-menu" id="navLinks">
     <span class="navbar-menu-label">MENÚ</span>
     <a href="#" class="nav-link active" data-nav="programas">Programas</a>
-    <button class="nav-cta" id="btnNuevoPrograma">+ Nuevo Programa</button>
+    <button class="nav-cta" id="btnNuevoPrograma"><i class="ti ti-plus"></i> Nuevo Programa</button>
   </nav>
 </header>
 
@@ -77,6 +79,8 @@
 <script src="assets/js/config.js"></script>
 <script src="assets/js/api.js"></script>
 <script src="assets/js/carga.js?v=1"></script>
-<script src="assets/js/app.js?v=20261012d"></script>
+<script src="assets/js/app.js?v=20261012e"></script>
+<script src="assets/js/minisebiso-flotante.js?v=1"></script>
+<script src="assets/js/asistente-programas.js?v=1"></script>
 </body>
 </html>

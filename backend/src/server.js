@@ -18,6 +18,13 @@ app.use(cors({
 app.use(express.json());
 
 app.get('/api/health', (req, res) => res.json({ ok: true, service: 'programas-bienestar-api' }));
+// Lo llama la pantalla de login en cuanto se abre: despierta también la base
+// de datos (Neon se suspende sola), para que al iniciar sesión ya esté lista.
+// No se usa como healthCheckPath para no mantener la base despierta siempre.
+app.get('/api/despertar', async (req, res) => {
+  try { await require('./db').query('SELECT 1'); res.json({ ok: true }); }
+  catch (e) { res.status(503).json({ ok: false }); }
+});
 
 app.use('/api/auth', authRoutes);
 app.use('/api/unidades', unidadesRoutes);
