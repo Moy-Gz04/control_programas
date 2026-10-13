@@ -90,9 +90,110 @@
     } catch (e) { if (--activos === 0) cerrarTrabajo(false); throw e; }
   };
 
+  /* ---------- Encender/apagar y personalizar (como en Correspondencia) ----------
+     Se guarda en este equipo, por usuario. */
+  const COLORES = [
+    { nombre: 'Dorado', color: null, muestra: '#E6CB93' }, { nombre: 'Perla', color: '#DCE2EC' },
+    { nombre: 'Rosa', color: '#F2B8C6' }, { nombre: 'Guinda', color: '#B0475F' },
+    { nombre: 'Durazno', color: '#F5B98E' }, { nombre: 'Menta', color: '#A8DCC2' },
+    { nombre: 'Cielo', color: '#A9CBEF' }, { nombre: 'Lavanda', color: '#C7B6EA' }, { nombre: 'Carbón', color: '#6E6A72' },
+  ];
+  const CLAVE = 'pb_asistente_' + (usuario?.id || usuario?.email || '');
+  let pref = { activo: true, color: null, estrella: 'guinda' };
+  try { pref = { ...pref, ...JSON.parse(localStorage.getItem(CLAVE) || '{}') }; } catch (e) { /* sin storage */ }
+  const encendido = () => pref.activo !== false;
+
+  // Mientras está apagado no habla ni presenta nada
+  ['decir', 'ayudarEditar', 'presentar', 'senalar', 'comentar'].forEach(f => {
+    const orig = M()[f];
+    if (typeof orig === 'function') window.MiniSEBISO[f] = function () { return encendido() ? orig.apply(this, arguments) : false; };
+  });
+
+  function aplicar() {
+    const r = document.documentElement;
+    if (pref.color) { r.style.setProperty('--ms-color', pref.color); r.setAttribute('data-ms-color', ''); }
+    else { r.style.removeProperty('--ms-color'); r.removeAttribute('data-ms-color'); }
+    r.toggleAttribute('data-ms-estrella-dorada', pref.estrella === 'dorada');
+    M().esquina?.()?.classList.toggle('ms-oculto', !encendido());
+    const t = document.querySelector('.nav-asistente');
+    if (t) {
+      t.setAttribute('aria-pressed', encendido() ? 'true' : 'false');
+      t.title = encendido() ? 'Asistente encendido: toca para apagarlo' : 'Asistente apagado: toca para encenderlo';
+    }
+    if (!encendido()) { cerrarAyuda(); M().callar?.(); }
+  }
+  function guardar(cambios) {
+    pref = { ...pref, ...cambios };
+    try { localStorage.setItem(CLAVE, JSON.stringify(pref)); } catch (e) { /* sin storage */ }
+    aplicar();
+  }
+
+  function prepararEncabezado() {
+    const salir = document.getElementById('btnLogout');
+    if (!salir || document.querySelector('.nav-asis-grupo')) return;
+    const grupo = document.createElement('div');
+    grupo.className = 'nav-asis-grupo';
+    grupo.innerHTML = `
+      <button type="button" class="nav-asistente" aria-pressed="true">
+        <span class="nav-asis-switch" aria-hidden="true"><span></span></span>
+        <span class="nav-asis-texto">Asistente</span>
+      </button>
+      <button type="button" class="nav-asis-color" aria-label="Personalizar el asistente" title="Personalizar el asistente"><i class="ti ti-pencil" aria-hidden="true"></i></button>`;
+    salir.parentNode.insertBefore(grupo, salir);
+    grupo.querySelector('.nav-asistente').addEventListener('click', () => {
+      const prender = !encendido();
+      guardar({ activo: prender });
+      if (prender) setTimeout(() => M().decir?.('¡Aquí estoy de nuevo! Tócame cuando necesites ayuda.', { duracion: 4500 }), 150);
+    });
+    grupo.querySelector('.nav-asis-color').addEventListener('click', abrirPersonalizar);
+    // El usuario va fijo en la esquina inferior izquierda (la derecha es de la mascota)
+    const yo = document.querySelector('.navbar-wrap .nav-user');
+    if (yo) { yo.classList.add('nav-user-esquina'); document.body.appendChild(yo); }
+    aplicar();
+  }
+
+  let perso = null;
+  function abrirPersonalizar() {
+    if (perso) return;
+    cerrarAyuda();
+    perso = document.createElement('div');
+    perso.className = 'pa-perso';
+    perso.setAttribute('role', 'dialog');
+    perso.setAttribute('aria-label', 'Personalizar el asistente');
+    const vista = `<div class="minisebiso" aria-hidden="true"><div class="ms-cuerpo"><span class="ms-ojo-mov izq"><span class="ms-ojo"></span></span><span class="ms-ojo-mov der"><span class="ms-ojo"></span></span></div><div class="ms-estrella"></div></div>`;
+    perso.innerHTML = `<div class="pa-perso-caja">
+      <div class="pa-ayuda-cab"><b>Personaliza a tu asistente</b><button type="button" class="pa-x" aria-label="Cerrar"><i class="ti ti-x"></i></button></div>
+      <div class="pa-perso-cuerpo">
+        <div class="pa-perso-vista">${vista}</div>
+        <div class="pa-perso-opciones">
+          <div class="pa-perso-tit">Color</div>
+          <div class="pa-perso-colores">${COLORES.map((c, i) => `<button type="button" class="pa-color" data-i="${i}" title="${c.nombre}" aria-label="${c.nombre}" style="background:${c.muestra || c.color}"></button>`).join('')}</div>
+          <div class="pa-perso-tit">Estrella</div>
+          <div class="pa-perso-estrellas">
+            <button type="button" class="pa-estrella" data-e="guinda"><span style="background:#9C2647"></span>Guinda</button>
+            <button type="button" class="pa-estrella" data-e="dorada"><span style="background:#D8B866"></span>Dorada</button>
+          </div>
+        </div>
+      </div></div>`;
+    document.body.appendChild(perso);
+    const marcar = () => {
+      perso.querySelectorAll('.pa-color').forEach(b => b.classList.toggle('activo', (COLORES[b.dataset.i].color || null) === (pref.color || null)));
+      perso.querySelectorAll('.pa-estrella').forEach(b => b.classList.toggle('activo', b.dataset.e === pref.estrella));
+    };
+    perso.querySelectorAll('.pa-color').forEach(b => b.onclick = () => { guardar({ color: COLORES[b.dataset.i].color }); marcar(); });
+    perso.querySelectorAll('.pa-estrella').forEach(b => b.onclick = () => { guardar({ estrella: b.dataset.e }); marcar(); });
+    const cerrarP = () => { perso?.remove(); perso = null; document.removeEventListener('keydown', escP); };
+    const escP = (e) => { if (e.key === 'Escape') cerrarP(); };
+    document.addEventListener('keydown', escP);
+    perso.querySelector('.pa-x').onclick = cerrarP;
+    perso.addEventListener('pointerdown', e => { if (e.target === perso) cerrarP(); });
+    marcar();
+  }
+
   function iniciar() {
     window.MiniSEBISO = Object.assign(window.MiniSEBISO || {}, { alTocarEsquina: abrirAyuda });
-    saludar();
+    prepararEncabezado();
+    if (encendido()) saludar();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar);
   else iniciar();
