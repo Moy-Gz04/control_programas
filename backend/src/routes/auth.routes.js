@@ -54,4 +54,24 @@ router.get('/me', requireAuth, async (req, res) => {
   res.json({ user: req.user });
 });
 
+// Preferencias del usuario en sesión (apariencia del asistente). PUT recibe
+// { asistente: { ...solo lo que cambió } } y lo mezcla con lo guardado.
+router.get('/preferencias', requireAuth, async (req, res) => {
+  try {
+    const { rows } = await db.query('SELECT preferencias FROM usuarios WHERE id = $1', [req.user.id]);
+    res.json(rows[0]?.preferencias || {});
+  } catch (e) { res.status(500).json({ error: 'No se pudieron leer las preferencias.' }); }
+});
+router.put('/preferencias', requireAuth, async (req, res) => {
+  const cambios = req.body && typeof req.body.asistente === 'object' ? req.body.asistente : null;
+  if (!cambios) return res.status(400).json({ error: 'Sin cambios que guardar.' });
+  try {
+    const { rows } = await db.query(
+      `UPDATE usuarios SET preferencias = jsonb_set(COALESCE(preferencias, '{}'::jsonb), '{asistente}',
+         COALESCE(preferencias->'asistente', '{}'::jsonb) || $2::jsonb)
+       WHERE id = $1 RETURNING preferencias`, [req.user.id, JSON.stringify(cambios)]);
+    res.json(rows[0]?.preferencias || {});
+  } catch (e) { res.status(500).json({ error: 'No se pudieron guardar las preferencias.' }); }
+});
+
 module.exports = router;

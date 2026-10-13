@@ -1,0 +1,334 @@
+/* =========================================================
+   asistente-extra.css (Correspondencia; mismo diseño que Contratos)
+   Ventana de trabajo de la mascota (cada acción que guarda algo):
+   barra de avance, pasos y resultado. Usa el diálogo de
+   minisebiso-flotante.css como base.
+   ========================================================= */
+
+.ms-trabajo { z-index: 2100; }
+.ms-trabajo .ms-dlg-botones[hidden] { display: none; }
+.ms-trabajo .ms-dlg-globo { width: min(380px, 74vw); }
+.ms-trabajo .ms-dlg-pregunta { font-size: 19px; min-height: 1.25em; }
+
+/* Mientras trabaja: se mece despacio, como concentrado */
+.ms-trabajando { animation: msTrabajar 1.1s ease-in-out infinite; transform-origin: 50% 100%; }
+@keyframes msTrabajar {
+  0%, 100% { transform: rotate(-2deg) translateY(0); }
+  50% { transform: rotate(2deg) translateY(-4px); }
+}
+
+.ms-trab-barra {
+  position: relative; height: 12px; margin-top: 16px; border-radius: 999px; overflow: hidden;
+  background: #F1E9DD; box-shadow: inset 0 1px 2px rgba(74, 10, 29, .12);
+}
+.ms-trab-barra span {
+  position: absolute; inset: 0 auto 0 0; width: 0; border-radius: inherit;
+  background: linear-gradient(90deg, #6B1530, #9C2647 60%, #BC955C);
+  transition: width .2s linear, background .3s ease;
+}
+/* Brillo que recorre la barra mientras avanza */
+.ms-trab-barra span::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, .45) 50%, transparent 80%);
+  background-size: 200% 100%; animation: msBrillo 1.2s linear infinite;
+}
+@keyframes msBrillo { from { background-position: 150% 0; } to { background-position: -50% 0; } }
+.ms-trab-barra.listo span { background: linear-gradient(90deg, #2F8A3B, #3E9B47); }
+.ms-trab-barra.error span { background: linear-gradient(90deg, #C0262D, #94141E); }
+.ms-trab-barra.listo span::after, .ms-trab-barra.error span::after { animation: none; background: none; }
+
+.ms-trab-pie {
+  display: flex; justify-content: space-between; gap: 10px; margin-top: 6px;
+  font-size: 12px; color: #8a6d75; font-variant-numeric: tabular-nums;
+}
+.ms-trab-pct { color: #6B1530; }
+
+.ms-trab-pasos { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.ms-trab-pasos:empty { display: none; }
+.ms-trab-pasos li { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #5a3a44; }
+.ms-trab-pasos li .ti { font-size: 16px; flex-shrink: 0; }
+.ms-trab-pasos li.hecho .ti { color: #2F8A3B; }
+.ms-trab-pasos li.error .ti { color: #C0262D; }
+.ms-trab-pasos li.actual { font-weight: 600; color: #4A0A1D; }
+.ms-trab-pasos li.actual .ti { color: #BC955C; animation: msGirar 1s linear infinite; }
+@keyframes msGirar { to { transform: rotate(360deg); } }
+
+.ms-tono-exito .ms-dlg-saludo { color: #2F8A3B; }
+.ms-trabajo.ms-tono-error .ms-dlg-pregunta { font-size: 16px; font-weight: 700; }
+
+
+@media (prefers-reduced-motion: reduce) {
+  .ms-trabajando, .ms-trab-barra span::after, .ms-trab-pasos li.actual .ti { animation: none; }
+}
+@media print { .ms-trabajo { display: none; } }
+
+/* Si tapa un botón o un campo, se asoma desde el borde de abajo; al pasar el ratón vuelve */
+.ms-flotante { transition: translate .35s cubic-bezier(.34, 1.3, .64, 1), scale .35s ease, opacity .25s ease; }
+.ms-flotante.ms-asomado { translate: 0 28%; scale: .86; opacity: .92; }
+.ms-flotante.ms-asomado .ms-zzz { display: none; }
+
+/* Nunca dos mascotas a la vez: mientras pregunta o trabaja, la de la ventana de edición se esconde */
+body:has(.ms-dlg-overlay) .ms-ayudante { visibility: hidden; }
+.ms-dlg-detalle { max-height: 40vh; overflow-y: auto; }
+
+/* ---- Color personalizado del asistente (se arma con un solo color: --ms-color) ---- */
+[data-ms-color] .minisebiso .ms-cuerpo,
+.ms-perso-vista[data-ms-color] .minisebiso .ms-cuerpo {
+  /* --ms-fondo / --ms-sombra: los usa el color Galaxia; si no hay, se arma con --ms-color */
+  background: var(--ms-fondo,
+    radial-gradient(ellipse 55% 40% at 30% 18%, color-mix(in srgb, var(--ms-color) 12%, #fff) 0%, transparent 70%),
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--ms-color) 30%, #fff) 0%,
+      color-mix(in srgb, var(--ms-color) 62%, #fff) 40%,
+      var(--ms-color) 72%,
+      color-mix(in srgb, var(--ms-color) 78%, #000) 100%));
+  box-shadow: var(--ms-sombra,
+    inset 0 -7px 12px color-mix(in srgb, var(--ms-color) 55%, rgba(0, 0, 0, .35)),
+    inset 0 4px 8px rgba(255, 255, 255, .85),
+    inset -4px 0 9px color-mix(in srgb, var(--ms-color) 50%, rgba(0, 0, 0, .2)),
+    0 0 0 1px color-mix(in srgb, var(--ms-color) 70%, #000 10%),
+    0 8px 18px rgba(60, 10, 25, .35));
+}
+
+/* ---- Botones del encabezado: encender/apagar y personalizar ---- */
+.nav-asis-grupo { display: flex; align-items: center; gap: 8px; }
+.nav-asistente {
+  display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px 7px 8px; border-radius: 999px;
+  border: 1.5px solid rgba(188, 149, 92, .55); background: #fff; color: var(--guinda-profundo, #4A0A1D);
+  font: 700 12.5px inherit; font-family: inherit; white-space: nowrap; cursor: pointer;
+  transition: border-color .18s ease, transform .12s ease, background .18s ease;
+}
+.nav-asistente:hover { border-color: rgba(188, 149, 92, .95); transform: translateY(-1px); }
+.nav-asis-switch {
+  position: relative; width: 34px; height: 20px; border-radius: 999px; flex-shrink: 0;
+  background: #D9CFC7; transition: background .2s ease;
+}
+.nav-asis-switch span {
+  position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .3); transition: transform .22s cubic-bezier(.34, 1.4, .64, 1);
+}
+.nav-asistente[aria-pressed="true"] .nav-asis-switch { background: linear-gradient(135deg, #3E9B47, #22692A); }
+.nav-asistente[aria-pressed="true"] .nav-asis-switch span { transform: translateX(14px); }
+.nav-asistente[aria-pressed="false"] { color: #8a6d75; }
+.nav-asis-color {
+  display: inline-grid; place-items: center; width: 36px; height: 36px; flex-shrink: 0; border-radius: 50%;
+  border: 1.5px solid rgba(188, 149, 92, .55); cursor: pointer; font-size: 17px; color: #3A0818;
+  background: linear-gradient(135deg, #D8B866, #9C7A2E); box-shadow: 0 2px 8px rgba(156, 122, 46, .35);
+  transition: transform .12s ease, filter .18s ease;
+}
+.nav-asis-color:hover { filter: brightness(1.06); transform: translateY(-1px) rotate(-8deg); }
+.nav-asistente:focus-visible, .nav-asis-color:focus-visible { outline: 2px solid var(--dorado-claro, #D8B866); outline-offset: 2px; }
+@media (max-width: 900px) {
+  .nav-asis-texto { display: none; }
+  .nav-asistente { padding: 7px; }
+}
+
+/* ---- Ventana para personalizar ---- */
+.ms-perso { z-index: 2050; }
+.ms-perso-caja {
+  position: relative; display: flex; gap: 26px; align-items: center; width: min(620px, 100%); padding: 28px;
+  border-radius: 26px; background: #fff; color: #3A0818;
+  box-shadow: 0 22px 50px rgba(30, 5, 15, .35), 0 0 0 1px rgba(188, 149, 92, .35);
+  font-family: 'Montserrat', 'Poppins', 'Segoe UI', sans-serif;
+  animation: msAyudaEntra .28s cubic-bezier(.34, 1.4, .64, 1);
+}
+.ms-perso-cerrar {
+  position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; border-radius: 50%; border: 0;
+  background: #F4EFEA; color: #4A0A1D; cursor: pointer; font-size: 16px; display: grid; place-items: center;
+}
+.ms-perso-vista {
+  flex-shrink: 0; width: 190px; height: 190px; border-radius: 50%; display: grid; place-items: center;
+  background: radial-gradient(circle at 50% 40%, #FBF6EE 0%, #F1E6D6 70%, #E9DAC5 100%);
+  box-shadow: inset 0 0 0 1px rgba(188, 149, 92, .3);
+}
+.ms-perso-mascota { width: 140px; margin: 0; cursor: default; }
+.ms-perso-cuerpo { flex: 1; min-width: 0; }
+.ms-perso-titulo { margin: 4px 0 6px; font-size: 22px; font-weight: 800; line-height: 1.2; color: #4A0A1D; text-wrap: balance; }
+.ms-perso-ayuda { margin: 0 0 16px; font-size: 13px; line-height: 1.5; color: #7a5a63; }
+.ms-perso-colores { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px 8px; }
+.ms-perso-color {
+  display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 0; border: 0; background: none;
+  cursor: pointer; font: 600 11px 'Montserrat', 'Poppins', sans-serif; color: #5a3a44;
+}
+.ms-perso-color::before {
+  content: ""; width: 38px; height: 38px; border-radius: 50%; background: var(--c);
+  box-shadow: inset 0 -5px 8px rgba(0, 0, 0, .15), inset 0 3px 6px rgba(255, 255, 255, .7), 0 0 0 1px rgba(0, 0, 0, .12);
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.ms-perso-color:hover::before { transform: scale(1.08); }
+.ms-perso-color[aria-checked="true"]::before, .ms-perso-libre.activo::before {
+  box-shadow: inset 0 -5px 8px rgba(0, 0, 0, .15), inset 0 3px 6px rgba(255, 255, 255, .7), 0 0 0 3px #fff, 0 0 0 5px #9C7A2E;
+}
+.ms-perso-color[aria-checked="true"] { color: #4A0A1D; font-weight: 800; }
+.ms-perso-color:focus-visible { outline: none; }
+.ms-perso-color:focus-visible::before { box-shadow: 0 0 0 3px #fff, 0 0 0 5px #BC955C; }
+.ms-perso-libre { position: relative; --c: conic-gradient(#f2b8c6, #f5d58e, #a8dcc2, #a9cbef, #c7b6ea, #f2b8c6); }
+.ms-perso-libre input { position: absolute; top: 0; left: 50%; width: 38px; height: 38px; transform: translateX(-50%); opacity: 0; cursor: pointer; }
+@media (max-width: 600px) {
+  .ms-perso-caja { flex-direction: column; gap: 14px; padding: 22px 18px; text-align: center; }
+  .ms-perso-vista { width: 140px; height: 140px; }
+  .ms-perso-mascota { width: 104px; }
+  .ms-perso-colores { grid-template-columns: repeat(5, 1fr); }
+}
+
+/* ---- Estrella dorada: una capa con la misma silueta, encima de la guinda (--ms-oro: 0 ó 1) ---- */
+.minisebiso .ms-estrella::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(135deg, #F8E9B8 0%, #D8B866 45%, #A8832F 75%, #8A6A22 100%);
+  -webkit-mask: url('../img/logo-hidalgo.png') center / contain no-repeat;
+  mask: url('../img/logo-hidalgo.png') center / contain no-repeat;
+  opacity: var(--ms-oro, 0);
+}
+
+/* ---- Ropa: dos capas (a y b) que la página arma con variables ---- */
+.minisebiso .ms-cuerpo::after,
+.minisebiso .ms-cuerpo::before {
+  content: ""; position: absolute; pointer-events: none;
+}
+.minisebiso .ms-cuerpo::after {
+  display: var(--ropa-a, none);
+  left: var(--ropa-a-x, 0); top: var(--ropa-a-y, 0); width: var(--ropa-a-w, 0); height: var(--ropa-a-h, 0);
+  background: var(--ropa-a-bg, none); clip-path: var(--ropa-a-clip, none);
+  border-radius: var(--ropa-a-r, 0); box-shadow: var(--ropa-a-sombra, none);
+}
+.minisebiso .ms-cuerpo::before {
+  display: var(--ropa-b, none); z-index: 0;
+  left: var(--ropa-b-x, 0); top: var(--ropa-b-y, 0); width: var(--ropa-b-w, 0); height: var(--ropa-b-h, 0);
+  background: var(--ropa-b-bg, none); clip-path: var(--ropa-b-clip, none);
+  border-radius: var(--ropa-b-r, 0); box-shadow: var(--ropa-b-sombra, none);
+}
+
+/* ---- Ventana: secciones y opciones de estrella / ropa ---- */
+.ms-perso-seccion { margin: 14px 0 8px; font-size: 11.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #9C7A2E; }
+.ms-perso-seccion:first-of-type { margin-top: 0; }
+.ms-perso-ops { display: flex; flex-wrap: wrap; gap: 8px; }
+.ms-perso-op {
+  display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border-radius: 999px; cursor: pointer;
+  border: 1px solid #EADFCB; background: #FBF6EE; color: #4A0A1D; font: 700 12.5px 'Montserrat', 'Poppins', sans-serif;
+  transition: background .15s ease, border-color .15s ease;
+}
+.ms-perso-op span { display: inline-flex; align-items: center; gap: 6px; }
+.ms-perso-op[style]::before { content: ""; width: 14px; height: 14px; border-radius: 50%; background: var(--c); box-shadow: inset 0 -2px 3px rgba(0,0,0,.2); }
+.ms-perso-op:hover { background: #F5E9D2; border-color: #D8C29A; }
+.ms-perso-op[aria-checked="true"] { background: #4A0A1D; border-color: #4A0A1D; color: #fff; }
+.ms-perso-op:focus-visible { outline: 2px solid #BC955C; outline-offset: 2px; }
+.ms-perso-caja { width: min(680px, 100%); max-height: calc(100vh - 40px); overflow-y: auto; }
+.ms-perso .ms-dlg-botones { margin-top: 18px; }
+
+/* ---- Botón «Asistente»: negro y siempre del mismo tamaño ---- */
+.nav-asistente,
+.nav-asistente[aria-pressed="false"] {
+  background: #1C1A1D; color: #fff; border-color: rgba(255, 255, 255, .16);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .25);
+}
+.nav-asistente:hover { border-color: rgba(216, 184, 102, .8); }
+.nav-asistente .nav-asis-switch { background: #57525A; }
+.nav-asistente[aria-pressed="false"] .nav-asis-texto { opacity: .7; }
+
+/* ---- Un solo botón: la píldora negra contiene el interruptor y el lápiz (círculo blanco) ---- */
+.nav-asis-grupo {
+  gap: 2px; padding: 3px 3px 3px 0; border-radius: 999px;
+  background: #1C1A1D; border: 1.5px solid rgba(255, 255, 255, .16); box-shadow: 0 2px 10px rgba(0, 0, 0, .25);
+  transition: border-color .18s ease;
+}
+.nav-asis-grupo:hover { border-color: rgba(216, 184, 102, .8); }
+.nav-asistente, .nav-asistente[aria-pressed="false"] {
+  background: transparent; border: 0; box-shadow: none; padding: 5px 8px 5px 8px;
+}
+.nav-asistente:hover { transform: none; }
+.nav-asis-color {
+  width: 30px; height: 30px; font-size: 15px; border: 0;
+  background: #fff; color: #1C1A1D; box-shadow: inset 0 -2px 4px rgba(0, 0, 0, .12);
+}
+.nav-asis-color:hover { filter: none; background: #F4EFEA; transform: rotate(-10deg); }
+
+
+/* ---- Ojos en Galaxia (claros, para que se vean sobre el fondo oscuro) ---- */
+html .minisebiso .ms-ojo { background: var(--ms-ojo-fondo, radial-gradient(ellipse 60% 55% at 45% 40%, #2a2a30 0%, #0d0d10 70%, #050506 100%)); }
+html .ms-flotante.dormido .ms-ojo {
+  background: var(--ms-ojo-dormido, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 18'%3E%3Cg fill='none' stroke='%232a1219' stroke-width='3' stroke-linecap='round'%3E%3Cpath d='M2.5 5 Q12 16 21.5 5'/%3E%3C/g%3E%3C/svg%3E")) center / contain no-repeat;
+}
+
+/* ---- Lentes: dos micas sobre los ojos y el puente entre ellas ---- */
+.ms-gafas { position: absolute; inset: 0; pointer-events: none; z-index: 2; display: var(--gafas, none); }
+/* Los lentes elegidos son solo para las ventanas: en la esquina no se los pone */
+.ms-flotante .ms-gafas { display: none; }
+/* En las ventanas de edición usa los lentes elegidos en lugar de sus lentes de lectura (y con los ojos en su lugar) */
+html .con-lentes .ms-lentes { display: var(--lentes-lectura, block); }
+html .con-lentes .ms-ojo-mov.izq { left: var(--ojo-izq-lectura, 27%); }
+html .con-lentes .ms-ojo-mov.der { left: var(--ojo-der-lectura, 63%); }
+.ms-gafas i {
+  position: absolute; top: var(--g-top, 29%); width: var(--g-w, 27%); height: var(--g-h, 36%); box-sizing: border-box;
+  border: var(--g-borde, 2px solid #2A2228); border-top: var(--g-borde-arriba, var(--g-borde, 2px solid #2A2228));
+  border-radius: var(--g-radio, 50%); background: var(--g-fondo, transparent); clip-path: var(--g-clip, none);
+  box-shadow: inset 0 2px 3px rgba(255, 255, 255, .35);
+}
+.ms-gafas i:first-child { left: calc(37.6% - var(--g-w, 27%) / 2); transform: rotate(var(--g-rot-izq, 0deg)); }
+.ms-gafas i:last-child { left: calc(62.4% - var(--g-w, 27%) / 2); transform: rotate(var(--g-rot-der, 0deg)); }
+.ms-gafas::before {
+  content: ""; position: absolute; left: 46.5%; width: 7%; top: calc(var(--g-top, 29%) + 9%); height: 3.4%;
+  border-radius: 2px; background: var(--g-marco, #2A2228);
+}
+/* ---- Galaxia: brillitos que salen flotando alrededor de la mascota ---- */
+.ms-brillos { position: absolute; inset: -12% -14%; pointer-events: none; display: var(--ms-brillos, none); z-index: 3; }
+.ms-brillos i {
+  position: absolute; width: 13%; aspect-ratio: 1; opacity: 0;
+  background: radial-gradient(circle, #fff 0 18%, #FFE48A 40%, #F5B83D 100%);
+  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+  filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 5px rgba(150, 90, 255, .9));
+  animation: msBrillito 2.6s ease-in-out infinite;
+}
+.ms-brillos i:nth-child(1) { left: 6%;  top: 18%; animation-delay: 0s; }
+.ms-brillos i:nth-child(2) { left: 84%; top: 10%; animation-delay: .4s; width: 10%; background: radial-gradient(circle, #fff 0 18%, #FF9AD5 45%, #E0559F 100%); }
+.ms-brillos i:nth-child(3) { left: 90%; top: 58%; animation-delay: .9s; }
+.ms-brillos i:nth-child(4) { left: 2%;  top: 66%; animation-delay: 1.3s; width: 10%; background: radial-gradient(circle, #fff 0 18%, #9AD8FF 45%, #4E8DF0 100%); }
+.ms-brillos i:nth-child(5) { left: 46%; top: 0;   animation-delay: 1.7s; width: 11%; }
+.ms-brillos i:nth-child(6) { left: 70%; top: 86%; animation-delay: 2.1s; width: 9%; background: radial-gradient(circle, #fff 0 18%, #FF9AD5 45%, #E0559F 100%); }
+.ms-brillos i:nth-child(7) { left: 24%; top: 88%; animation-delay: 2.4s; width: 9%; background: radial-gradient(circle, #fff 0 18%, #9AD8FF 45%, #4E8DF0 100%); }
+@keyframes msBrillito {
+  0%   { opacity: 0; transform: translateY(6px) scale(.3) rotate(0deg); }
+  25%  { opacity: 1; transform: translateY(0) scale(1) rotate(45deg); }
+  60%  { opacity: .8; transform: translateY(-8px) scale(.8) rotate(90deg); }
+  100% { opacity: 0; transform: translateY(-16px) scale(.2) rotate(135deg); }
+}
+.ms-flotante.dormido .ms-brillos i { animation-duration: 4s; }
+@media (prefers-reduced-motion: reduce) { .ms-brillos i { animation: none; opacity: .8; } }
+
+/* ---- Encabezado de Correspondencia: el botón va junto a «Cerrar sesión» ---- */
+.nav-asis-grupo { margin-right: 10px; font-family: inherit; }
+.nav-asistente { font-family: inherit; font-size: 12.5px; font-weight: 700; }
+
+/* ---- Aviso chiquito propio (apagado / errores al guardar preferencias) ---- */
+.ms-aviso-mini {
+  position: fixed; left: 50%; bottom: 24px; z-index: 3000; max-width: min(460px, calc(100vw - 32px));
+  padding: 11px 18px; border-radius: 14px; background: #3A0818; color: #fff;
+  font: 600 13px/1.4 'Montserrat', 'Poppins', 'Segoe UI', sans-serif; box-shadow: 0 10px 28px rgba(40, 8, 20, .35);
+  opacity: 0; transform: translate(-50%, 12px); pointer-events: none; transition: opacity .25s ease, transform .25s ease;
+}
+.ms-aviso-mini.visible { opacity: 1; transform: translate(-50%, 0); }
+.ms-aviso-mini.error { background: #94141E; }
+
+/* ---- Usuario en sesión: fijo en la esquina inferior izquierda (la derecha es de la mascota) ---- */
+html #header-usuario {
+  position: fixed; left: 18px; bottom: 18px; z-index: 880; flex: none;
+  box-shadow: 0 6px 18px rgba(60, 10, 25, .18), 0 0 0 1px rgba(188, 149, 92, .35);
+}
+@media (max-width: 600px) { html #header-usuario { left: 12px; bottom: 12px; } }
+@media print { html #header-usuario { display: none; } }
+/* Los conectados, ahora al final: su lista se abre hacia la izquierda sin salirse */
+.header-derecha > .badge-usuarios-activos { margin-left: 4px; }
+
+/* ---- Guías paso a paso: botón «Listo…» dentro del globo de la mascota ---- */
+.ms-presentador.ms-con-listo .ms-burbuja { pointer-events: auto; }
+.ms-burbuja-listo {
+  display: block; margin: 8px 0 0 auto; padding: 6px 14px; border-radius: 999px; border: 0; cursor: pointer;
+  background: linear-gradient(135deg, #D8B866, #9C7A2E); color: #3A0818; font: 800 12px 'Montserrat', 'Poppins', sans-serif;
+  box-shadow: 0 4px 10px rgba(156, 122, 46, .3); transition: transform .12s ease, filter .15s ease;
+}
+.ms-burbuja-listo:hover { filter: brightness(1.06); transform: translateY(-1px); }
+.ms-burbuja-listo:focus-visible { outline: 2px solid #6B0F2B; outline-offset: 2px; }
+
+/* ---- La mascota siempre por encima de las ventanas de la página (p. ej. «Atender Oficio», capa 9999) ---- */
+html .ms-dlg-overlay { z-index: 11000; }
+html .ms-trabajo { z-index: 12000; }
+html .ms-perso { z-index: 11500; }
