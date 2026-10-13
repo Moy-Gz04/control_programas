@@ -23,7 +23,7 @@ function msJunto(c, W, H) {
 (function () {
   if (document.querySelector('.ms-flotante')) return;
   const css = document.createElement('link');
-  css.rel = 'stylesheet'; css.href = 'assets/css/minisebiso-flotante.css?v=13';
+  css.rel = 'stylesheet'; css.href = 'assets/css/minisebiso-flotante.css?v=14';
   document.head.appendChild(css);
 
   const ms = document.createElement('div');

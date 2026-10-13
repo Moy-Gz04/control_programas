@@ -34,7 +34,7 @@
 }
 @keyframes msBrillo { from { background-position: 150% 0; } to { background-position: -50% 0; } }
 .ms-trab-barra.listo span { background: linear-gradient(90deg, #2F8A3B, #3E9B47); }
-.ms-trab-barra.error span { background: linear-gradient(90deg, #C0262D, #94141E); }
+.ms-trab-barra.error span { background: linear-gradient(90deg, #7A1E35, #4A0A1D); }
 .ms-trab-barra.listo span::after, .ms-trab-barra.error span::after { animation: none; background: none; }
 
 .ms-trab-pie {
@@ -48,7 +48,7 @@
 .ms-trab-pasos li { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #5a3a44; }
 .ms-trab-pasos li .ti { font-size: 16px; flex-shrink: 0; }
 .ms-trab-pasos li.hecho .ti { color: #2F8A3B; }
-.ms-trab-pasos li.error .ti { color: #C0262D; }
+.ms-trab-pasos li.error .ti { color: #7A1E35; }
 .ms-trab-pasos li.actual { font-weight: 600; color: #4A0A1D; }
 .ms-trab-pasos li.actual .ti { color: #BC955C; animation: msGirar 1s linear infinite; }
 @keyframes msGirar { to { transform: rotate(360deg); } }
@@ -306,7 +306,7 @@ html .con-lentes .ms-ojo-mov.der { left: var(--ojo-der-lectura, 63%); }
   opacity: 0; transform: translate(-50%, 12px); pointer-events: none; transition: opacity .25s ease, transform .25s ease;
 }
 .ms-aviso-mini.visible { opacity: 1; transform: translate(-50%, 0); }
-.ms-aviso-mini.error { background: #94141E; }
+.ms-aviso-mini.error { background: #4A0A1D; }
 
 /* ---- Usuario en sesión: fijo en la esquina inferior izquierda (la derecha es de la mascota) ---- */
 html #header-usuario {

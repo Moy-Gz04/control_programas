@@ -164,7 +164,7 @@
 .ms-dlg-btn:focus-visible { outline: 2px solid #BC955C; outline-offset: 2px; }
 .ms-dlg-btn:disabled { cursor: default; opacity: .85; }
 .ms-dlg-cancelar { background: #F4EFEA; color: #4A0A1D; box-shadow: inset 0 0 0 1px #E6DCD2; }
-.ms-dlg-ok { background: linear-gradient(135deg, #C0262D, #94141E); color: #fff; box-shadow: 0 6px 16px rgba(160, 20, 30, .35); }
+.ms-dlg-ok { background: linear-gradient(135deg, #7A1E35, #4A0A1D); color: #fff; box-shadow: 0 6px 16px rgba(74, 10, 29, .35); }
 @media (max-width: 600px) {
   .ms-dlg-escena { flex-direction: column; align-items: center; gap: 14px; }
   .ms-dlg-mascota { width: 110px; margin: 0; }
@@ -227,7 +227,7 @@
 .ms-flotante.ms-con-accion .ms-burbuja:hover .ms-burbuja-accion { filter: brightness(1.06); }
 /* El saludo del diálogo toma el color de la noticia */
 .ms-tono-exito .ms-dlg-saludo { color: #2E7D32; }
-.ms-tono-error .ms-dlg-saludo { color: #C0262D; }
+.ms-tono-error .ms-dlg-saludo { color: #7A1E35; }
 .ms-tono-aviso .ms-dlg-saludo { color: #B7791F; }
 /* Botón principal verde para buenas noticias / confirmaciones sin riesgo */
 .ms-dlg-ok.ms-dlg-ok-verde { background: linear-gradient(135deg, #3E9B47, #22692A); color: #fff; box-shadow: 0 6px 16px rgba(34, 105, 42, .3); }
