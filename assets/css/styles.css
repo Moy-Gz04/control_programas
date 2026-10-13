@@ -1477,3 +1477,14 @@ body{ background:var(--surface-0); }
 /* Programas sin Archivo de Asignación: solo 2 pasos, que ocupen todo el ancho */
 .hacienda-columns:not(:has(> :nth-child(3))){ grid-template-columns:1.4fr 1fr; }
 @media (max-width:900px){ .hacienda-columns:not(:has(> :nth-child(3))){ grid-template-columns:1fr; } }
+
+/* Campana (la misma de Contratos y de las salas de Correspondencia) como marca
+   de agua: silueta usada como máscara para teñirla de guinda muy tenue */
+body::before{
+  content:""; position:fixed; z-index:-1; pointer-events:none;
+  left:0; bottom:0; height:78vh; aspect-ratio:213 / 384; max-width:45vw;
+  background:var(--maroon-800, #5F2132); opacity:.06;
+  -webkit-mask:url(../img/campana-fondo.png) left bottom / contain no-repeat;
+          mask:url(../img/campana-fondo.png) left bottom / contain no-repeat;
+}
+body{ position:relative; isolation:isolate; }
