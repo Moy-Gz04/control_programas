@@ -156,7 +156,17 @@ router.get('/', async (req, res) => {
               (COALESCE(pers_agg.personas, 0) * p.monto_beneficiario) AS comprometido_total,
               COALESCE(hac_agg.hacienda, 0) AS hacienda_total,
               COALESCE(pag_agg.pagado, 0) AS pagado_total,
-              COALESCE(aut_agg.autorizado, 0) AS autorizado_hacienda_total
+              COALESCE(aut_agg.autorizado, 0) AS autorizado_hacienda_total,
+              -- Documentos cargados por etapa (para la tarjeta de la vista principal)
+              json_build_object(
+                'oficio', p.monto_autorizado_documento_url IS NOT NULL,
+                'modificaciones', (SELECT count(*) FROM modificaciones m WHERE m.programa_id = p.id AND m.documento_url IS NOT NULL),
+                'dictamenes', (SELECT count(*) FROM dictamenes d WHERE d.programa_id = p.id AND d.acta_documento_url IS NOT NULL),
+                'solicitudes', (SELECT count(*) FROM solicitudes_hacienda h WHERE h.programa_id = p.id AND h.documento_url IS NOT NULL),
+                'autorizaciones', (SELECT count(*) FROM autorizaciones_hacienda a JOIN solicitudes_hacienda h ON h.id = a.hacienda_id WHERE h.programa_id = p.id AND a.documento_url IS NOT NULL),
+                'asignaciones', (SELECT count(*) FROM archivos_asignacion g JOIN solicitudes_hacienda h ON h.id = g.hacienda_id WHERE h.programa_id = p.id AND g.documento_url IS NOT NULL),
+                'pagos', (SELECT count(*) FROM pagos g WHERE g.programa_id = p.id AND g.documento_url IS NOT NULL)
+              ) AS docs
        FROM programas p
        JOIN unidades un ON un.codigo = p.unidad_codigo
        LEFT JOIN (

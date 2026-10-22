@@ -734,6 +734,34 @@ function programTileHTML(p){
     </div>
     <div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div>
     <div class="kpi-sub" style="margin-top:6px;">${pct}% dispersado del monto comprometido</div>
+    ${docsTileHTML(p)}
+  </div>`;
+}
+/* Fila "Documentos" de la tarjeta: una pastilla por etapa, marcada si ya tiene documentos cargados */
+function docsTileHTML(p){
+  const d = p.docs;
+  if(!d) return '';
+  const n = (v)=> Number(v)||0;
+  const etapas = [
+    ['Oficio', d.oficio ? 1 : 0, false],
+    ['Dictamen', n(d.dictamenes), true],
+    ['CXP', n(d.solicitudes), true],
+    ['Contrarecibos', n(d.autorizaciones), true],
+    ['Asignación', n(d.asignaciones), true],
+    ['Pagos', n(d.pagos), true],
+  ];
+  if(n(d.modificaciones)) etapas.splice(1, 0, ['Modificaciones', n(d.modificaciones), true]);
+  // los programas que pagan directo (sin archivo de asignación) no muestran esa etapa
+  if(p.requiere_asignacion === false){ const i = etapas.findIndex(e=>e[0]==='Asignación'); if(i>=0) etapas.splice(i,1); }
+  const cargadas = etapas.filter(e=>e[1]>0).length;
+  const chips = etapas.map(([nombre, cant, mostrar])=>{
+    const on = cant>0;
+    return `<span class="doc-chip ${on?'on':''}" title="${on ? `${nombre}: ${cant} documento${cant===1?'':'s'} cargado${cant===1?'':'s'}` : `${nombre}: sin documento`}">
+      <i aria-hidden="true">${on?'✓':'·'}</i>${nombre}${on && mostrar ? ` <b>${cant}</b>` : ''}</span>`;
+  }).join('');
+  return `<div class="doc-row">
+    <div class="doc-row-cab"><span>Documentos</span><span class="doc-row-cuenta">${cargadas} de ${etapas.length} etapas</span></div>
+    <div class="doc-chips">${chips}</div>
   </div>`;
 }
 function bindProgramTileClicks(root){
