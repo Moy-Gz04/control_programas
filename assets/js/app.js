@@ -857,19 +857,24 @@ async function renderDetalle(id){
     ${pipelinePresupuestoHTML(p)}
 
     <div class="section-title"><h2>Monto Autorizado y Modificaciones</h2></div>
-    <div class="card accent" style="--accent:var(--gold-500)">
+    <div class="card accent monto-card" style="--accent:var(--gold-500)">
       ${p.monto_autorizado!==null ? `
-        <div>
-          <div class="kpi-label">Monto Autorizado inicial</div>
-          <div class="kpi-value">${fmtMoney(autorizadoBase)}</div>
-          <div class="kpi-sub">
-            <span>Referencia ${p.monto_autorizado_referencia} · ${fmtDate(p.monto_autorizado_fecha)}</span>
+        <div class="monto-cabeza">
+          <div class="monto-cifra">
+            <div class="kpi-label">Monto Autorizado inicial</div>
+            <div class="kpi-value">${fmtMoney(autorizadoBase)}</div>
+          </div>
+          <div class="monto-ref">
+            <span class="monto-ref-chip" title="Referencia del oficio">${esc(p.monto_autorizado_referencia||'Sin referencia')}</span>
+            <span class="monto-ref-meta">${fmtDate(p.monto_autorizado_fecha)}${(p.modificaciones||[]).length ? '' : ' · Sin modificaciones'}</span>
+          </div>
+          <div class="monto-acciones">
+            ${docLinkRowHTML(p.monto_autorizado_documento_url, `/programs/${p.id}/monto-autorizado/documento`)}
+            <button class="btn btn-primary btn-sm" id="btnAddModificacion">+ Modificación</button>
           </div>
         </div>
-        ${docLinkRowHTML(p.monto_autorizado_documento_url, `/programs/${p.id}/monto-autorizado/documento`)}
-        <hr class="divider">
-        <div class="log-list">
-          ${(p.modificaciones||[]).length ? p.modificaciones.map(m=>`
+        ${(p.modificaciones||[]).length ? `<div class="log-list monto-mods">
+          ${p.modificaciones.map(m=>`
             <div class="log-row${m.documento_url ? ' log-row-with-doc' : ''}">
               <div class="log-row-body">
                 <div class="log-row-icon ${m.tipo==='Ampliación'?'log-row-icon-pos':'log-row-icon-neg'}">${m.tipo==='Ampliación'?'+':'−'}</div>
@@ -880,14 +885,13 @@ async function renderDetalle(id){
                 <div class="lamount ${m.tipo==='Ampliación'?'pos':'neg'}">${m.tipo==='Ampliación'?'+':'−'} ${fmtMoney(m.monto)}</div>
               </div>
               ${docLinkRowHTML(m.documento_url, `/programs/${p.id}/modificaciones/${m.id}/documento`)}
-            </div>`).join('') : `<div class="empty-state">Sin modificaciones registradas.</div>`}
-        </div>
-        <div style="text-align:center;margin-top:14px;">
-          <button class="btn btn-primary btn-sm" id="btnAddModificacion">+ Registrar Modificación</button>
-        </div>
+            </div>`).join('')}
+        </div>` : ''}
       ` : `
-        <div class="empty-state" style="padding:10px 10px 16px;">Este programa aún no tiene Monto Autorizado cargado.</div>
-        <div style="text-align:center;"><button class="btn btn-gold" id="btnCargarMonto">Cargar Monto Autorizado</button></div>
+        <div class="monto-cabeza">
+          <div class="empty-state monto-vacio">Este programa aún no tiene Monto Autorizado cargado.</div>
+          <div class="monto-acciones"><button class="btn btn-gold btn-sm" id="btnCargarMonto">Cargar Monto Autorizado</button></div>
+        </div>
       `}
     </div>
 

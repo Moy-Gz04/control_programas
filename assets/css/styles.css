@@ -1573,3 +1573,34 @@ body{ position:relative; isolation:isolate; }
 .prog-tile .doc-chip.off .doc-punto{background:#d8394c;box-shadow:0 0 0 2px rgba(216,57,76,.18);animation:docParpadeo 1.3s ease-in-out infinite;}
 @keyframes docParpadeo{0%,100%{opacity:1;}50%{opacity:.25;}}
 @media (prefers-reduced-motion: reduce){.prog-tile .doc-chip.off .doc-punto{animation:none;}}
+
+/* ===== Detalle más compacto (menos espacio en blanco) ===== */
+.section-title{margin:24px 0 10px;}
+.card{padding:18px 20px;margin-bottom:14px;}
+.divider{margin:12px 0;}
+.empty-state{padding:14px 10px;font-size:12.5px;}
+/* Sección que solo trae su aviso de "sin registros": tarjeta delgada, aviso a la izquierda */
+.card.section-body:has(> .empty-state:only-child){padding:10px 18px;}
+.card.section-body > .empty-state:only-child{display:flex;align-items:center;gap:8px;padding:2px 0;text-align:left;font-style:italic;}
+.card.section-body > .empty-state:only-child::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--border-strong, #cdbfc3);flex-shrink:0;}
+
+/* Monto Autorizado: todo en un renglón */
+.monto-card{padding:14px 20px 14px 24px;}
+.monto-cabeza{display:flex;align-items:center;gap:14px 24px;flex-wrap:wrap;}
+.monto-cifra .kpi-value{margin-top:2px;font-size:22px;font-variant-numeric:tabular-nums;}
+.monto-ref{flex:1;min-width:220px;display:flex;flex-direction:column;align-items:flex-start;gap:5px;}
+.monto-ref-chip{display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:3px 10px;border-radius:999px;
+  font-size:11.5px;font-weight:600;letter-spacing:.2px;color:var(--maroon-700, #6B1E33);background:var(--gold-50, #FBF5E9);border:1px solid var(--gold-200, #E9D6AE);}
+.monto-ref-meta{font-size:var(--fs-xs);color:var(--text-secondary);}
+.monto-acciones{display:flex;align-items:center;gap:10px;margin-left:auto;}
+.monto-acciones .doc-link-row{margin-top:0;}
+.monto-mods{margin-top:12px;padding-top:12px;border-top:1px solid var(--border-hairline);}
+.monto-vacio{flex:1;padding:4px 0;text-align:left;}
+@media (max-width:640px){ .monto-acciones{margin-left:0;width:100%;justify-content:space-between;} }
+
+/* Trámites (Solicitudes a Hacienda / Pagos) y dictámenes: menos aire por renglón */
+.hacienda-item{padding:8px 10px;margin-bottom:8px;}
+.hacienda-columns{gap:8px;}
+.hacienda-stage{padding:8px 12px;gap:2px;}
+.hacienda-stage .hz-pie{padding-top:4px;}
+.dictamen-block{padding:14px 16px;margin-bottom:10px;}
