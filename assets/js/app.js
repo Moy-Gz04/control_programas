@@ -1,3 +1,27 @@
+/* Pantalla de error amable: cuando el servidor tarda o falla (502/503/504, sin red),
+   en vez del texto crudo "Error 504" se muestra un aviso con botón para recargar. */
+function pantallaError(err, que) {
+  const msg = String((err && err.message) || '');
+  const servidor = (err && err.retriable) || /^Error 5\d\d$/.test(msg) || /Failed to fetch|NetworkError|conectar/i.test(msg);
+  const titulo = servidor ? 'El servidor está tardando en responder' : `No se pudo cargar ${que || 'la información'}`;
+  const texto = servidor
+    ? 'A veces el sistema tarda unos segundos en despertar. Recarga la página para intentarlo de nuevo.'
+    : (msg && !/^Error \d+$/.test(msg) ? msg + ' ' : '') + 'Recarga la página para intentarlo de nuevo.';
+  const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  return `<div class="pantalla-error" role="alert">
+    <div class="pantalla-error-icono" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 4v5h-5"/></svg>
+    </div>
+    <h3>${esc(titulo)}</h3>
+    <p>${esc(texto)}</p>
+    <button type="button" class="btn btn-primary" onclick="location.reload()">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 4v5h-5"/></svg>
+      Recargar página
+    </button>
+    ${servidor ? '' : `<small>${esc(msg)}</small>`}
+  </div>`;
+}
+
 /* =========================================================================
    SISTEMA DE PROGRAMAS SOCIALES — App principal (app.html)
    Consume la API REST del backend (Neon vía Render). Requiere sesión activa.
@@ -747,7 +771,7 @@ async function renderDetalle(id){
   try{
     p = await refreshOneProgram(id);
   }catch(err){
-    el.innerHTML = `<div class="empty-state">${err.message || 'No se pudo cargar el programa.'}</div>`;
+    el.innerHTML = pantallaError(err, 'el programa');
     return;
   }
   if(!p){ el.innerHTML = `<div class="empty-state">Programa no encontrado.</div>`; return; }

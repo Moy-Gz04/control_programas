@@ -1547,3 +1547,13 @@ body{ position:relative; isolation:isolate; }
 .pa-estrella{ display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px; border:1px solid #E4D6C8; background:#fff; color:#3D1420; font:600 .78rem 'Montserrat',sans-serif; cursor:pointer; }
 .pa-estrella span{ width:12px; height:12px; border-radius:50%; }
 .pa-estrella.activo{ background:linear-gradient(135deg,#A9824C,#7C5D31); border-color:transparent; }
+
+/* ===== PANTALLA DE ERROR (servidor lento o caído) ===== */
+.pantalla-error{max-width:460px;margin:48px auto;padding:34px 30px 28px;text-align:center;background:var(--surface-1);border:1px solid var(--gold-100);border-radius:20px;box-shadow:0 18px 40px -22px rgba(95,33,50,.35);display:flex;flex-direction:column;align-items:center;gap:12px;animation:errAparece .35s var(--ease-out, ease-out);}
+.pantalla-error-icono{width:62px;height:62px;border-radius:50%;display:grid;place-items:center;background:#F9F0F3;color:var(--maroon-800);border:1.5px solid var(--gold-100);}
+.pantalla-error h3{margin:4px 0 0;font-size:18px;font-weight:700;color:var(--maroon-900);text-wrap:balance;}
+.pantalla-error p{margin:0;font-size:13.5px;line-height:1.55;color:var(--text-secondary);max-width:36ch;}
+.pantalla-error .btn{margin-top:8px;}
+.pantalla-error small{font-size:11px;color:var(--text-secondary);opacity:.7;}
+@keyframes errAparece{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+@media (prefers-reduced-motion: reduce){.pantalla-error{animation:none;}}
