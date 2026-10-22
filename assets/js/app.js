@@ -754,10 +754,14 @@ function docsTileHTML(p){
   // los programas que pagan directo (sin archivo de asignación) no muestran esa etapa
   if(p.requiere_asignacion === false){ const i = etapas.findIndex(e=>e[0]==='Asignación'); if(i>=0) etapas.splice(i,1); }
   const cargadas = etapas.filter(e=>e[1]>0).length;
-  const chips = etapas.map(([nombre, cant, mostrar])=>{
+  // cuadrícula de 6 columnas: 3 pastillas por renglón; el último renglón se estira para llenar el ancho
+  const total = etapas.length, resto = total % 3;
+  const chips = etapas.map(([nombre, cant, mostrar], i)=>{
     const on = cant>0;
-    return `<span class="doc-chip ${on?'on':''}" title="${on ? `${nombre}: ${cant} documento${cant===1?'':'s'} cargado${cant===1?'':'s'}` : `${nombre}: sin documento`}">
-      <i aria-hidden="true">${on?'✓':'·'}</i>${nombre}${on && mostrar ? ` <b>${cant}</b>` : ''}</span>`;
+    let span = 2;
+    if(resto && i >= total - resto) span = 6 / resto;
+    return `<span class="doc-chip ${on?'on':'off'}" style="grid-column:span ${span}" title="${on ? `${nombre}: ${cant} documento${cant===1?'':'s'} cargado${cant===1?'':'s'}` : `${nombre}: sin documento`}">
+      <span class="doc-chip-nombre"><i class="doc-punto" aria-hidden="true"></i>${nombre}</span>${on && mostrar ? `<b>${cant}</b>` : ''}</span>`;
   }).join('');
   return `<div class="doc-row">
     <div class="doc-row-cab"><span>Documentos</span><span class="doc-row-cuenta">${cargadas} de ${etapas.length} etapas</span></div>
