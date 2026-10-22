@@ -718,7 +718,8 @@ function programTileHTML(p){
   const disponible = totalAutorizadoNeto(p);
   const comp = totalComprometidoEfectivo(p);
   const pag = totalPagado(p);
-  const pct = comp>0 ? Math.min(100, Math.floor((pag/comp)*100)) : 0;
+  // la barra de la tarjeta mide lo dispersado contra el monto AUTORIZADO
+  const pct = disponible>0 ? Math.min(100, Math.floor((pag/disponible)*100)) : 0;
   return `
   <div class="prog-tile" data-open="${p.id}" style="--accent:${st.color}">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;">
@@ -733,7 +734,7 @@ function programTileHTML(p){
       <div><span>Dispersado</span><b>${fmtMoneyCompact(pag)}</b></div>
     </div>
     <div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div>
-    <div class="kpi-sub" style="margin-top:6px;">${pct}% dispersado del monto comprometido</div>
+    <div class="kpi-sub" style="margin-top:6px;">${pct}% dispersado del monto autorizado</div>
     ${docsTileHTML(p)}
   </div>`;
 }
