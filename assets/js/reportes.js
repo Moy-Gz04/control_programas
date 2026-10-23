@@ -124,7 +124,21 @@ function renderReportes(){
 }
 
 /* ---------- generar ---------- */
-let LOGO_MEMBRETE = null;
+let LOGO_MEMBRETE = null, CAMPANA = null;
+/* La campana de fondo del sistema (silueta blanca) teñida de guinda muy tenue, para el PDF */
+async function campanaGuinda(){
+  if(CAMPANA) return CAMPANA;
+  const img = await new Promise((ok, mal) => { const i = new Image(); i.onload = () => ok(i); i.onerror = mal; i.src = 'assets/img/campana-fondo.png'; });
+  const k = 4, c = document.createElement('canvas');
+  c.width = img.naturalWidth * k; c.height = img.naturalHeight * k;
+  const g = c.getContext('2d');
+  g.drawImage(img, 0, 0, c.width, c.height);
+  g.globalCompositeOperation = 'source-in';
+  g.fillStyle = 'rgba(95, 33, 50, 0.08)';
+  g.fillRect(0, 0, c.width, c.height);
+  CAMPANA = c.toDataURL('image/png');
+  return CAMPANA;
+}
 async function logoMembrete(){
   if(LOGO_MEMBRETE) return LOGO_MEMBRETE;
   const blob = await (await fetch('assets/img/membrete-bienestar.png')).blob();
@@ -156,7 +170,7 @@ async function generarReporte(btn){
         programas = await Promise.all(programas.map(p => (p.solicitudesHacienda ? p : refreshOneProgram(p.id))));
       }
       programas.sort((a, b) => totalAutorizadoNeto(b) - totalAutorizadoNeto(a));
-      const pdf = construirPdf(programas, opciones, await logoMembrete());
+      const pdf = construirPdf(programas, opciones, await logoMembrete(), await campanaGuinda());
       if(REP.urlPdf) URL.revokeObjectURL(REP.urlPdf);
       REP.urlPdf = URL.createObjectURL(pdf.output('blob'));
       REP.nombre = `Reporte_Programas_${opciones.fecha}.pdf`;
@@ -172,7 +186,7 @@ async function generarReporte(btn){
 }
 
 /* ---------- PDF ---------- */
-function construirPdf(programas, op, logo){
+function construirPdf(programas, op, logo, campana){
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: 'mm', format: 'letter' });
   const anchoTexto = HOJA.w - HOJA.izq - HOJA.der;
@@ -184,12 +198,25 @@ function construirPdf(programas, op, logo){
     const pg = doc.getCurrentPageInfo().pageNumber;
     if(conMembrete.has(pg)) return;
     conMembrete.add(pg);
+    // campana de marca de agua, abajo a la izquierda (se dibuja primero: queda detrás de todo)
+    const altoC = 175, anchoC = altoC * 213 / 384;
+    if(campana) doc.addImage(campana, 'PNG', 0, HOJA.h - altoC, anchoC, altoC);
     doc.addImage(logo, 'PNG', HOJA.logo.x, HOJA.logo.y, HOJA.logo.w, HOJA.logo.h);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(60, 60, 60);
     DOMICILIO.forEach((l, i) => doc.text(l, HOJA.w - HOJA.der, HOJA.h - 22 + i * 3.4, { align: 'right' }));
   };
   const nuevaPagina = () => { doc.addPage(); membrete(); y = HOJA.sup; };
   const espacio = (mm) => { if(y + mm > limite) nuevaPagina(); };
+  // Justificado real: reparte el espacio sobrante entre las palabras de la línea
+  // (jsPDF solo justifica dentro de una misma llamada, y aquí cada línea va por separado por los saltos de página)
+  const lineaJustificada = (l, x, yy) => {
+    const palabras = l.trim().split(/\s+/);
+    if(palabras.length < 2){ doc.text(l, x, yy); return; }
+    const anchoPalabras = palabras.reduce((t, w) => t + doc.getTextWidth(w), 0);
+    const hueco = (anchoTexto - anchoPalabras) / (palabras.length - 1);
+    let cx = x;
+    palabras.forEach(w => { doc.text(w, cx, yy); cx += doc.getTextWidth(w) + hueco; });
+  };
   const parrafo = (texto, opc = {}) => {
     doc.setFont('helvetica', opc.negrita ? 'bold' : 'normal'); doc.setFontSize(opc.tam || 10); doc.setTextColor(...(opc.color || TINTA));
     const lineas = doc.splitTextToSize(texto, anchoTexto);
@@ -197,7 +224,7 @@ function construirPdf(programas, op, logo){
     lineas.forEach((l, i) => {
       espacio(alto);
       const ultima = i === lineas.length - 1;
-      doc.text(l, HOJA.izq, y, opc.justificar && !ultima ? { maxWidth: anchoTexto, align: 'justify' } : {});
+      if(opc.justificar !== false && !ultima) lineaJustificada(l, HOJA.izq, y); else doc.text(l, HOJA.izq, y);
       y += alto;
     });
     y += opc.despues ?? 2.5;
@@ -220,7 +247,7 @@ function construirPdf(programas, op, logo){
       footStyles: { fillColor: [246, 238, 221], textColor: GUINDA, fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [251, 247, 242] },
       columnStyles: opc.columnas || {},
-      didDrawPage: () => membrete(),
+      willDrawPage: () => membrete(),
       didDrawCell: opc.alDibujar,
       showFoot: 'lastPage',
     });
@@ -236,7 +263,7 @@ function construirPdf(programas, op, logo){
   doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(...GUINDA);
   doc.splitTextToSize(op.titulo, anchoTexto).forEach(l => { doc.text(l, HOJA.izq, y); y += 6.4; });
   doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(...GRIS);
-  const alcance = programas.length === state.programs.length ? `Todos los programas (${programas.length})` : programas.length === 1 ? `${programas[0].clave} · ${programas[0].nombre}` : `${programas.length} programas seleccionados`;
+  const alcance = programas.length === state.programs.length ? `Todos los programas (${programas.length})` : programas.length === 1 ? programas[0].nombre : `${programas.length} programas seleccionados`;
   doc.text(doc.splitTextToSize(`Secretaría de Bienestar e Inclusión Social · ${alcance} · Cifras al ${fechaLarga(op.fecha)}`, anchoTexto), HOJA.izq, y);
   y += 4.5;
   doc.setDrawColor(...DORADO); doc.setLineWidth(0.6); doc.line(HOJA.izq, y, HOJA.w - HOJA.der, y);
@@ -253,15 +280,15 @@ function construirPdf(programas, op, logo){
 
   if(op.resumen){
     subtitulo(`${++n}. Resumen ejecutivo`);
-    const quien = programas.length === 1 ? `el ${programas[0].nombre} (${programas[0].clave})` : `${programas.length} programas sociales`;
+    const quien = programas.length === 1 ? `el ${programas[0].nombre}` : `${programas.length} programas sociales`;
     parrafo(`Al ${fechaLarga(op.fecha)}, ${programas.length === 1 ? 'el reporte comprende' : 'se reportan'} ${quien}, con un monto autorizado vigente de ${fmtMoney(T.aut)}. De este monto se ha comprometido mediante dictaminación ${fmtMoney(T.comp)} (${pctTxt(T.comp, T.aut)}); se han solicitado a la Secretaría de Hacienda ${fmtMoney(T.sol)} (${pctTxt(T.sol, T.aut)}), de los cuales Hacienda ha autorizado ${fmtMoney(T.autH)} (${pctTxt(T.autH, T.aut)}), y se han dispersado ${fmtMoney(T.disp)} (${pctTxt(T.disp, T.aut)}). El recurso disponible sin comprometer asciende a ${fmtMoney(disponible)} (${pctTxt(disponible, T.aut)}).`, { justificar: true });
     if(datos.length > 1){
       const mayor = datos[0];
       const conDisp = datos.filter(x => x.disp > 0).sort((a, b) => b.disp / b.aut - a.disp / a.aut);
       const sinMov = datos.filter(x => x.compEf === 0);
-      let t = `El programa con mayor monto autorizado es el ${mayor.p.nombre} (${mayor.p.clave}), que concentra el ${pctTxt(mayor.aut, T.aut)} del total.`;
-      if(conDisp.length) t += ` ${conDisp.length === 1 ? 'Registra dispersión de recursos' : 'Registran dispersión de recursos'} ${conDisp.map(x => `${x.p.clave} (${pctTxt(x.disp, x.aut)} de su autorizado)`).join(', ')}.`;
-      if(sinMov.length) t += ` ${sinMov.length === 1 ? 'Aún no registra' : 'Aún no registran'} compromiso ni trámites ante Hacienda: ${sinMov.map(x => x.p.clave).join(', ')}.`;
+      let t = `El programa con mayor monto autorizado es el ${mayor.p.nombre}, que concentra el ${pctTxt(mayor.aut, T.aut)} del total.`;
+      if(conDisp.length) t += ` ${conDisp.length === 1 ? 'Registra dispersión de recursos' : 'Registran dispersión de recursos'} ${conDisp.map(x => `el ${x.p.nombre} (${pctTxt(x.disp, x.aut)} de su autorizado)`).join('; ')}.`;
+      if(sinMov.length) t += ` ${sinMov.length === 1 ? 'Aún no registra' : 'Aún no registran'} compromiso ni trámites ante Hacienda: ${sinMov.map(x => x.p.nombre).join('; ')}.`;
       parrafo(t, { justificar: true });
     }
     tabla(['Concepto', 'Monto', '% del autorizado'], [
@@ -278,22 +305,22 @@ function construirPdf(programas, op, logo){
     subtitulo(`${++n}. Avance presupuestal por programa`);
     parrafo('La siguiente tabla muestra, para cada programa, el recurso autorizado y su avance en cada etapa del trámite: compromiso, solicitud y autorización de Hacienda, y dispersión. El porcentaje se calcula contra el autorizado de cada programa.', { justificar: true });
     parrafo('Montos en pesos, sin centavos.', { tam: 8, color: GRIS, despues: 1.5 });
-    tabla(['Clave', 'Programa', 'Autorizado', 'Comprom.', 'Solicitado', 'Aut. Hacienda', 'Dispersado', '% disp.'],
-      datos.map(x => [x.p.clave, x.p.nombre, fmtPesos(x.aut), fmtPesos(x.comp), fmtPesos(x.sol), fmtPesos(x.autH), fmtPesos(x.disp), pctTxt(x.disp, x.aut)]),
-      { chica: true, pie: ['', 'Total', fmtPesos(T.aut), fmtPesos(T.comp), fmtPesos(T.sol), fmtPesos(T.autH), fmtPesos(T.disp), pctTxt(T.disp, T.aut)],
-        columnas: { 0: { cellWidth: 18, fontStyle: 'bold', textColor: GUINDA }, 2: { ...der, cellWidth: 21 }, 3: { ...der, cellWidth: 21 }, 4: { ...der, cellWidth: 20 }, 5: { ...der, cellWidth: 20 }, 6: { ...der, cellWidth: 20 }, 7: { ...der, cellWidth: 12 } } });
+    tabla(['Programa', 'Autorizado', 'Comprom.', 'Solicitado', 'Aut. Hacienda', 'Dispersado', '% disp.'],
+      datos.map(x => [x.p.nombre, fmtPesos(x.aut), fmtPesos(x.comp), fmtPesos(x.sol), fmtPesos(x.autH), fmtPesos(x.disp), pctTxt(x.disp, x.aut)]),
+      { chica: true, pie: ['Total', fmtPesos(T.aut), fmtPesos(T.comp), fmtPesos(T.sol), fmtPesos(T.autH), fmtPesos(T.disp), pctTxt(T.disp, T.aut)],
+        columnas: { 0: { fontStyle: 'bold', textColor: GUINDA }, 1: { ...der, cellWidth: 21 }, 2: { ...der, cellWidth: 21 }, 3: { ...der, cellWidth: 20 }, 4: { ...der, cellWidth: 20 }, 5: { ...der, cellWidth: 20 }, 6: { ...der, cellWidth: 12 } } });
   }
 
   if(op.distrib && datos.length > 1){
     subtitulo(`${++n}. Distribución del monto autorizado`);
     parrafo(`Participación de cada programa en el monto autorizado total de ${fmtMoney(T.aut)}.`);
-    tabla(['Clave', 'Programa', 'Autorizado', '% del total', ''],
-      datos.map(x => [x.p.clave, x.p.nombre, fmtMoney(x.aut), pctTxt(x.aut, T.aut), '']),
-      { pie: ['', 'Total', fmtMoney(T.aut), '100.0%', ''],
-        columnas: { 0: { cellWidth: 20, fontStyle: 'bold', textColor: GUINDA }, 2: { ...der, cellWidth: 30 }, 3: { ...der, cellWidth: 18 }, 4: { cellWidth: 32 } },
+    tabla(['Programa', 'Autorizado', '% del total', ''],
+      datos.map(x => [x.p.nombre, fmtMoney(x.aut), pctTxt(x.aut, T.aut), '']),
+      { pie: ['Total', fmtMoney(T.aut), '100.0%', ''],
+        columnas: { 0: { fontStyle: 'bold', textColor: GUINDA }, 1: { ...der, cellWidth: 30 }, 2: { ...der, cellWidth: 18 }, 3: { cellWidth: 36 } },
         // barrita proporcional en la última columna
         alDibujar: (d) => {
-          if(d.section !== 'body' || d.column.index !== 4) return;
+          if(d.section !== 'body' || d.column.index !== 3) return;
           const x = datos[d.row.index]; const w = (d.cell.width - 4) * (x.aut / T.aut);
           doc.setFillColor(...GUINDA); doc.rect(d.cell.x + 2, d.cell.y + d.cell.height / 2 - 1.4, Math.max(w, 0.6), 2.8, 'F');
         } });
@@ -304,15 +331,15 @@ function construirPdf(programas, op, logo){
     datos.forEach((x, i) => {
       const p = x.p;
       espacio(40);
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...TINTA);
-      doc.splitTextToSize(`${n}.${i + 1} ${p.clave} · ${p.nombre}`, anchoTexto).forEach(l => { doc.text(l, HOJA.izq, y); y += 4.8; });
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...GUINDA);
+      doc.splitTextToSize(`${n}.${i + 1} ${p.nombre}`, anchoTexto).forEach(l => { doc.text(l, HOJA.izq, y); y += 4.8; });
       y += 1.5;
       if(op.detalle){
         const personas = totalPersonasDictaminadas(p);
         const mods = totalModificado(p);
         parrafo(`El programa cuenta con un monto autorizado de ${fmtMoney(montoAutorizadoBase(p))}${p.monto_autorizado_referencia ? `, mediante oficio ${p.monto_autorizado_referencia}` : ''}${mods ? `, con modificaciones netas por ${fmtMoney(mods)} que lo dejan en ${fmtMoney(x.aut)}` : ''}. Se han dictaminado ${fmtNum(personas)} personas, equivalentes a ${fmtMoney(x.comp)} comprometidos; se han solicitado a Hacienda ${fmtMoney(x.sol)} y se han dispersado ${fmtMoney(x.disp)} (${pctTxt(x.disp, x.aut)} del autorizado).`, { justificar: true });
         tabla(['Concepto', 'Valor'], [
-          ['Unidad presupuestal', `UP ${p.unidad_codigo || ''}${p.unidad_nombre ? ' · ' + p.unidad_nombre : ''}`],
+          ['Unidad responsable', p.unidad_nombre || '—'],
           ['Oficio de autorización', `${p.monto_autorizado_referencia || '—'}${p.monto_autorizado_fecha ? ' (' + fechaCorta(p.monto_autorizado_fecha) + ')' : ''}`],
           ['Monto autorizado inicial', fmtMoney(montoAutorizadoBase(p))],
           ['Modificaciones (neto)', fmtMoney(mods)],
@@ -352,7 +379,9 @@ function construirPdf(programas, op, logo){
   // ---- cierre y numeración ----
   espacio(14);
   doc.setFont('helvetica', 'italic'); doc.setFontSize(8.5); doc.setTextColor(...GRIS);
-  doc.text(doc.splitTextToSize(`Reporte generado por el Sistema de Programas Sociales de la Secretaría de Bienestar e Inclusión Social el ${fechaLarga(hoyISO())}. Las cifras corresponden a la información registrada en el sistema a esa fecha.`, anchoTexto), HOJA.izq, y + 4);
+  y += 4;
+  doc.splitTextToSize(`Reporte generado por el Sistema de Programas Sociales de la Secretaría de Bienestar e Inclusión Social el ${fechaLarga(hoyISO())}. Las cifras corresponden a la información registrada en el sistema a esa fecha.`, anchoTexto)
+    .forEach((l, i, arr) => { if(i < arr.length - 1) lineaJustificada(l, HOJA.izq, y); else doc.text(l, HOJA.izq, y); y += 3.6; });
   const total = doc.getNumberOfPages();
   for(let i = 1; i <= total; i++){
     doc.setPage(i);
