@@ -778,45 +778,78 @@ function bindProgramTileClicks(root){
 /* =========================================================================
    VIEW: PROGRAMAS (única vista principal del sistema: solo el listado).
    ========================================================================= */
-/* Gráfica del inicio: cada programa contra SU autorizado (100 %), con lo
-   comprometido y lo dispersado encima. Va en porcentaje porque los programas
-   van de ~$1 M a ~$380 M: en montos absolutos los chicos ni se verían.
-   Mismas funciones que el detalle: Autorizado = autorizado + modificaciones,
-   Comprometido = comprometido efectivo (dictaminado, o lo ya solicitado /
-   autorizado / pagado si es mayor), Dispersado = pagos. */
-function avanceProgramasHTML(programs){
-  const filas = programs
+/* Gráfica del inicio (barras): por programa, Autorizado / Comprometido /
+   Dispersado. El eje va en % del autorizado de CADA programa porque van de
+   ~$1 M a ~$380 M: en pesos los chicos ni se verían. Los montos en pesos
+   salen en la etiqueta al pasar el cursor. Mismas funciones que el detalle:
+   Autorizado = autorizado + modificaciones, Comprometido = comprometido
+   efectivo (dictaminado, o lo ya solicitado/autorizado/pagado si es mayor),
+   Dispersado = pagos. */
+function filasAvance(programs){
+  return programs
     .map(p => ({ p, aut: totalAutorizadoNeto(p), comp: totalComprometidoEfectivo(p), disp: totalPagado(p) }))
     .filter(x => x.aut > 0)
     .sort((a, b) => b.aut - a.aut);
+}
+function avanceProgramasHTML(programs){
+  const filas = filasAvance(programs);
   if(!filas.length) return '';
   const pct = (v, t) => t > 0 ? v / t * 100 : 0;
-  const ancho = (v) => Math.max(0, Math.min(100, v)).toFixed(2) + '%';
   const tA = filas.reduce((s, x) => s + x.aut, 0), tC = filas.reduce((s, x) => s + x.comp, 0), tD = filas.reduce((s, x) => s + x.disp, 0);
   return `
-    <div class="section-title"><h2>Avance contra lo autorizado</h2><span class="hint">Por programa · 100 % = monto autorizado</span></div>
+    <div class="section-title"><h2>Avance contra lo autorizado</h2><span class="hint">Por programa · 100 % = monto autorizado de cada uno</span></div>
     <div class="card avance-card">
       <div class="avance-resumen">
-        <div class="avance-total"><span class="kpi-label">Autorizado total</span><b>${fmtMoney(tA)}</b></div>
+        <div class="avance-total"><span class="kpi-label"><i class="avance-punto aut"></i>Autorizado total</span><b>${fmtMoney(tA)}</b></div>
         <div class="avance-total"><span class="kpi-label"><i class="avance-punto comp"></i>Comprometido</span><b>${fmtMoney(tC)}</b><small>${pct(tC, tA).toFixed(1)} % del autorizado</small></div>
         <div class="avance-total"><span class="kpi-label"><i class="avance-punto disp"></i>Dispersado</span><b>${fmtMoney(tD)}</b><small>${pct(tD, tA).toFixed(1)} % del autorizado</small></div>
       </div>
-      <div class="avance-lista">
-        ${filas.map(({ p, aut, comp, disp }) => `
-          <button type="button" class="avance-fila" data-open="${p.id}" title="Abrir ${esc(p.nombre)}">
-            <span class="avance-nombre"><b>${esc(p.clave || '')}</b> ${esc(p.nombre)}</span>
-            <span class="avance-aut">${fmtMoneyCompact(aut)}</span>
-            <span class="avance-pista" role="img" aria-label="Comprometido ${pct(comp, aut).toFixed(1)} %, dispersado ${pct(disp, aut).toFixed(1)} % de ${fmtMoney(aut)}">
-              <span class="avance-barra comp" style="width:${ancho(pct(comp, aut))}"></span>
-              <span class="avance-barra disp" style="width:${ancho(pct(disp, aut))}"></span>
-            </span>
-            <span class="avance-cifras">
-              <span class="comp">${pct(comp, aut).toFixed(1)} % · ${fmtMoneyCompact(comp)}</span>
-              <span class="disp">${pct(disp, aut).toFixed(1)} % · ${fmtMoneyCompact(disp)}</span>
-            </span>
-          </button>`).join('')}
-      </div>
+      <div class="avance-grafica"><canvas id="chartAvance" aria-label="Gráfica de barras: autorizado, comprometido y dispersado por programa"></canvas></div>
+      <p class="avance-nota">Toca una barra para abrir el programa.</p>
     </div>`;
+}
+function buildAvanceChart(programs){
+  const canvas = document.getElementById('chartAvance');
+  if(!canvas || typeof Chart === 'undefined') return;
+  if(chartRegistry.chartAvance) chartRegistry.chartAvance.destroy();
+  const filas = filasAvance(programs);
+  const pct = (v, t) => t > 0 ? +(v / t * 100).toFixed(1) : 0;
+  const movil = window.innerWidth < 700;
+  const montos = { Autorizado: 'aut', Comprometido: 'comp', Dispersado: 'disp' };
+  chartRegistry.chartAvance = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: filas.map(x => x.p.clave || x.p.nombre),
+      datasets: [
+        { label: 'Autorizado',   data: filas.map(() => 100),                 backgroundColor: '#E8D9BC', borderColor: '#C7AE81', borderWidth: 1, borderRadius: 4, maxBarThickness: 26 },
+        { label: 'Comprometido', data: filas.map(x => pct(x.comp, x.aut)),  backgroundColor: COLOR_COMPROMETIDO, borderRadius: 4, maxBarThickness: 26 },
+        { label: 'Dispersado',   data: filas.map(x => pct(x.disp, x.aut)),  backgroundColor: '#5F2132', borderRadius: 4, maxBarThickness: 26 },
+      ],
+    },
+    options: {
+      indexAxis: movil ? 'y' : 'x',
+      responsive: true, maintainAspectRatio: false,
+      layout: { padding: { top: 8 } },
+      onClick: (_, els) => { if(els[0]) navigate({ name: 'detalle', id: filas[els[0].index].p.id }); },
+      onHover: (e, els) => { e.native.target.style.cursor = els.length ? 'pointer' : 'default'; },
+      plugins: {
+        valueLabels: false,
+        legend: { position: 'top', align: 'end', labels: { usePointStyle: true, pointStyle: 'rectRounded', boxWidth: 10, font: { size: 11.5, weight: '600' }, color: '#201017' } },
+        tooltip: {
+          backgroundColor: '#3D1420', padding: 11, cornerRadius: 10, titleFont: { weight: '700' }, footerColor: '#D8B866',
+          callbacks: {
+            title: (it) => { const x = filas[it[0].dataIndex]; return `${x.p.clave} · ${x.p.nombre}`; },
+            label: (c) => { const x = filas[c.dataIndex]; return ` ${c.dataset.label}: ${fmtMoney(x[montos[c.dataset.label]])} (${c.raw} %)`; },
+          },
+        },
+      },
+      scales: (() => {
+        const valor = { min: 0, suggestedMax: 100, grid: { color: '#EFE6DA' }, ticks: { color: '#6B5563', font: { size: 10.5 }, callback: (v) => v + ' %' } };
+        const cat = { grid: { display: false }, ticks: { color: '#5F2132', font: { size: 11, weight: '700' } } };
+        return movil ? { x: valor, y: cat } : { x: cat, y: valor };
+      })(),
+    },
+  });
 }
 
 function renderProgramas(){
@@ -828,7 +861,8 @@ function renderProgramas(){
       ${state.programs.map(programTileHTML).join('') || emptyPrograms()}
     </div>
   `;
-  bindProgramTileClicks(el);   // también abre cada renglón de la gráfica (data-open)
+  bindProgramTileClicks(el);
+  buildAvanceChart(state.programs);
   animateViewIn(el);
 }
 
