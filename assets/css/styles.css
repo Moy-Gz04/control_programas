@@ -1311,7 +1311,7 @@ footer.app-footer{
    título guinda + línea dorada, alineado a la izquierda) en lugar de la
    franja guinda, y botón principal guinda.
    ========================================================================= */
-:root{ --surface-0:#F7F5F2; }
+:root{ --surface-0:#FFFFFF; }   /* mismo fondo blanco que Correspondencia */
 body{ background:var(--surface-0); }
 .header-band{
   background:transparent; box-shadow:none; color:var(--maroon-800);
@@ -1604,3 +1604,13 @@ body{ position:relative; isolation:isolate; }
 .hacienda-stage{padding:8px 12px;gap:2px;}
 .hacienda-stage .hz-pie{padding-top:4px;}
 .dictamen-block{padding:14px 16px;margin-bottom:10px;}
+
+/* Ventana "Entrando al sistema…": mismo vino profundo del círculo del login
+   (igual que Correspondencia), sin las sombras rosadas del estilo neumórfico */
+.wake-card{
+  background:radial-gradient(ellipse 80% 70% at 50% 25%, #6B0F2B 0%, #4A0A1D 55%, #2a0510 100%);
+  border:1px solid rgba(169,130,76,.45);
+  box-shadow:0 24px 60px rgba(8,1,4,.55), inset 0 1px 0 rgba(255,255,255,.06);
+}
+.wake-card .carga-titulo{color:#D8B866;}
+.wake-card .carga-msg{color:#E9C9D2;}
