@@ -796,60 +796,55 @@ function avanceProgramasHTML(programs){
   if(!filas.length) return '';
   const pct = (v, t) => t > 0 ? v / t * 100 : 0;
   const tA = filas.reduce((s, x) => s + x.aut, 0), tC = filas.reduce((s, x) => s + x.comp, 0), tD = filas.reduce((s, x) => s + x.disp, 0);
+  // Mismo diseño que "Flujo y Estado del Presupuesto" del detalle: barras sólidas con el monto
+  // arriba, listón translúcido entre etapas, hueco punteado si no hay nada y píldora de %.
+  const BAR_H = 150, slotW = 100, barHalfW = slotW * 0.27;
+  const COLORES = ['#5F2132', '#A9824C', '#1A6E35'];    // Autorizado → Comprometido → Dispersado
+  const ETAPAS = ['Autorizado', 'Comprometido', 'Dispersado'];
+  const grupo = ({ p, aut, comp, disp }) => {
+    const valores = [aut, comp, disp];
+    const alturas = valores.map(v => v > 0 ? Math.max(Math.min(v / aut, 1) * BAR_H, 6) : 0);
+    let ribbons = '';
+    for(let i = 0; i < 2; i++){
+      if(!alturas[i] && !alturas[i + 1]) continue;
+      const x1 = i * slotW + slotW / 2 + barHalfW, x2 = (i + 1) * slotW + slotW / 2 - barHalfW;
+      const y1 = BAR_H - alturas[i], y2 = BAR_H - alturas[i + 1], xm = (x1 + x2) / 2;
+      ribbons += `<path d="M ${x1} ${y1} C ${xm} ${y1}, ${xm} ${y2}, ${x2} ${y2} L ${x2} ${BAR_H} L ${x1} ${BAR_H} Z" fill="${COLORES[i]}" opacity="0.16"/>`;
+    }
+    return `
+      <button type="button" class="av-grupo" data-open="${p.id}" title="Abrir ${esc(p.nombre)}">
+        <div class="pipe-montos" style="grid-template-columns:repeat(3,1fr);">
+          ${valores.map((v, i) => `<div class="pipe-monto" style="--c:${COLORES[i]}">${v > 0 ? fmtMoneyCompact(v) : '<span class="pipe-cero">$0</span>'}</div>`).join('')}
+        </div>
+        <div class="pipeline-bar-row" style="height:${BAR_H}px;">
+          <svg class="pipeline-svg" viewBox="0 0 ${3 * slotW} ${BAR_H}" preserveAspectRatio="none" aria-hidden="true">${ribbons}</svg>
+          <div class="pipeline-bar-grid" style="grid-template-columns:repeat(3,1fr);">
+            ${valores.map((v, i) => `
+              <div class="pipeline-bar-col">
+                ${alturas[i]
+                  ? `<div class="pipeline-bar has-tooltip" data-tooltip="${ETAPAS[i]}: ${fmtMoney(v)} · ${pct(v, aut).toFixed(1)}% del autorizado" style="height:${alturas[i]}px;background:${COLORES[i]};"></div>`
+                  : `<div class="pipeline-bar pipe-vacia has-tooltip" data-tooltip="${ETAPAS[i]}: sin movimientos todavía" style="--c:${COLORES[i]}"></div>`}
+              </div>`).join('')}
+          </div>
+        </div>
+        <div class="av-nombre"><b>${esc(p.clave || '')}</b><span>${esc(p.nombre)}</span></div>
+        <div class="av-pcts">
+          <span class="pipe-pct" style="--c:${COLORES[1]}">${pct(comp, aut).toFixed(1)}% comprometido</span>
+          <span class="pipe-pct" style="--c:${COLORES[2]}">${pct(disp, aut).toFixed(1)}% dispersado</span>
+        </div>
+      </button>`;
+  };
   return `
-    <div class="section-title"><h2>Avance contra lo autorizado</h2><span class="hint">Por programa · 100 % = monto autorizado de cada uno</span></div>
-    <div class="card avance-card">
+    <div class="pipeline-card pipeline-card-chart pipeline-flujo avance-flujo">
+      <div class="pipeline-eyebrow">Avance contra lo autorizado<span class="av-leyenda">${ETAPAS.map((e, i) => `<i style="--c:${COLORES[i]}"></i>${e}`).join('')}</span></div>
       <div class="avance-resumen">
-        <div class="avance-total"><span class="kpi-label"><i class="avance-punto aut"></i>Autorizado total</span><b>${fmtMoney(tA)}</b></div>
-        <div class="avance-total"><span class="kpi-label"><i class="avance-punto comp"></i>Comprometido</span><b>${fmtMoney(tC)}</b><small>${pct(tC, tA).toFixed(1)} % del autorizado</small></div>
-        <div class="avance-total"><span class="kpi-label"><i class="avance-punto disp"></i>Dispersado</span><b>${fmtMoney(tD)}</b><small>${pct(tD, tA).toFixed(1)} % del autorizado</small></div>
+        <div class="avance-total"><span class="kpi-label">Autorizado total</span><b style="color:${COLORES[0]}">${fmtMoney(tA)}</b><small>${filas.length} programas</small></div>
+        <div class="avance-total"><span class="kpi-label">Comprometido</span><b style="color:${COLORES[1]}">${fmtMoney(tC)}</b><small>${pct(tC, tA).toFixed(1)}% del autorizado</small></div>
+        <div class="avance-total"><span class="kpi-label">Dispersado</span><b style="color:${COLORES[2]}">${fmtMoney(tD)}</b><small>${pct(tD, tA).toFixed(1)}% del autorizado</small></div>
       </div>
-      <div class="avance-grafica"><canvas id="chartAvance" aria-label="Gráfica de barras: autorizado, comprometido y dispersado por programa"></canvas></div>
-      <p class="avance-nota">Toca una barra para abrir el programa.</p>
+      <div class="av-grupos">${filas.map(grupo).join('')}</div>
+      <p class="avance-nota">Cada programa contra su propio autorizado (100%) · toca un programa para abrirlo · desliza para ver todos →</p>
     </div>`;
-}
-function buildAvanceChart(programs){
-  const canvas = document.getElementById('chartAvance');
-  if(!canvas || typeof Chart === 'undefined') return;
-  if(chartRegistry.chartAvance) chartRegistry.chartAvance.destroy();
-  const filas = filasAvance(programs);
-  const pct = (v, t) => t > 0 ? +(v / t * 100).toFixed(1) : 0;
-  const movil = window.innerWidth < 700;
-  const montos = { Autorizado: 'aut', Comprometido: 'comp', Dispersado: 'disp' };
-  chartRegistry.chartAvance = new Chart(canvas, {
-    type: 'bar',
-    data: {
-      labels: filas.map(x => x.p.clave || x.p.nombre),
-      datasets: [
-        { label: 'Autorizado',   data: filas.map(() => 100),                 backgroundColor: '#E8D9BC', borderColor: '#C7AE81', borderWidth: 1, borderRadius: 4, maxBarThickness: 26 },
-        { label: 'Comprometido', data: filas.map(x => pct(x.comp, x.aut)),  backgroundColor: COLOR_COMPROMETIDO, borderRadius: 4, maxBarThickness: 26 },
-        { label: 'Dispersado',   data: filas.map(x => pct(x.disp, x.aut)),  backgroundColor: '#5F2132', borderRadius: 4, maxBarThickness: 26 },
-      ],
-    },
-    options: {
-      indexAxis: movil ? 'y' : 'x',
-      responsive: true, maintainAspectRatio: false,
-      layout: { padding: { top: 8 } },
-      onClick: (_, els) => { if(els[0]) navigate({ name: 'detalle', id: filas[els[0].index].p.id }); },
-      onHover: (e, els) => { e.native.target.style.cursor = els.length ? 'pointer' : 'default'; },
-      plugins: {
-        valueLabels: false,
-        legend: { position: 'top', align: 'end', labels: { usePointStyle: true, pointStyle: 'rectRounded', boxWidth: 10, font: { size: 11.5, weight: '600' }, color: '#201017' } },
-        tooltip: {
-          backgroundColor: '#3D1420', padding: 11, cornerRadius: 10, titleFont: { weight: '700' }, footerColor: '#D8B866',
-          callbacks: {
-            title: (it) => { const x = filas[it[0].dataIndex]; return `${x.p.clave} · ${x.p.nombre}`; },
-            label: (c) => { const x = filas[c.dataIndex]; return ` ${c.dataset.label}: ${fmtMoney(x[montos[c.dataset.label]])} (${c.raw} %)`; },
-          },
-        },
-      },
-      scales: (() => {
-        const valor = { min: 0, suggestedMax: 100, grid: { color: '#EFE6DA' }, ticks: { color: '#6B5563', font: { size: 10.5 }, callback: (v) => v + ' %' } };
-        const cat = { grid: { display: false }, ticks: { color: '#5F2132', font: { size: 11, weight: '700' } } };
-        return movil ? { x: valor, y: cat } : { x: cat, y: valor };
-      })(),
-    },
-  });
 }
 
 function renderProgramas(){
@@ -861,8 +856,7 @@ function renderProgramas(){
       ${state.programs.map(programTileHTML).join('') || emptyPrograms()}
     </div>
   `;
-  bindProgramTileClicks(el);
-  buildAvanceChart(state.programs);
+  bindProgramTileClicks(el);   // también abre cada programa de la gráfica (data-open)
   animateViewIn(el);
 }
 

@@ -1615,16 +1615,26 @@ body{ position:relative; isolation:isolate; }
 .wake-card .carga-titulo{color:#D8B866;}
 .wake-card .carga-msg{color:#E9C9D2;}
 
-/* ===== Inicio: gráfica de barras del avance contra lo autorizado ===== */
-.avance-card{padding:18px 20px 12px;}
-.avance-resumen{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding-bottom:14px;margin-bottom:10px;border-bottom:1px solid var(--border-hairline);}
+/* ===== Inicio: avance contra lo autorizado, con el diseño del "Flujo y Estado del Presupuesto" ===== */
+.avance-flujo{margin-bottom:20px;}
+.avance-flujo .pipeline-eyebrow{flex-wrap:wrap;}
+.av-leyenda{display:flex;flex-wrap:wrap;gap:12px;font-size:11px;font-weight:600;letter-spacing:0;text-transform:none;color:#6B5563;}
+.av-leyenda i{display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--c);margin-right:5px;vertical-align:-1px;}
+.avance-resumen{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding-bottom:14px;margin-bottom:16px;border-bottom:1px solid #E4D6C8;}
 .avance-total{display:flex;flex-direction:column;gap:3px;}
-.avance-total b{font-size:19px;font-weight:700;color:var(--text-primary);font-variant-numeric:tabular-nums;}
-.avance-total small{font-size:11.5px;color:var(--text-secondary);}
-.avance-punto{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:6px;vertical-align:-1px;}
-.avance-punto.aut{background:#E8D9BC;box-shadow:inset 0 0 0 1px #C7AE81;}
-.avance-punto.comp{background:#A9824C;}
-.avance-punto.disp{background:#5F2132;}
-.avance-grafica{position:relative;height:300px;}
-.avance-nota{margin:6px 0 0;font-size:11px;color:var(--text-tertiary);text-align:right;}
-@media (max-width:700px){ .avance-resumen{grid-template-columns:1fr;} .avance-grafica{height:460px;} }
+.avance-total b{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.2px;}
+.avance-total small{font-size:11.5px;color:#6B5563;}
+.av-grupos{display:flex;gap:10px;overflow-x:auto;padding:2px 2px 10px;scroll-snap-type:x proximity;}
+.av-grupo{flex:1 0 210px;scroll-snap-align:start;display:flex;flex-direction:column;padding:12px 10px 12px;border:1px solid transparent;border-radius:14px;
+  background:none;font:inherit;color:inherit;text-align:center;cursor:pointer;transition:background .15s, border-color .15s;}
+.av-grupo:hover{background:#FBF6EE;border-color:#EADCC6;}
+.av-grupo:focus-visible{outline:2px solid #5F2132;outline-offset:2px;}
+.av-grupo .pipe-monto{font-size:11.5px;}
+.av-nombre{margin-top:12px;display:flex;flex-direction:column;gap:2px;min-height:44px;}
+.av-nombre b{font-size:11.5px;font-weight:800;color:#5F2132;letter-spacing:.3px;}
+.av-nombre span{font-size:11.5px;font-weight:600;color:#201017;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+.av-pcts{margin-top:8px;display:flex;flex-direction:column;align-items:center;gap:5px;}
+.av-pcts .pipe-pct{display:block;margin:0;}
+.avance-nota{margin:6px 0 0;font-size:11px;color:#9A8A93;text-align:right;}
+@media (max-width:700px){ .avance-resumen{grid-template-columns:1fr;} .av-grupo{flex-basis:190px;} }
+.avance-flujo .av-grupo .pipe-montos{min-width:0;}
