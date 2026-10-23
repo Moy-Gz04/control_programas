@@ -46,7 +46,7 @@ const COLOR_HACIENDA     = '#2A78D6';
 
 let chartRegistry = {};
 let UNIDADES = [];
-let state = { view:{name:'programas'}, programs: [] };
+let state = { view:{name:'resumen'}, programs: [] };
 
 /* ---------- FORMAT HELPERS ---------- */
 const fmtMoney = (n)=> '$' + Number(n||0).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -651,7 +651,7 @@ async function init(){
     navDateEl.textContent = hoy.charAt(0).toUpperCase() + hoy.slice(1);
   }
 
-  document.getElementById('view-programas').innerHTML = Carga.html('Cargando programas…', 'programas');
+  document.getElementById('view-resumen').innerHTML = Carga.html('Cargando programas…', 'programas');
 
   try{
     UNIDADES = await Api.get('/unidades');
@@ -659,7 +659,7 @@ async function init(){
   }catch(err){
     toast(err.message || 'No se pudieron cargar los datos.', true);
   }
-  navigate({name:'programas'});
+  navigate({name:'resumen'});   // pantalla principal: Resumen (gráficas); Programas tiene el listado
 }
 
 async function refreshPrograms(){ state.programs = await Api.get('/programs'); }
@@ -678,7 +678,12 @@ function navigate(view){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.querySelectorAll('.nav-link').forEach(n=>n.classList.remove('active'));
 
-  if(view.name==='programas'){
+  if(view.name==='resumen'){
+    document.getElementById('view-resumen').classList.add('active');
+    document.querySelector('[data-nav="resumen"]').classList.add('active');
+    setHeader('RESUMEN','Avance presupuestal de los programas sociales', CURRENT_USER.rol==='admin' ? 'Todas las unidades presupuestales' : ('UP '+CURRENT_USER.unidad_codigo));
+    renderResumen();
+  } else if(view.name==='programas'){
     document.getElementById('view-programas').classList.add('active');
     document.querySelector('[data-nav="programas"]').classList.add('active');
     setHeader('PROGRAMAS REGISTRADOS','Listado general de programas sociales', CURRENT_USER.rol==='admin' ? 'Todas las unidades presupuestales' : ('UP '+CURRENT_USER.unidad_codigo));
@@ -948,17 +953,12 @@ function activarTooltipFlotante(cont){
   window.addEventListener('scroll', ocultar, { passive: true });
 }
 
-function renderProgramas(){
-  const el = document.getElementById('view-programas');
-  el.innerHTML = `
-    ${distribucionAutorizadoHTML(state.programs)}
-    ${avanceProgramasHTML(state.programs)}
-    <div class="section-title"><h2>Todos los Programas</h2><span class="hint">${state.programs.length} registrados</span></div>
-    <div class="programs-grid">
-      ${state.programs.map(programTileHTML).join('') || emptyPrograms()}
-    </div>
-  `;
-  bindProgramTileClicks(el);   // también abre cada programa de la gráfica (data-open)
+/* Pantalla principal "Resumen": las gráficas de todos los programas. */
+function renderResumen(){
+  const el = document.getElementById('view-resumen');
+  const graficas = distribucionAutorizadoHTML(state.programs) + avanceProgramasHTML(state.programs);
+  el.innerHTML = graficas || emptyPrograms();
+  bindProgramTileClicks(el);   // cada programa de las gráficas abre su detalle (data-open)
   activarTooltipFlotante(el.querySelector('.av-grupos'));
   buildDistribucionChart(state.programs);
   const tog = el.querySelector('#toggleAvance');
@@ -968,6 +968,18 @@ function renderProgramas(){
     tog.setAttribute('aria-expanded', String(avanceAbierto));
     tog.textContent = avanceAbierto ? 'Ocultar' : 'Ver';
   });
+  animateViewIn(el);
+}
+
+function renderProgramas(){
+  const el = document.getElementById('view-programas');
+  el.innerHTML = `
+    <div class="section-title"><h2>Todos los Programas</h2><span class="hint">${state.programs.length} registrados</span></div>
+    <div class="programs-grid">
+      ${state.programs.map(programTileHTML).join('') || emptyPrograms()}
+    </div>
+  `;
+  bindProgramTileClicks(el);
   animateViewIn(el);
 }
 
