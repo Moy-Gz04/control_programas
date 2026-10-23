@@ -836,11 +836,26 @@ function buildDistribucionChart(programs){
       plugins: {
         valueLabels: false,
         legend: { display: false },
+        // la explicación va en la cajita flotante de la página: dentro del lienzo se cortaba y tapaba el total
         tooltip: {
-          backgroundColor: '#3D1420', padding: 11, cornerRadius: 10, titleFont: { weight: '700' },
-          callbacks: {
-            title: (it) => { const x = filas[it[0].dataIndex]; return `${x.p.clave} · ${x.p.nombre}`; },
-            label: (c) => ` ${fmtMoney(c.raw)} · ${(c.raw / total * 100).toFixed(1)}% del autorizado total`,
+          enabled: false,
+          external: ({ chart, tooltip }) => {
+            const tip = cajitaFlotante();
+            if(!tooltip.opacity || !tooltip.dataPoints || !tooltip.dataPoints.length){ tip.classList.remove('visible'); return; }
+            const i = tooltip.dataPoints[0].dataIndex, x = filas[i];
+            tip.innerHTML = `<b>${esc(x.p.clave)} · ${esc(x.p.nombre)}</b><br>${fmtMoney(x.aut)} · ${(x.aut / total * 100).toFixed(1)}% del autorizado total`;
+            tip.classList.add('visible');
+            // se coloca por fuera del anillo, del lado de la rebanada, para no tapar el total del centro
+            const r = chart.canvas.getBoundingClientRect(), t = tip.getBoundingClientRect();
+            const arco = chart.getDatasetMeta(0).data[i];
+            const ox = r.left + arco.x, oy = r.top + arco.y;
+            const ang = (arco.startAngle + arco.endAngle) / 2;
+            const px = ox + Math.cos(ang) * (arco.outerRadius + 12), py = oy + Math.sin(ang) * (arco.outerRadius + 12);
+            let left = Math.cos(ang) >= 0 ? px : px - t.width;
+            let top = py - t.height / 2;
+            left = Math.min(Math.max(8, left), window.innerWidth - t.width - 8);
+            top = Math.min(Math.max(8, top), window.innerHeight - t.height - 8);
+            tip.style.left = left + 'px'; tip.style.top = top + 'px';
           },
         },
       },
@@ -890,18 +905,16 @@ function avanceProgramasHTML(programs){
   };
   return `
     <div class="pipeline-card pipeline-card-chart pipeline-flujo avance-flujo">
-      <div class="pipeline-eyebrow">Avance contra lo autorizado
-        <span class="av-cabeza-der">
-          <span class="av-leyenda">${ETAPAS.map((e, i) => `<i style="--c:${COLORES[i]}"></i>${e}`).join('')}</span>
-          <button type="button" class="table-toggle av-toggle" id="toggleAvance" aria-expanded="${avanceAbierto}" aria-controls="avanceDetalle">${avanceAbierto ? 'Ocultar' : 'Ver por programa'}</button>
-        </span>
+      <div class="pipeline-eyebrow">Desglose por programa
+        <button type="button" class="table-toggle av-toggle" id="toggleAvance" aria-expanded="${avanceAbierto}" aria-controls="avanceDetalle">${avanceAbierto ? 'Ocultar' : 'Ver'}</button>
       </div>
+      <div id="avanceDetalle" ${avanceAbierto ? '' : 'hidden'}>
+      <div class="av-leyenda av-leyenda-abierta">Avance contra lo autorizado:${ETAPAS.map((e, i) => `<i style="--c:${COLORES[i]}"></i>${e}`).join('')}</div>
       <div class="avance-resumen">
         <div class="avance-total"><span class="kpi-label">Autorizado total</span><b style="color:${COLORES[0]}">${fmtMoney(tA)}</b><small>${filas.length} programas</small></div>
         <div class="avance-total"><span class="kpi-label">Comprometido</span><b style="color:${COLORES[1]}">${fmtMoney(tC)}</b><small>${pct(tC, tA).toFixed(1)}% del autorizado</small></div>
         <div class="avance-total"><span class="kpi-label">Dispersado</span><b style="color:${COLORES[2]}">${fmtMoney(tD)}</b><small>${pct(tD, tA).toFixed(1)}% del autorizado</small></div>
       </div>
-      <div id="avanceDetalle" ${avanceAbierto ? '' : 'hidden'}>
         <div class="av-grupos" style="--cols:${Math.ceil(filas.length / 2)}">${filas.map(grupo).join('')}</div>
         <p class="avance-nota">Cada programa contra su propio autorizado (100%) · toca un programa para abrirlo</p>
       </div>
@@ -911,10 +924,14 @@ function avanceProgramasHTML(programs){
 /* La gráfica del inicio se desliza de lado (overflow-x), y eso recortaba la
    explicación de cada barra (.has-tooltip::after). Aquí se muestra en una
    cajita flotante sobre toda la página, para que nunca se corte. */
-function activarTooltipFlotante(cont){
-  if(!cont) return;
+function cajitaFlotante(){
   let tip = document.getElementById('tooltipFlotante');
   if(!tip){ tip = document.createElement('div'); tip.id = 'tooltipFlotante'; tip.className = 'tooltip-flotante'; tip.setAttribute('role', 'tooltip'); document.body.appendChild(tip); }
+  return tip;
+}
+function activarTooltipFlotante(cont){
+  if(!cont) return;
+  const tip = cajitaFlotante();
   const ocultar = () => tip.classList.remove('visible');
   const mostrar = (objetivo) => {
     tip.textContent = objetivo.dataset.tooltip;
@@ -949,7 +966,7 @@ function renderProgramas(){
     avanceAbierto = !avanceAbierto;
     el.querySelector('#avanceDetalle').hidden = !avanceAbierto;
     tog.setAttribute('aria-expanded', String(avanceAbierto));
-    tog.textContent = avanceAbierto ? 'Ocultar' : 'Ver por programa';
+    tog.textContent = avanceAbierto ? 'Ocultar' : 'Ver';
   });
   animateViewIn(el);
 }

@@ -1675,3 +1675,9 @@ body{ position:relative; isolation:isolate; }
   .distrib-fila{grid-template-columns:12px minmax(0,1fr) 52px;}
   .distrib-monto{display:none;}
 }
+
+/* desglose cerrado: solo título y botón */
+.avance-flujo:has(#avanceDetalle[hidden]){padding-bottom:16px;}
+.avance-flujo:has(#avanceDetalle[hidden]) .pipeline-eyebrow{margin-bottom:0;}
+.av-leyenda-abierta{margin:0 0 14px;align-items:center;}
+.tooltip-flotante b{font-weight:800;}
