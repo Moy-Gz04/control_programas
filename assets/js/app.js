@@ -791,6 +791,64 @@ function filasAvance(programs){
     .filter(x => x.aut > 0)
     .sort((a, b) => b.aut - a.aut);
 }
+/* Distribución del autorizado total: qué parte del total ocupa cada programa. */
+const COLORES_DISTRIB = ['#5F2132', '#A9824C', '#1A6E35', '#8A2E45', '#7C5D31', '#5E7A3A', '#3D1420', '#C7AE81', '#6B5563', '#B5533F', '#2F5D50', '#9C7A2E'];
+function distribucionAutorizadoHTML(programs){
+  const filas = filasAvance(programs);
+  if(!filas.length) return '';
+  const total = filas.reduce((s, x) => s + x.aut, 0);
+  return `
+    <div class="pipeline-card pipeline-card-chart pipeline-flujo distrib-card">
+      <div class="pipeline-eyebrow">Autorizado total por programa<span class="av-leyenda">${filas.length} programas · 100% = ${fmtMoney(total)}</span></div>
+      <div class="distrib-cuerpo">
+        <div class="distrib-dona">
+          <canvas id="chartDistribucion" aria-label="Gráfica de pastel: parte del autorizado total que ocupa cada programa"></canvas>
+          <div class="distrib-centro"><span>Autorizado total</span><b>${fmtMoneyCompact(total)}</b><small>${fmtMoney(total)}</small></div>
+        </div>
+        <ol class="distrib-lista">
+          ${filas.map((x, i) => `
+            <li><button type="button" class="distrib-fila" data-open="${x.p.id}" title="Abrir ${esc(x.p.nombre)}">
+              <i style="--c:${COLORES_DISTRIB[i % COLORES_DISTRIB.length]}"></i>
+              <span class="distrib-nombre"><b>${esc(x.p.clave || '')}</b> ${esc(x.p.nombre)}</span>
+              <span class="distrib-monto">${fmtMoney(x.aut)}</span>
+              <span class="distrib-pct">${(x.aut / total * 100).toFixed(1)}%</span>
+            </button></li>`).join('')}
+        </ol>
+      </div>
+    </div>`;
+}
+function buildDistribucionChart(programs){
+  const canvas = document.getElementById('chartDistribucion');
+  if(!canvas || typeof Chart === 'undefined') return;
+  if(chartRegistry.chartDistribucion) chartRegistry.chartDistribucion.destroy();
+  const filas = filasAvance(programs);
+  const total = filas.reduce((s, x) => s + x.aut, 0);
+  chartRegistry.chartDistribucion = new Chart(canvas, {
+    type: 'doughnut',
+    data: {
+      labels: filas.map(x => x.p.clave || x.p.nombre),
+      datasets: [{ data: filas.map(x => x.aut), backgroundColor: filas.map((_, i) => COLORES_DISTRIB[i % COLORES_DISTRIB.length]), borderColor: '#FFFDF9', borderWidth: 2, hoverOffset: 8 }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '64%',
+      onClick: (_, els) => { if(els[0]) navigate({ name: 'detalle', id: filas[els[0].index].p.id }); },
+      onHover: (e, els) => { e.native.target.style.cursor = els.length ? 'pointer' : 'default'; },
+      plugins: {
+        valueLabels: false,
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#3D1420', padding: 11, cornerRadius: 10, titleFont: { weight: '700' },
+          callbacks: {
+            title: (it) => { const x = filas[it[0].dataIndex]; return `${x.p.clave} · ${x.p.nombre}`; },
+            label: (c) => ` ${fmtMoney(c.raw)} · ${(c.raw / total * 100).toFixed(1)}% del autorizado total`,
+          },
+        },
+      },
+    },
+  });
+}
+
+let avanceAbierto = false;   // el avance por programa empieza oculto
 function avanceProgramasHTML(programs){
   const filas = filasAvance(programs);
   if(!filas.length) return '';
@@ -832,14 +890,21 @@ function avanceProgramasHTML(programs){
   };
   return `
     <div class="pipeline-card pipeline-card-chart pipeline-flujo avance-flujo">
-      <div class="pipeline-eyebrow">Avance contra lo autorizado<span class="av-leyenda">${ETAPAS.map((e, i) => `<i style="--c:${COLORES[i]}"></i>${e}`).join('')}</span></div>
+      <div class="pipeline-eyebrow">Avance contra lo autorizado
+        <span class="av-cabeza-der">
+          <span class="av-leyenda">${ETAPAS.map((e, i) => `<i style="--c:${COLORES[i]}"></i>${e}`).join('')}</span>
+          <button type="button" class="table-toggle av-toggle" id="toggleAvance" aria-expanded="${avanceAbierto}" aria-controls="avanceDetalle">${avanceAbierto ? 'Ocultar' : 'Ver por programa'}</button>
+        </span>
+      </div>
       <div class="avance-resumen">
         <div class="avance-total"><span class="kpi-label">Autorizado total</span><b style="color:${COLORES[0]}">${fmtMoney(tA)}</b><small>${filas.length} programas</small></div>
         <div class="avance-total"><span class="kpi-label">Comprometido</span><b style="color:${COLORES[1]}">${fmtMoney(tC)}</b><small>${pct(tC, tA).toFixed(1)}% del autorizado</small></div>
         <div class="avance-total"><span class="kpi-label">Dispersado</span><b style="color:${COLORES[2]}">${fmtMoney(tD)}</b><small>${pct(tD, tA).toFixed(1)}% del autorizado</small></div>
       </div>
-      <div class="av-grupos">${filas.map(grupo).join('')}</div>
-      <p class="avance-nota">Cada programa contra su propio autorizado (100%) · toca un programa para abrirlo · desliza para ver todos →</p>
+      <div id="avanceDetalle" ${avanceAbierto ? '' : 'hidden'}>
+        <div class="av-grupos" style="--cols:${Math.ceil(filas.length / 2)}">${filas.map(grupo).join('')}</div>
+        <p class="avance-nota">Cada programa contra su propio autorizado (100%) · toca un programa para abrirlo</p>
+      </div>
     </div>`;
 }
 
@@ -869,6 +934,7 @@ function activarTooltipFlotante(cont){
 function renderProgramas(){
   const el = document.getElementById('view-programas');
   el.innerHTML = `
+    ${distribucionAutorizadoHTML(state.programs)}
     ${avanceProgramasHTML(state.programs)}
     <div class="section-title"><h2>Todos los Programas</h2><span class="hint">${state.programs.length} registrados</span></div>
     <div class="programs-grid">
@@ -877,6 +943,14 @@ function renderProgramas(){
   `;
   bindProgramTileClicks(el);   // también abre cada programa de la gráfica (data-open)
   activarTooltipFlotante(el.querySelector('.av-grupos'));
+  buildDistribucionChart(state.programs);
+  const tog = el.querySelector('#toggleAvance');
+  if(tog) tog.addEventListener('click', () => {
+    avanceAbierto = !avanceAbierto;
+    el.querySelector('#avanceDetalle').hidden = !avanceAbierto;
+    tog.setAttribute('aria-expanded', String(avanceAbierto));
+    tog.textContent = avanceAbierto ? 'Ocultar' : 'Ver por programa';
+  });
   animateViewIn(el);
 }
 
