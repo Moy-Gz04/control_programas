@@ -828,10 +828,6 @@ function avanceProgramasHTML(programs){
           </div>
         </div>
         <div class="av-nombre"><b>${esc(p.clave || '')}</b><span>${esc(p.nombre)}</span></div>
-        <div class="av-pcts">
-          <span class="pipe-pct" style="--c:${COLORES[1]}">${pct(comp, aut).toFixed(1)}% comprometido</span>
-          <span class="pipe-pct" style="--c:${COLORES[2]}">${pct(disp, aut).toFixed(1)}% dispersado</span>
-        </div>
       </button>`;
   };
   return `
@@ -847,6 +843,29 @@ function avanceProgramasHTML(programs){
     </div>`;
 }
 
+/* La gráfica del inicio se desliza de lado (overflow-x), y eso recortaba la
+   explicación de cada barra (.has-tooltip::after). Aquí se muestra en una
+   cajita flotante sobre toda la página, para que nunca se corte. */
+function activarTooltipFlotante(cont){
+  if(!cont) return;
+  let tip = document.getElementById('tooltipFlotante');
+  if(!tip){ tip = document.createElement('div'); tip.id = 'tooltipFlotante'; tip.className = 'tooltip-flotante'; tip.setAttribute('role', 'tooltip'); document.body.appendChild(tip); }
+  const ocultar = () => tip.classList.remove('visible');
+  const mostrar = (objetivo) => {
+    tip.textContent = objetivo.dataset.tooltip;
+    tip.classList.add('visible');
+    const r = objetivo.getBoundingClientRect(), t = tip.getBoundingClientRect();
+    const x = Math.min(Math.max(8, r.left + r.width / 2 - t.width / 2), window.innerWidth - t.width - 8);
+    const arriba = r.top - t.height - 10;
+    tip.style.left = x + 'px';
+    tip.style.top = (arriba > 8 ? arriba : r.bottom + 10) + 'px';
+  };
+  cont.addEventListener('pointerover', (e) => { const o = e.target.closest('[data-tooltip]'); if(o && cont.contains(o)) mostrar(o); });
+  cont.addEventListener('pointerout', (e) => { if(!e.relatedTarget || !e.relatedTarget.closest || !e.relatedTarget.closest('[data-tooltip]')) ocultar(); });
+  cont.addEventListener('scroll', ocultar, { passive: true });
+  window.addEventListener('scroll', ocultar, { passive: true });
+}
+
 function renderProgramas(){
   const el = document.getElementById('view-programas');
   el.innerHTML = `
@@ -857,6 +876,7 @@ function renderProgramas(){
     </div>
   `;
   bindProgramTileClicks(el);   // también abre cada programa de la gráfica (data-open)
+  activarTooltipFlotante(el.querySelector('.av-grupos'));
   animateViewIn(el);
 }
 
