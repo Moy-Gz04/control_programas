@@ -1681,3 +1681,37 @@ body{ position:relative; isolation:isolate; }
 .avance-flujo:has(#avanceDetalle[hidden]) .pipeline-eyebrow{margin-bottom:0;}
 .av-leyenda-abierta{margin:0 0 14px;align-items:center;}
 .tooltip-flotante b{font-weight:800;}
+
+/* ===== Reportes ===== */
+.rep-card{margin-bottom:20px;}
+.rep-form{display:flex;flex-direction:column;gap:16px;}
+.rep-campo{display:flex;flex-direction:column;gap:7px;min-width:0;}
+.rep-campo[hidden]{display:none;}
+.rep-label{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#6B5563;}
+.rep-tipos{display:grid;grid-template-columns:repeat(2,minmax(0,260px));gap:10px;}
+.rep-tipo{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:12px 14px;border-radius:12px;border:1.5px solid #E4D6C8;background:#fff;cursor:pointer;font:inherit;text-align:left;transition:border-color .15s,background .15s;}
+.rep-tipo b{font-size:13.5px;color:#201017;}
+.rep-tipo span{font-size:11.5px;color:#6B5563;}
+.rep-tipo[aria-checked="true"]{border-color:#5F2132;background:#F9F0F3;box-shadow:inset 0 0 0 1px #5F2132;}
+.rep-tipo:focus-visible,.rep-mini:focus-visible{outline:2px solid #5F2132;outline-offset:2px;}
+.rep-mini{padding:2px 9px;border-radius:999px;border:1px solid #E4D6C8;background:#fff;font:600 10.5px 'Montserrat',sans-serif;color:#5F2132;cursor:pointer;text-transform:none;letter-spacing:0;}
+.rep-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:6px;}
+.rep-prog{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid #EFE6DA;border-radius:10px;background:#fff;cursor:pointer;font-size:12.5px;}
+.rep-prog:hover{background:#FBF6EE;}
+.rep-prog input{accent-color:#5F2132;width:16px;height:16px;flex-shrink:0;}
+.rep-prog span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rep-prog b{color:#5F2132;margin-right:3px;}
+.rep-prog em{font-style:normal;font-weight:700;color:#6B5563;font-variant-numeric:tabular-nums;}
+.rep-fila{display:flex;gap:14px;flex-wrap:wrap;}
+.rep-crece{flex:1;min-width:260px;}
+.rep-campo input[type=text],.rep-campo input[type=date]{padding:10px 12px;border-radius:10px;border:1.5px solid #E4D6C8;font:500 13px 'Montserrat',sans-serif;color:#201017;background:#fff;}
+.rep-campo input:focus{outline:none;border-color:#5F2132;box-shadow:0 0 0 3px rgba(95,33,50,.12);}
+.rep-secciones{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:12.5px;}
+.rep-secciones label{display:flex;align-items:center;gap:7px;cursor:pointer;}
+.rep-secciones input{accent-color:#5F2132;width:16px;height:16px;}
+.rep-acciones{display:flex;align-items:center;justify-content:flex-end;gap:14px;flex-wrap:wrap;}
+.rep-aviso{font-size:12.5px;color:#A32D2D;}
+.rep-vista[hidden]{display:none;}
+.rep-vista-acc{display:flex;gap:8px;align-items:center;text-transform:none;letter-spacing:0;}
+.rep-vista iframe{width:100%;height:78vh;border:1px solid #E4D6C8;border-radius:10px;background:#fff;}
+@media (max-width:640px){ .rep-tipos{grid-template-columns:1fr;} .rep-lista{grid-template-columns:1fr;} }

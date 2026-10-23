@@ -683,6 +683,11 @@ function navigate(view){
     document.querySelector('[data-nav="resumen"]').classList.add('active');
     setHeader('RESUMEN','Avance presupuestal de los programas sociales', CURRENT_USER.rol==='admin' ? 'Todas las unidades presupuestales' : ('UP '+CURRENT_USER.unidad_codigo));
     renderResumen();
+  } else if(view.name==='reportes'){
+    document.getElementById('view-reportes').classList.add('active');
+    document.querySelector('[data-nav="reportes"]').classList.add('active');
+    setHeader('REPORTES','Reportes en hoja membretada', 'General o por programa');
+    renderReportes();
   } else if(view.name==='programas'){
     document.getElementById('view-programas').classList.add('active');
     document.querySelector('[data-nav="programas"]').classList.add('active');
