@@ -420,8 +420,11 @@ router.post('/:id/dictamenes', upload.single('documento'), async (req, res) => {
     const programa = await getPrograma(req.params.id);
     if (!programa) return res.status(404).json({ error: 'Programa no encontrado.' });
 
+    // Número del dictamen: el siguiente consecutivo, salvo que se indique uno
+    // (p. ej. cuando los dictámenes anteriores del programa no se cargaron al sistema).
     const { rows: countRows } = await db.query('SELECT COUNT(*)::int AS n FROM dictamenes WHERE programa_id = $1', [req.params.id]);
-    const numero = countRows[0].n + 1;
+    const numeroIndicado = Number(req.body?.numero);
+    const numero = Number.isInteger(numeroIndicado) && numeroIndicado >= 1 ? numeroIndicado : countRows[0].n + 1;
     const montoAutorizado = Number(req.body?.monto_autorizado || 0);
     const fechaDictamen = parseFechaManual(req.body?.fecha_dictamen);
 
